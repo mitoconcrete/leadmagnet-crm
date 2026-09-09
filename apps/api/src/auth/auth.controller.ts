@@ -21,7 +21,7 @@ export class AuthController {
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const { session, operator } = await this.authService.login(dto.email, dto.password);
     res.cookie(SESSION_COOKIE, session.id, sessionCookieOptions(this.sessionTtlSeconds));
-    return { operator: { id: operator.id, email: operator.email } };
+    return { operator: { id: operator.id, email: operator.email, role: operator.role } };
   }
 
   @Post('logout')
@@ -38,6 +38,6 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @ApiCookieAuth('sid')
   me(@CurrentOperator() operator: Operator) {
-    return { id: operator.id, email: operator.email };
+    return { id: operator.id, email: operator.email, role: operator.role };
   }
 }

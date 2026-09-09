@@ -20,6 +20,8 @@ export class AuthService {
     if (!operator) throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다');
     const matches = await bcrypt.compare(password, operator.passwordHash);
     if (!matches) throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다');
+    // ADR 0020: 정지된(isActive=false) 운영자는 비밀번호가 맞아도 401. 사유는 노출하지 않는다.
+    if (!operator.isActive) throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다');
     const expiresAt = new Date(Date.now() + this.sessionTtlSeconds * 1000);
     const session = await this.sessions.save(
       this.sessions.create({ operatorId: operator.id, expiresAt }),
@@ -40,6 +42,11 @@ export class AuthService {
       .getOne();
     if (!session) return null;
     if (session.expiresAt.getTime() <= Date.now()) {
+      await this.sessions.delete(session.id);
+      return null;
+    }
+    // ADR 0020: 로그인 이후 정지된 운영자는 세션이 남아 있어도 즉시 무효화한다.
+    if (!session.operator.isActive) {
       await this.sessions.delete(session.id);
       return null;
     }
