@@ -22,5 +22,6 @@
 | [0018](0018-isolation-verification-and-no-sanitizing.md) | 등록 HTML은 살균하지 않고 격리한다 — 공격 시나리오 테스트로 검증 |
 | [0019](0019-campaign-lifecycle.md) | 캠페인 생애주기: 종료(보관) 시 폼 자동 비활성 |
 | [0020](0020-operator-roles-and-superuser.md) | 운영자 역할: 구조만 포함(역할·활성 컬럼, 가드), 계정 관리는 다음 단계 |
+| [0021](0021-desktop-first-viewport-layout.md) | 데스크톱 우선 레이아웃: 바깥 화면은 뷰포트 고정, 스크롤은 섹션 안에서만 |
 
 다이어그램(ER·흐름·격리·집계·파이프라인, Mermaid): [../diagrams.md](../diagrams.md)

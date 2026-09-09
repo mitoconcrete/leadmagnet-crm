@@ -146,7 +146,8 @@
 | /login | 이메일/비밀번호 → POST /api/admin/auth/login. 성공 시 `/` |
 | / | 대시보드: 캠페인별 성과 표(GET /api/admin/analytics/campaigns) + 채널별 성과 표(GET /api/admin/analytics/channels) + 캠페인 생성 다이얼로그. 30초 자동 갱신, 마지막 갱신 시각, 지금 갱신 버튼(ADR 0016) |
 | /templates | AI 생성 안내 박스 + 등록 폼(탭: 파일 업로드 / HTML 붙여넣기, 이름. 파일 입력은 네이티브 버튼 대신 shadcn Button "파일 선택" + 숨긴 `<input type=file>` + 선택한 파일명 표시 — 호버·포커스 상태가 보이도록) + 목록(행마다 "미리보기" → Dialog 안 `<iframe sandbox="allow-scripts allow-forms" src="/api/admin/templates/{id}/preview">`, "코드" → Dialog 안 `<pre>` 텍스트 + 복사 버튼(렌더 금지), "삭제" → DELETE; 409(details)면 폼·방문·신청 수를 보여 주는 확인 대화상자 → `?force=true`로 재요청). 수정 UI 없음(ADR 0014) |
-| (공통) | 목록 섹션은 고정 높이 영역 안에서 세로 스크롤한다: 캠페인 성과 표·신청 명단·폼 목록·템플릿 목록은 `max-height` 약 60vh(모바일 50vh) + `overflow-y: auto`, 표 헤더는 `position: sticky`로 고정. 채널 성과 표는 5행 고정이라 스크롤 없음. 페이지 자체가 표 길이만큼 늘어나지 않게 한다 |
+| (공통) | **데스크톱 우선(ADR 0021)**: 앱 셸 `h-screen` + `main overflow-hidden`, 페이지는 그리드 열(대시보드 2열 2:1, 캠페인 상세 3열, 템플릿 2열)로 남은 높이를 나눠 갖고 바깥 문서는 스크롤하지 않는다(뷰포트 높이 < 640px 예외). 섹션 헤더·마지막 갱신·버튼은 스크롤 영역 밖 고정. 좁은 화면(<1024px)은 열을 세로로 쌓는다. 검증: RTL 레이아웃 클래스 + Playwright 1440×900 `scrollHeight <= innerHeight` |
+| (공통) | 목록 섹션은 자기 열 안에서 세로 스크롤한다(`min-h-0` + `overflow-y-auto`, 고정 `max-h` 대신 그리드가 준 높이를 채움): 캠페인 성과 표·신청 명단·폼 목록·템플릿 목록은 `max-height` 약 60vh(모바일 50vh) + `overflow-y: auto`, 표 헤더는 `position: sticky`로 고정. 채널 성과 표는 5행 고정이라 스크롤 없음. 페이지 자체가 표 길이만큼 늘어나지 않게 한다 |
 | /campaigns/[id] | "캠페인 종료"/"다시 진행" 버튼(확인 대화상자, ADR 0019), 30초 자동 갱신 + 마지막 갱신 시각 + 지금 갱신(ADR 0016), 캠페인 정보·stats 카드·채널 breakdown, 폼 목록 + 폼 생성 다이얼로그(템플릿 선택·이름·성공 메시지), 폼마다 배포 링크 4채널 생성/복사 버튼과 공개 URL, 신청 명단 표(GET /api/admin/submissions?campaignId=) |
 
 - 데이터 접근: 클라이언트 컴포넌트에서 `fetch('/api/admin/…', {credentials:'include'})`. `next.config.ts` rewrites `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`.
