@@ -15,7 +15,7 @@
 
 ### 격리가 실제로 성립함을 두 층에서 검증한다
 1. **서버 e2e (구조 불변식)**: 공격 픽스처 `apps/api/test/fixtures/attack-*.html` — 쿠키 읽기, `fetch('/api/admin/...')`, `top.location`/`window.parent` 접근, `<form action=https://evil>`, `<meta http-equiv=refresh>`, srcdoc 탈출 시도(`</script>`, `"`, `&`), `<a target=_top>`. 각 픽스처를 등록·미리보기·공개 페이지로 렌더한 응답에 대해 sandbox 속성, `allow-same-origin` 부재, CSP 지시어, srcdoc 이스케이프(원문의 `"`가 `&quot;`로만 나타남), 관리자 API에 `Origin: null`/무쿠키 요청 401, `sid`가 `/p`로 전송되지 않음을 단언한다.
-2. **브라우저 (동작)**: Playwright 1개 스펙 `e2e/isolation.spec.ts`가 실제 compose 스택에서 (a) 관리자로 로그인해 `sid` 쿠키를 가진 브라우저 컨텍스트로 공격 템플릿의 공개 페이지를 연다, (b) iframe 안 스크립트가 `document.cookie`를 읽으면 빈 문자열, `fetch('http://localhost:3001/api/admin/campaigns')`는 401(쿠키 미전송) 또는 네트워크 차단, `parent.location` 접근은 SecurityError, 네이티브 폼 전송은 CSP `form-action 'none'`으로 차단, `top` 내비게이션 시도 후 관리자 페이지가 그대로임을 단언한다. 결과는 iframe이 `postMessage`로 래퍼에 보고하고 테스트가 수집한다.
+2. **브라우저 (동작)**: Playwright 1개 스펙 `e2e/isolation.spec.ts`가 실제 compose 스택에서 (a) 관리자로 로그인해 `sid` 쿠키를 가진 브라우저 컨텍스트로 공격 템플릿의 공개 페이지를 연다, (b) iframe 안 스크립트가 `document.cookie`를 읽으면 `SecurityError`(Chromium은 `allow-same-origin` 없는 sandbox에서 getter 자체를 막는다. 빈 문자열이 아니라 예외다), 관리자 API 호출은 **네트워크 관찰**로 판정한다: 요청이 아예 나가지 않거나(CSP), 나가면 요청 헤더에 `sid`가 없고 응답이 401이며, 공격 스크립트가 시도한 캠페인 생성(`POST /api/admin/campaigns`)이 서버에 남기지 않음(전후 개수 불변). 응답을 읽지 못했다는 사실(TypeError)만으로는 CORS 실패와 구분되지 않으므로 증거로 쓰지 않는다, `parent.location` 접근은 SecurityError, 네이티브 폼 전송은 CSP `form-action 'none'`으로 차단, `top` 내비게이션 시도 후 관리자 페이지가 그대로임을 단언한다. 결과는 iframe이 `postMessage`로 래퍼에 보고하고 테스트가 수집한다.
 - Playwright는 **이 시나리오 한 파일에만** 쓴다(ADR 0008 개정). CI `integration` 잡이 compose 스택 위에서 실행한다.
 
 ## 근거
