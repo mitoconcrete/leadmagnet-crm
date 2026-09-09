@@ -30,7 +30,7 @@ export class PublicPageController {
       userAgent: req.headers['user-agent'],
     });
 
-    if (!existingVisitorId) {
+    if (!existingVisitorId || visitor.id !== existingVisitorId) {
       res.cookie(VISITOR_COOKIE, visitor.id, visitorCookieOptions());
     }
 
