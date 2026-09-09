@@ -145,4 +145,44 @@ describe('usePolling', () => {
     });
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
+
+  it('겹치는 요청 중 먼저 시작한 요청이 나중에 끝나도 최신 요청의 응답을 덮어쓰지 않는다', async () => {
+    let resolveFirst: (value: string) => void = () => {};
+    let resolveSecond: (value: string) => void = () => {};
+    const fetcher = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveSecond = resolve;
+          }),
+      );
+
+    const { result } = renderHook(() => usePolling(fetcher));
+    await flush();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      void result.current.refresh();
+    });
+    await flush();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+
+    // 두 번째(최신) 요청이 먼저 끝난다.
+    resolveSecond('second');
+    await flush();
+    expect(result.current.data).toBe('second');
+
+    // 첫 번째(오래된) 요청이 뒤늦게 끝나도 최신 데이터를 덮지 않는다.
+    resolveFirst('first');
+    await flush();
+    expect(result.current.data).toBe('second');
+    expect(result.current.isRefreshing).toBe(false);
+  });
 });
