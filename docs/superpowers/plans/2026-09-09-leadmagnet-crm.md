@@ -84,7 +84,7 @@ Track A (인프라, 단독 선행) ──▶ Track B (백엔드) ─┐
     "test": "pnpm --filter api test && pnpm --filter web test",
     "test:e2e": "pnpm --filter api test:e2e",
     "openapi:export": "pnpm --filter api openapi:export",
-    "bruno:run": "bru run bruno/leadmagnet-crm --env local"
+    "bruno:run": "cd bruno/leadmagnet-crm && bru run --env local"
   },
   "devDependencies": { "@usebruno/cli": "^2.0.0" }
 }

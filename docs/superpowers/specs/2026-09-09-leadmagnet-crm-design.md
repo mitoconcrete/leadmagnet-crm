@@ -166,7 +166,7 @@
 - `@nestjs/swagger` + nest-cli 플러그인으로 OpenAPI 생성. 컨트롤러마다 `@ApiTags`, 관리자 컨트롤러는 `@ApiCookieAuth('sid')`.
 - `/api/docs` = Scalar API Reference(`@scalar/nestjs-api-reference`), `/api/docs-json` = OpenAPI JSON.
 - `pnpm --filter api openapi:export` → `docs/openapi.json` (DB 연결 없이 `NestFactory.create(AppModule)` 대신 문서 전용 부트스트랩: `TypeOrmModule`을 `useFactory`로 지연 초기화하지 않고, `SwaggerModule.createDocument`를 위해 `AppModule`을 만들되 `DATABASE_URL`이 없으면 TypeORM `autoLoadEntities`만 두고 연결을 건너뛰는 `DOCS_ONLY=1` 플래그를 지원).
-- Bruno 컬렉션 `bruno/leadmagnet-crm/`: 폴더 `auth`, `templates`, `campaigns`, `forms`, `links`, `public`, `analytics`; `environments/local.bru`(`baseUrl=http://localhost:3001`). `pnpm bruno:run` = `bru run bruno/leadmagnet-crm --env local`.
+- Bruno 컬렉션 `bruno/leadmagnet-crm/`: 폴더 `auth`, `templates`, `campaigns`, `forms`, `links`, `public`, `analytics`; `environments/local.bru`(`baseUrl=http://localhost:3001`). `pnpm bruno:run` = `cd bruno/leadmagnet-crm && bru run --env local`(Bruno CLI는 컬렉션 루트에서 실행해야 하며 요청은 `seq`로 순서 고정된 단일 폴더).
 
 ## 7. 실행·테스트 환경 (docker-compose.yaml)
 
