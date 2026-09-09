@@ -117,6 +117,15 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
     expect(res.body.slug.length).toBeGreaterThan(0);
   });
 
+  it('slug 형식이 아니면(예: a/b) 400이다', async () => {
+    const campaign = await agent.post('/api/admin/campaigns').send({ name: '캠페인H2' });
+    const templateId = await uploadTemplate(agent);
+    const res = await agent
+      .post('/api/admin/forms')
+      .send({ campaignId: campaign.body.id, templateId, name: '폼X', slug: 'a/b' });
+    expect(res.status).toBe(400);
+  });
+
   it('같은 slug로 폼을 생성하면 409이다', async () => {
     const campaign = await agent.post('/api/admin/campaigns').send({ name: '캠페인H' });
     const templateId = await uploadTemplate(agent);
