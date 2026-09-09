@@ -14,6 +14,7 @@ describe('CampaignsController (uuid 경로 검증)', () => {
     findOneWithForms: jest.fn(),
     ensureExists: jest.fn(),
     update: jest.fn(),
+    remove: jest.fn(),
   };
   const analyticsService = { campaignStats: jest.fn() };
 
@@ -66,6 +67,21 @@ describe('CampaignsController (uuid 경로 검증)', () => {
     expect(res.status).toBe(400);
     expect(campaignsService.ensureExists).not.toHaveBeenCalled();
     expect(analyticsService.campaignStats).not.toHaveBeenCalled();
+  });
+
+  it('DELETE의 잘못된 id도 400이고 서비스가 호출되지 않는다', async () => {
+    const res = await request(app.getHttpServer()).delete('/api/admin/campaigns/not-a-uuid');
+    expect(res.status).toBe(400);
+    expect(campaignsService.remove).not.toHaveBeenCalled();
+  });
+
+  it('삭제는 204이고 본문이 없다', async () => {
+    campaignsService.remove.mockResolvedValue(undefined);
+    const res = await request(app.getHttpServer()).delete(
+      '/api/admin/campaigns/11111111-1111-4111-8111-111111111111',
+    );
+    expect(res.status).toBe(204);
+    expect(campaignsService.remove).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111');
   });
 
   it('ADR 0017: stats는 findOneWithForms가 아니라 ensureExists로 존재만 확인한다(폼 조회 생략)', async () => {

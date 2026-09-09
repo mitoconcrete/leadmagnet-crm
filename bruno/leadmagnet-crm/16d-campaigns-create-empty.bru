@@ -1,0 +1,31 @@
+meta {
+  name: campaigns-create-empty
+  type: http
+  seq: 16.8
+}
+
+post {
+  url: {{baseUrl}}/api/admin/campaigns
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+body:json {
+  {
+    "name": "Bruno 삭제용 빈 캠페인",
+    "description": "폼·이벤트가 없어 삭제 가능해야 한다(ADR 0019 개정)"
+  }
+}
+
+script:post-response {
+  bru.setVar('emptyCampaignId', res.body.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.status: eq active
+}

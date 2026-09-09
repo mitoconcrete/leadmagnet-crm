@@ -32,6 +32,8 @@ export interface CampaignRow {
   campaignId: string;
   name: string;
   status: string;
+  forms: number;
+  activeForms: number;
   visits: number;
   visitors: number;
   submissions: number;
@@ -129,9 +131,16 @@ export class AnalyticsService {
     };
   }
 
+  /**
+   * ADR 0019 개정: forms(전체)·activeForms(활성) 폼 수를 함께 집계한다. visits/submissions와
+   * 같이 forms를 LEFT JOIN하면 다대다로 행이 늘어나므로 COUNT는 반드시 DISTINCT f.id로
+   * 센다(ADR 0017: 여전히 쿼리 1개).
+   */
   async campaignList(): Promise<CampaignRow[]> {
     const rows = await this.dataSource.query(
       `SELECT c.id AS "campaignId", c.name AS name, c.status AS status,
+              COUNT(DISTINCT f.id)::int AS forms,
+              COUNT(DISTINCT f.id) FILTER (WHERE f.is_active)::int AS "activeForms",
               COUNT(DISTINCT v.id)::int AS visits,
               COUNT(DISTINCT v.visitor_id)::int AS visitors,
               COUNT(DISTINCT s.id)::int AS submissions
@@ -146,6 +155,8 @@ export class AnalyticsService {
       campaignId: row.campaignId,
       name: row.name,
       status: row.status,
+      forms: Number(row.forms),
+      activeForms: Number(row.activeForms),
       visits: Number(row.visits),
       visitors: Number(row.visitors),
       submissions: Number(row.submissions),
