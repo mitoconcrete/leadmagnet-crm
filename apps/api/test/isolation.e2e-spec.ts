@@ -11,6 +11,14 @@ import {
   TestContext,
 } from './utils';
 
+const VISIT_TOKEN_RE = /VISIT_TOKEN=(?:"|&quot;)([0-9a-f-]{36})/;
+
+function extractVisitToken(html: string): string {
+  const match = VISIT_TOKEN_RE.exec(html);
+  if (!match) throw new Error('VISIT_TOKEN을 응답 본문에서 찾지 못했다');
+  return match[1];
+}
+
 describe('isolation e2e (§2 격리 원칙)', () => {
   let ctx: TestContext;
   let agent: request.SuperAgentTest;
@@ -59,8 +67,26 @@ describe('isolation e2e (§2 격리 원칙)', () => {
   });
 
   it('/api/public/forms/:slug/submissions에 GET 요청(sid 쿠키 포함)은 404 또는 405이며 관리자 데이터를 노출하지 않는다', async () => {
+    const page = await ctx.http().get(`/p/${flow.form.slug}?src=${flow.links.instagram.code}`);
+    const visitToken = extractVisitToken(page.text);
+    await ctx
+      .http()
+      .post(`/api/public/forms/${flow.form.slug}/submissions`)
+      .send({ visitToken, fields: { name: '격리테스트사용자' } });
+
     const sid = cookie.split(';')[0];
     const res = await ctx.http().get(`/api/public/forms/${flow.form.slug}/submissions`).set('Cookie', sid);
+
     expect([404, 405]).toContain(res.status);
+    const bodyText = JSON.stringify(res.body ?? '');
+    expect(bodyText).not.toContain('격리테스트사용자');
+    expect(bodyText).not.toContain(DEFAULT_OPERATOR_EMAIL);
+    expect(res.body).not.toHaveProperty('items');
+  });
+
+  it('쿠키 없이 Origin: null로 GET /api/admin/campaigns를 호출하면 401이고 access-control-allow-origin 헤더가 없다', async () => {
+    const res = await ctx.http().get('/api/admin/campaigns').set('Origin', 'null');
+    expect(res.status).toBe(401);
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
   });
 });
