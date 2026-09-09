@@ -146,6 +146,20 @@ describe('analytics e2e (§4.3 stats, §4.5 submissions, §4.6 analytics)', () =
     expect(res.body.items[0].formName).toBe('테스트 폼');
   });
 
+  it('GET /api/admin/submissions는 createdAt DESC로 정렬된다', async () => {
+    // buildAnalyticsScenario는 token1(신청자A)을 먼저, token2(신청자B)를 나중에 제출한다.
+    // DESC 정렬이면 나중에 만들어진 신청자B가 items[0]에 와야 한다.
+    await buildAnalyticsScenario();
+    const res = await agent.get(`/api/admin/submissions?campaignId=${flow.campaignId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBe(2);
+    expect(res.body.items[0].payload.name).toBe('신청자B');
+    expect(res.body.items[1].payload.name).toBe('신청자A');
+    const first = new Date(res.body.items[0].createdAt).getTime();
+    const second = new Date(res.body.items[1].createdAt).getTime();
+    expect(first).toBeGreaterThanOrEqual(second);
+  });
+
   it('존재하지 않는(형식은 유효한) 캠페인 stats는 404이다', async () => {
     const res = await agent.get(`/api/admin/campaigns/${randomUUID()}/stats`);
     expect(res.status).toBe(404);
