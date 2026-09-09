@@ -257,6 +257,42 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
     expect(patchRes.status).toBe(404);
   });
 
+  describe('삭제된 템플릿의 폼 재활성 차단(ADR 0014 보완)', () => {
+    it('force 삭제 후 GET은 templateDeleted:true, PATCH {isActive:true}는 409, DB로 직접 켜도 공개 페이지는 404, 살아있는 템플릿으로 교체하면 재활성·공개 페이지 모두 성공한다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '재활성 차단 테스트' });
+      const templateId = await uploadTemplate(agent);
+      const form = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '재활성 테스트 폼' });
+
+      const deleteRes = await agent.delete(`/api/admin/templates/${templateId}?force=true`);
+      expect(deleteRes.status).toBe(204);
+
+      const afterDelete = await agent.get(`/api/admin/forms/${form.body.id}`);
+      expect(afterDelete.body.isActive).toBe(false);
+      expect(afterDelete.body.templateDeleted).toBe(true);
+
+      const reactivateRes = await agent.patch(`/api/admin/forms/${form.body.id}`).send({ isActive: true });
+      expect(reactivateRes.status).toBe(409);
+      expect(reactivateRes.body.message).toBe('템플릿이 삭제된 폼은 다시 활성화할 수 없습니다');
+
+      await ctx.ds.query(`UPDATE forms SET is_active = true WHERE id = $1`, [form.body.id]);
+      const publicAfterDbHack = await ctx.http().get(`/p/${form.body.slug}`);
+      expect(publicAfterDbHack.status).toBe(404);
+
+      const otherTemplateId = await uploadTemplate(agent);
+      const replaceRes = await agent
+        .patch(`/api/admin/forms/${form.body.id}`)
+        .send({ templateId: otherTemplateId, isActive: true });
+      expect(replaceRes.status).toBe(200);
+      expect(replaceRes.body.isActive).toBe(true);
+      expect(replaceRes.body.templateId).toBe(otherTemplateId);
+
+      const publicAfterReplace = await ctx.http().get(`/p/${form.body.slug}`);
+      expect(publicAfterReplace.status).toBe(200);
+    });
+  });
+
   describe('캠페인 종료 생애주기(ADR 0019)', () => {
     it('종료(archived) 시 소속 폼이 전부 isActive=false가 되고, 공개 페이지는 404, stats는 유지된다', async () => {
       const campaign = await agent.post('/api/admin/campaigns').send({ name: '종료 캠페인' });
