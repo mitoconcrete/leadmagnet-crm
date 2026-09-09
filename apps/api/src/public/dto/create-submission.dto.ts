@@ -1,7 +1,7 @@
-import { IsObject, IsString } from 'class-validator';
+import { IsObject, IsUUID } from 'class-validator';
 
 export class CreateSubmissionDto {
-  @IsString()
+  @IsUUID()
   visitToken!: string;
 
   @IsObject()

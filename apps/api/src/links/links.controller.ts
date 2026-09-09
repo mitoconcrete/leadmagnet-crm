@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { LinksService } from './links.service';
@@ -16,14 +16,14 @@ export class LinksController {
   ) {}
 
   @Post()
-  async create(@Param('formId') formId: string, @Body() dto: CreateLinkDto) {
+  async create(@Param('formId', new ParseUUIDPipe()) formId: string, @Body() dto: CreateLinkDto) {
     const link = await this.linksService.create(formId, dto.channel);
     const form = await this.formsService.findOne(formId);
     return this.linksService.toResponse(link, form);
   }
 
   @Get()
-  async findAll(@Param('formId') formId: string) {
+  async findAll(@Param('formId', new ParseUUIDPipe()) formId: string) {
     const form = await this.formsService.findOne(formId);
     const links = await this.linksService.findByForm(formId);
     return links.map((link) => this.linksService.toResponse(link, form));

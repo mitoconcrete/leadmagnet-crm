@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { FormsService } from './forms.service';
@@ -24,13 +24,13 @@ export class FormsController {
   }
 
   @Get()
-  async findAll(@Query('campaignId') campaignId?: string) {
+  async findAll(@Query('campaignId', new ParseUUIDPipe({ optional: true })) campaignId?: string) {
     const forms = await this.formsService.findAll(campaignId);
     return forms.map((form) => this.formsService.toResponse(form));
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     const form = await this.formsService.findOneWithLinks(id);
     return {
       ...this.formsService.toResponse(form),
@@ -39,7 +39,7 @@ export class FormsController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() dto: UpdateFormDto) {
+  async update(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateFormDto) {
     const form = await this.formsService.update(id, dto);
     return this.formsService.toResponse(form);
   }

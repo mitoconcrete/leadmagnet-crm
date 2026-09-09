@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { SubmissionsService } from './submissions.service';
@@ -12,8 +12,8 @@ export class SubmissionsController {
 
   @Get()
   list(
-    @Query('campaignId') campaignId?: string,
-    @Query('formId') formId?: string,
+    @Query('campaignId', new ParseUUIDPipe({ optional: true })) campaignId?: string,
+    @Query('formId', new ParseUUIDPipe({ optional: true })) formId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
