@@ -10,7 +10,7 @@ import { PublicPageController } from './public-page.controller';
 import { PublicApiController } from './public-api.controller';
 import { PUBLIC_BASE_URL } from '../common/tokens';
 import { loadEnv } from '../config/env';
-import { isDocsOnly, stubRepositoryProviders } from '../common/docs-only';
+import { isDocsOnly, stubDataSourceProvider, stubRepositoryProviders } from '../common/docs-only';
 
 const ENTITIES = [Form, Visitor, Visit, Submission, DistributionLink];
 
@@ -19,7 +19,7 @@ const ENTITIES = [Form, Visitor, Visit, Submission, DistributionLink];
   providers: [
     PublicService,
     { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl },
-    ...(isDocsOnly() ? stubRepositoryProviders(ENTITIES) : []),
+    ...(isDocsOnly() ? [...stubRepositoryProviders(ENTITIES), stubDataSourceProvider()] : []),
   ],
   controllers: [PublicPageController, PublicApiController],
 })

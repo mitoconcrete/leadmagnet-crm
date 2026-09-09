@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Form } from '../entities/form.entity';
 import { Visitor } from '../entities/visitor.entity';
 import { Visit } from '../entities/visit.entity';
@@ -41,6 +41,7 @@ export class PublicService {
     @InjectRepository(Visit) private readonly visitRepo: Repository<Visit>,
     @InjectRepository(Submission) private readonly submissionRepo: Repository<Submission>,
     @InjectRepository(DistributionLink) private readonly linkRepo: Repository<DistributionLink>,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   private async findActiveForm(slug: string): Promise<Form> {
@@ -49,20 +50,12 @@ export class PublicService {
     return form;
   }
 
+  /**
+   * ADR 0017: visitor 생성/last_seen_at 갱신 + visit insert를 한 트랜잭션으로 묶는다.
+   * form 조회와 링크(src) 조회는 순수 읽기이므로 트랜잭션 밖에서 수행한다.
+   */
   async recordVisit(opts: RecordVisitOptions): Promise<{ form: Form; visit: Visit; visitor: Visitor }> {
     const form = await this.findActiveForm(opts.slug);
-
-    let visitor: Visitor | null = null;
-    if (opts.visitorId && isUuid(opts.visitorId)) {
-      visitor = await this.visitorRepo.findOne({ where: { id: opts.visitorId } });
-    }
-    const now = new Date();
-    if (visitor) {
-      visitor.lastSeenAt = now;
-      visitor = await this.visitorRepo.save(visitor);
-    } else {
-      visitor = await this.visitorRepo.save(this.visitorRepo.create({ lastSeenAt: now }));
-    }
 
     let linkId: string | null = null;
     let channel = 'direct';
@@ -74,19 +67,40 @@ export class PublicService {
       }
     }
 
-    const visit = await this.visitRepo.save(
-      this.visitRepo.create({
-        formId: form.id,
-        visitorId: visitor.id,
-        linkId,
-        channel,
-        userAgent: opts.userAgent ?? null,
-      }),
-    );
+    return this.dataSource.transaction(async (manager) => {
+      const visitorRepo = manager.getRepository(Visitor);
+      const visitRepo = manager.getRepository(Visit);
 
-    return { form, visit, visitor };
+      let visitor: Visitor | null = null;
+      if (opts.visitorId && isUuid(opts.visitorId)) {
+        visitor = await visitorRepo.findOne({ where: { id: opts.visitorId } });
+      }
+      const now = new Date();
+      if (visitor) {
+        visitor.lastSeenAt = now;
+        visitor = await visitorRepo.save(visitor);
+      } else {
+        visitor = await visitorRepo.save(visitorRepo.create({ lastSeenAt: now }));
+      }
+
+      const visit = await visitRepo.save(
+        visitRepo.create({
+          formId: form.id,
+          visitorId: visitor.id,
+          linkId,
+          channel,
+          userAgent: opts.userAgent ?? null,
+        }),
+      );
+
+      return { form, visit, visitor };
+    });
   }
 
+  /**
+   * ADR 0017: visit 검증 + 중복 확인 + submission insert를 한 트랜잭션으로 묶는다.
+   * UNIQUE(visit_id)가 최후 방어이며 위반 시 409로 변환한다.
+   */
   async submit(slug: string, dto: SubmitDto): Promise<{ id: string; message: string }> {
     const form = await this.findActiveForm(slug);
 
@@ -98,35 +112,40 @@ export class PublicService {
       throw new BadRequestException('제출 값은 문자열 또는 문자열 배열이어야 합니다');
     }
 
-    const visit = await this.visitRepo.findOne({ where: { id: dto.visitToken } });
-    if (!visit || visit.formId !== form.id) {
-      throw new BadRequestException('유효하지 않은 방문 정보입니다');
-    }
+    return this.dataSource.transaction(async (manager) => {
+      const visitRepo = manager.getRepository(Visit);
+      const submissionRepo = manager.getRepository(Submission);
 
-    const existing = await this.submissionRepo.findOne({ where: { visitId: visit.id } });
-    if (existing) {
-      throw new ConflictException('이미 제출된 방문입니다');
-    }
+      const visit = await visitRepo.findOne({ where: { id: dto.visitToken } });
+      if (!visit || visit.formId !== form.id) {
+        throw new BadRequestException('유효하지 않은 방문 정보입니다');
+      }
 
-    let submission: Submission;
-    try {
-      submission = await this.submissionRepo.save(
-        this.submissionRepo.create({
-          formId: form.id,
-          visitId: visit.id,
-          visitorId: visit.visitorId,
-          linkId: visit.linkId,
-          channel: visit.channel,
-          payload: dto.fields,
-        }),
-      );
-    } catch (error) {
-      if (isUniqueViolation(error)) {
+      const existing = await submissionRepo.findOne({ where: { visitId: visit.id } });
+      if (existing) {
         throw new ConflictException('이미 제출된 방문입니다');
       }
-      throw error;
-    }
 
-    return { id: submission.id, message: form.successMessage };
+      let submission: Submission;
+      try {
+        submission = await submissionRepo.save(
+          submissionRepo.create({
+            formId: form.id,
+            visitId: visit.id,
+            visitorId: visit.visitorId,
+            linkId: visit.linkId,
+            channel: visit.channel,
+            payload: dto.fields,
+          }),
+        );
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          throw new ConflictException('이미 제출된 방문입니다');
+        }
+        throw error;
+      }
+
+      return { id: submission.id, message: form.successMessage };
+    });
   }
 }
