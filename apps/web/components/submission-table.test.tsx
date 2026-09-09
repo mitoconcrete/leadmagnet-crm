@@ -1,19 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { SubmissionTable } from './submission-table';
-import { apiFetch, ApiError } from '@/lib/api';
-import { toast } from 'sonner';
 import type { SubmissionPage } from '@/lib/types';
-import { POLL_INTERVAL_MS } from '@/lib/polling';
-
-vi.mock('@/lib/api', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
-  return { ...actual, apiFetch: vi.fn() };
-});
-
-vi.mock('sonner', () => ({
-  toast: { error: vi.fn(), success: vi.fn() },
-}));
 
 function makePage(page: number): SubmissionPage {
   return {
@@ -35,48 +23,44 @@ function makePage(page: number): SubmissionPage {
 }
 
 describe('SubmissionTable', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it('불러오는 중이면 안내 문구를 보여준다', () => {
+    render(<SubmissionTable data={null} loading={true} page={1} onPageChange={vi.fn()} />);
+
+    expect(screen.getByText('불러오는 중…')).toBeInTheDocument();
   });
 
-  it('신청 명단을 조회해 시각(KST)·폼·채널·payload를 보여준다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue(makePage(1));
+  it('전달받은 신청 명단으로 시각(KST)·폼·채널·payload를 보여준다', () => {
+    render(<SubmissionTable data={makePage(1)} loading={false} page={1} onPageChange={vi.fn()} />);
 
-    render(<SubmissionTable campaignId="c1" />);
-
-    expect(apiFetch).toHaveBeenCalledWith('/api/admin/submissions?campaignId=c1&page=1');
-
-    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
+    expect(screen.getByText('기본 신청폼')).toBeInTheDocument();
     expect(screen.getByText('인스타그램')).toBeInTheDocument();
     expect(screen.getByText('2026-01-01 09:00')).toBeInTheDocument();
     expect(screen.getByText('홍길동', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('A, B', { exact: false })).toBeInTheDocument();
   });
 
-  it('다음 버튼을 누르면 다음 페이지를 조회한다', async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce(makePage(1));
-    vi.mocked(apiFetch).mockResolvedValueOnce(makePage(2));
+  it('신청 내역이 없으면 안내 문구를 보여준다', () => {
+    render(
+      <SubmissionTable
+        data={{ items: [], total: 0, page: 1, limit: 20 }}
+        loading={false}
+        page={1}
+        onPageChange={vi.fn()}
+      />,
+    );
 
-    render(<SubmissionTable campaignId="c1" />);
-
-    await waitFor(() => expect(screen.getByRole('button', { name: '다음' })).not.toBeDisabled());
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
-
-    await waitFor(() => {
-      expect(apiFetch).toHaveBeenCalledWith('/api/admin/submissions?campaignId=c1&page=2');
-    });
+    expect(screen.getByText('신청 내역이 없습니다.')).toBeInTheDocument();
   });
 
-  it('신청 내역이 없으면 안내 문구를 보여준다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
+  it('data가 null이고 loading도 아니면(조회 실패) 안내 문구를 보여준다', () => {
+    render(<SubmissionTable data={null} loading={false} page={1} onPageChange={vi.fn()} />);
 
-    render(<SubmissionTable campaignId="c1" />);
-
-    await waitFor(() => expect(screen.getByText('신청 내역이 없습니다.')).toBeInTheDocument());
+    expect(screen.getByText('신청 내역이 없습니다.')).toBeInTheDocument();
   });
 
-  it('payload 값이 객체이면 JSON 문자열로 방어 렌더한다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue({
+  it('payload 값이 객체이면 JSON 문자열로 방어 렌더한다', () => {
+    // 서버 응답이 예상 스키마(Record<string, string | string[]>)를 벗어나는 경우를 방어적으로 검증한다.
+    const data = {
       items: [
         {
           id: 's1',
@@ -91,42 +75,37 @@ describe('SubmissionTable', () => {
       total: 1,
       page: 1,
       limit: 20,
-    });
+    } as unknown as SubmissionPage;
 
-    render(<SubmissionTable campaignId="c1" />);
+    render(
+      <SubmissionTable
+        data={data}
+        loading={false}
+        page={1}
+        onPageChange={vi.fn()}
+      />,
+    );
 
-    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
     expect(screen.getByText(JSON.stringify({ nested: true }), { exact: false })).toBeInTheDocument();
   });
 
-  it('조회에 실패하면 오류 토스트를 띄우고 빈 상태를 보여준다(무한 로딩에 빠지지 않는다)', async () => {
-    vi.mocked(apiFetch).mockRejectedValue(new ApiError(500, '신청 명단을 불러오지 못했습니다'));
+  it('다음 버튼을 누르면 onPageChange(page + 1)을 호출한다', () => {
+    const onPageChange = vi.fn();
+    render(<SubmissionTable data={makePage(1)} loading={false} page={1} onPageChange={onPageChange} />);
 
-    render(<SubmissionTable campaignId="c1" />);
+    expect(screen.getByRole('button', { name: '다음' })).not.toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('신청 명단을 불러오지 못했습니다');
-    });
-    expect(screen.getByText('신청 내역이 없습니다.')).toBeInTheDocument();
+    expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
-  it('30초마다 현재 페이지의 신청 명단을 다시 조회한다', async () => {
-    vi.useFakeTimers();
-    try {
-      vi.mocked(apiFetch).mockResolvedValue(makePage(1));
+  it('첫 페이지에서는 이전 버튼이 비활성화되고, 마지막 페이지에서는 다음 버튼이 비활성화된다', () => {
+    const { rerender } = render(
+      <SubmissionTable data={makePage(1)} loading={false} page={1} onPageChange={vi.fn()} />,
+    );
+    expect(screen.getByRole('button', { name: '이전' })).toBeDisabled();
 
-      render(<SubmissionTable campaignId="c1" />);
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(0);
-      });
-      expect(apiFetch).toHaveBeenCalledTimes(1);
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
-      });
-      expect(apiFetch).toHaveBeenCalledTimes(2);
-    } finally {
-      vi.useRealTimers();
-    }
+    rerender(<SubmissionTable data={makePage(2)} loading={false} page={2} onPageChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
   });
 });
