@@ -45,7 +45,10 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   });
 
   if (res.status === 401) {
-    window.location.assign('/login');
+    // 이미 /login에 있다면(예: 로그인 실패) 재이동하지 않는다. 그 외에는 세션 만료로 보고 이동시킨다.
+    if (window.location.pathname !== '/login') {
+      window.location.assign('/login');
+    }
     throw new ApiError(401, '인증이 필요합니다');
   }
 
