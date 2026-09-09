@@ -72,6 +72,16 @@ describe('LinkPanel', () => {
     expect(toast.success).toHaveBeenCalled();
   });
 
+  it('링크 목록 조회에 실패하면 오류 토스트를 띄운다', async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(500, '링크 목록을 불러오지 못했습니다'));
+
+    render(<LinkPanel formId="f1" />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled();
+    });
+  });
+
   it('링크 생성이 409로 실패하면 목록을 다시 조회한다', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce([]); // 최초 조회
     vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(409, '이미 링크가 있습니다')); // 생성 실패
