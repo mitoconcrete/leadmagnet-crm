@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { TemplatesModule } from './templates/templates.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { FormsModule } from './forms/forms.module';
+import { LinksModule } from './links/links.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { FormsModule } from './forms/forms.module';
     TemplatesModule,
     CampaignsModule,
     FormsModule,
+    LinksModule,
   ],
   controllers: [HealthController],
 })
