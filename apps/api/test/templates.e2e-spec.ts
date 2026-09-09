@@ -103,6 +103,50 @@ describe('templates e2e (§4.2 /api/admin/templates)', () => {
     expect(res.status).toBe(401);
   });
 
+  describe('POST / html 붙여넣기 등록 (§4.2)', () => {
+    it('html·name을 보내면 201, originalFilename은 {name}.html, sizeBytes는 buffer 길이와 일치한다', async () => {
+      const html = '<form><input name="email"></form>';
+      const res = await agent.post('/api/admin/templates').field('html', html).field('name', '붙여넣기');
+
+      expect(res.status).toBe(201);
+      expect(res.body.originalFilename).toBe('붙여넣기.html');
+      expect(res.body.sizeBytes).toBe(Buffer.byteLength(html, 'utf-8'));
+    });
+
+    it('html만 있고 name이 없으면 400이다', async () => {
+      const res = await agent.post('/api/admin/templates').field('html', '<form></form>');
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('붙여넣기 등록에는 이름이 필요합니다');
+    });
+
+    it('file과 html이 함께 오면 400이다', async () => {
+      const res = await agent
+        .post('/api/admin/templates')
+        .field('html', '<form></form>')
+        .field('name', '이름')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('file과 html은 함께 보낼 수 없습니다');
+    });
+
+    it('file도 html도 없으면 400이다', async () => {
+      const res = await agent.post('/api/admin/templates').field('name', '이름');
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('file 또는 html 중 하나가 필요합니다');
+    });
+
+    it('<form이 없는 html은 400이다', async () => {
+      const res = await agent.post('/api/admin/templates').field('html', '<div>form 없음</div>').field('name', '이름');
+      expect(res.status).toBe(400);
+    });
+
+    it('600KB html은 400이다', async () => {
+      const oversized = `<form>${'a'.repeat(600 * 1024)}</form>`;
+      const res = await agent.post('/api/admin/templates').field('html', oversized).field('name', '큰 템플릿');
+      expect(res.status).toBe(400);
+    });
+  });
+
   describe('GET /:id/preview (§4.2 미리보기)', () => {
     it('200 text/html, CSP·X-Frame-Options 헤더, sandbox 본문을 반환하고 방문·쿠키를 남기지 않는다', async () => {
       const created = await agent

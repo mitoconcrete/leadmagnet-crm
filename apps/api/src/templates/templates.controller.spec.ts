@@ -81,6 +81,102 @@ describe('TemplatesController (name 타입 방어)', () => {
   });
 });
 
+describe('TemplatesController (POST / 붙여넣기 등록 html 필드)', () => {
+  let app: INestApplication;
+  const templatesService = {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+  };
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: [TemplatesController],
+      providers: [
+        { provide: TemplatesService, useValue: templatesService },
+        { provide: PUBLIC_BASE_URL, useValue: 'http://localhost:3001' },
+      ],
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('html과 name만 보내면 {name}.html 파일명으로 서비스를 호출한다', async () => {
+    templatesService.create.mockResolvedValue({
+      id: 't1',
+      name: '붙여넣기',
+      originalFilename: '붙여넣기.html',
+      sizeBytes: 13,
+      createdAt: new Date(),
+    });
+
+    const res = await request(app.getHttpServer())
+      .post('/api/admin/templates')
+      .field('html', '<form></form>')
+      .field('name', '붙여넣기');
+
+    expect(res.status).toBe(201);
+    expect(templatesService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        originalname: '붙여넣기.html',
+        buffer: Buffer.from('<form></form>', 'utf-8'),
+        size: Buffer.byteLength('<form></form>', 'utf-8'),
+      }),
+      '붙여넣기',
+    );
+  });
+
+  it('html만 있고 name이 없으면 400을 반환한다', async () => {
+    const res = await request(app.getHttpServer()).post('/api/admin/templates').field('html', '<form></form>');
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('붙여넣기 등록에는 이름이 필요합니다');
+    expect(templatesService.create).not.toHaveBeenCalled();
+  });
+
+  it('file과 html이 함께 오면 400을 반환한다', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/admin/templates')
+      .field('html', '<form></form>')
+      .field('name', '이름')
+      .attach('file', Buffer.from('<form></form>'), 'orig.html');
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('file과 html은 함께 보낼 수 없습니다');
+    expect(templatesService.create).not.toHaveBeenCalled();
+  });
+
+  it('file도 html도 없으면 400을 반환한다', async () => {
+    const res = await request(app.getHttpServer()).post('/api/admin/templates').field('name', '이름');
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('file 또는 html 중 하나가 필요합니다');
+    expect(templatesService.create).not.toHaveBeenCalled();
+  });
+
+  it('html이 문자열이 아니면(중복 필드) 400을 반환한다', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/admin/templates')
+      .field('html', '<form></form>')
+      .field('html', '<form>두번째</form>')
+      .field('name', '이름');
+
+    expect(res.status).toBe(400);
+    expect(templatesService.create).not.toHaveBeenCalled();
+  });
+});
+
 describe('TemplatesController (GET /:id/preview)', () => {
   let app: INestApplication;
   const templatesService = {
