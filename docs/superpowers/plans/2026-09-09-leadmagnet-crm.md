@@ -911,7 +911,7 @@ API 계약은 스펙 §4. 백엔드가 없는 동안은 `pnpm dev:web`으로 화
 - Create: `apps/web/lib/api.ts`, `lib/api.test.ts`, `lib/format.ts`, `lib/format.test.ts`, `lib/types.ts`
 
 **Interfaces:**
-- Produces: `apiFetch<T>(path: string, init?: RequestInit & {json?: unknown}): Promise<T>` — `credentials:'include'`, json이면 헤더·본문 설정, 401이면 `window.location.assign('/login')` 후 throw `ApiError(401)`, 그 외 비-2xx는 `ApiError(status, message)`, 204는 `undefined`. `formatRate(rate: number): string` (`0.3333` → `'33.3%'`), `formatDateKST(iso: string): string`. `lib/types.ts`에 스펙 §4의 `Campaign, CampaignStats, ChannelStat, CampaignRow, Form, Link, Template, Submission, SubmissionPage, Channel, CHANNELS, CHANNEL_LABELS` (`{instagram:'인스타그램', x:'X', youtube:'유튜브', threads:'스레드', direct:'직접 유입'}`).
+- Produces: `apiFetch<T>(path: string, init?: RequestInit & {json?: unknown}): Promise<T>` — `credentials:'include'`, json이면 헤더·본문 설정, 401이면 현재 경로가 `/login`이 아닐 때만 `window.location.assign('/login')`(로그인 실패 토스트가 보이도록) 후 throw `ApiError(401)`, 그 외 비-2xx는 `ApiError(status, message)`, 204는 `undefined`. `formatRate(rate: number): string` (`0.3333` → `'33.3%'`), `formatDateKST(iso: string): string`. `lib/types.ts`에 스펙 §4의 `Campaign, CampaignStats, ChannelStat, CampaignRow, Form, Link, Template, Submission, SubmissionPage, Channel, CHANNELS, CHANNEL_LABELS` (`{instagram:'인스타그램', x:'X', youtube:'유튜브', threads:'스레드', direct:'직접 유입'}`).
 
 - [ ] **Step 1: 테스트** `format.test.ts`(formatRate 3케이스), `api.test.ts`(`global.fetch` 모킹: 401 → location.assign 호출, 400 → ApiError message). Commit `test: API 클라이언트와 포맷 유틸 테스트`.
 - [ ] **Step 2: 구현·커밋** `feat: API 클라이언트, 타입, 포맷 유틸`
