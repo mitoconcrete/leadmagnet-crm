@@ -125,3 +125,73 @@ describe('DashboardPage', () => {
     expect(columns.className).toContain('lg:grid-cols-[2fr_1fr]');
   });
 });
+
+describe('DashboardPage - 종료 캠페인 숨기기(ADR 0019)', () => {
+  const mixedCampaigns: CampaignRow[] = [
+    { campaignId: 'c1', name: '진행중 캠페인', status: 'active', visits: 1, visitors: 1, submissions: 1, conversionRate: 1 },
+    { campaignId: 'c2', name: '종료 캠페인', status: 'archived', visits: 1, visitors: 1, submissions: 1, conversionRate: 1 },
+  ];
+
+  beforeEach(() => {
+    campaignTableProps.length = 0;
+    channelTableProps.length = 0;
+    lastUpdatedProps.length = 0;
+    refresh.mockClear();
+    window.localStorage.clear();
+    pollingResult = {
+      data: { campaigns: mixedCampaigns, channels },
+      error: null,
+      lastUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      isRefreshing: false,
+      refresh,
+    };
+  });
+
+  it('기본값은 꺼짐이고 모든 캠페인을 보여준다', () => {
+    render(<DashboardPage />);
+
+    const toggle = screen.getByRole('switch', { name: '종료 캠페인 숨기기' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(campaignTableProps.at(-1)?.rows).toEqual(mixedCampaigns);
+    expect(screen.queryByText('종료 1개 숨김')).not.toBeInTheDocument();
+  });
+
+  it('토글을 켜면 종료된 캠페인을 표에서 제외하고 숨긴 개수를 보여준다', () => {
+    render(<DashboardPage />);
+
+    fireEvent.click(screen.getByRole('switch', { name: '종료 캠페인 숨기기' }));
+
+    expect(campaignTableProps.at(-1)?.rows).toEqual([mixedCampaigns[0]]);
+    expect(screen.getByText('종료 1개 숨김')).toBeInTheDocument();
+  });
+
+  it('토글 상태를 localStorage(dashboard.hideArchived)에 저장한다', () => {
+    render(<DashboardPage />);
+
+    fireEvent.click(screen.getByRole('switch', { name: '종료 캠페인 숨기기' }));
+
+    expect(window.localStorage.getItem('dashboard.hideArchived')).toBe('true');
+  });
+
+  it('마운트 시 localStorage에 저장된 값을 복원한다', () => {
+    window.localStorage.setItem('dashboard.hideArchived', 'true');
+
+    render(<DashboardPage />);
+
+    const toggle = screen.getByRole('switch', { name: '종료 캠페인 숨기기' });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(campaignTableProps.at(-1)?.rows).toEqual([mixedCampaigns[0]]);
+  });
+
+  it('localStorage 접근이 실패해도(예: 비공개 모드) 기본값(꺼짐)으로 렌더한다', () => {
+    const original = window.localStorage.getItem;
+    vi.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('접근 불가');
+    });
+
+    expect(() => render(<DashboardPage />)).not.toThrow();
+    expect(screen.getByRole('switch', { name: '종료 캠페인 숨기기' })).toHaveAttribute('aria-checked', 'false');
+
+    window.localStorage.getItem = original;
+  });
+});
