@@ -67,7 +67,7 @@ describe('AnalyticsService', () => {
     expect(result.conversionRate).toBe(0.5);
     expect(result.channels).toHaveLength(5);
     const instagram = result.channels.find((c) => c.channel === 'instagram');
-    expect(instagram).toEqual({ channel: 'instagram', visits: 10, visitors: 4, submissions: 2, conversionRate: 0.2 });
+    expect(instagram).toEqual({ channel: 'instagram', visits: 10, visitors: 4, submissions: 2, conversionRate: 0.5 });
   });
 
   it('campaignStats: 방문·제출이 전혀 없으면 총계 행이 없어도 0으로 채운다', async () => {

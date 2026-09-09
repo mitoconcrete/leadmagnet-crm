@@ -84,31 +84,40 @@ export class AnalyticsService {
     return mergeChannelStats(combineChannelRows(visitRows, submissionRows));
   }
 
+  /**
+   * ADR 0017: 채널별 집계와 캠페인 총계를 각각 따로 조회하면 쿼리 4개가 나간다.
+   * `GROUP BY GROUPING SETS ((channel), ())`로 채널별 행과 총계 행(channel=NULL)을
+   * 한 쿼리에서 함께 얻는다. 총계 행은 COALESCE로 '__total__' 표식을 붙여 구분한다.
+   * (총 방문자 수는 채널별 distinct 합과 다를 수 있어 — 한 방문자가 여러 채널로
+   * 유입될 수 있다 — 반드시 GROUPING SETS의 전체 그룹에서 따로 집계해야 한다.)
+   */
   async campaignStats(campaignId: string): Promise<CampaignStats> {
-    const [totals] = await this.dataSource.query(
-      `SELECT COUNT(*)::int AS visits, COUNT(DISTINCT v.visitor_id)::int AS visitors
-       FROM visits v JOIN forms f ON f.id = v.form_id WHERE f.campaign_id = $1`,
+    const visitRows = await this.dataSource.query(
+      `SELECT COALESCE(v.channel, '__total__') AS channel,
+              COUNT(DISTINCT v.id)::int AS visits,
+              COUNT(DISTINCT v.visitor_id)::int AS visitors
+       FROM visits v JOIN forms f ON f.id = v.form_id
+       WHERE f.campaign_id = $1
+       GROUP BY GROUPING SETS ((v.channel), ())`,
       [campaignId],
     );
-    const [submissionTotals] = await this.dataSource.query(
-      `SELECT COUNT(*)::int AS submissions
-       FROM submissions s JOIN forms f ON f.id = s.form_id WHERE f.campaign_id = $1`,
-      [campaignId],
-    );
-    const channelVisitRows = await this.dataSource.query(
-      `SELECT v.channel AS channel, COUNT(*)::int AS visits, COUNT(DISTINCT v.visitor_id)::int AS visitors
-       FROM visits v JOIN forms f ON f.id = v.form_id WHERE f.campaign_id = $1 GROUP BY v.channel`,
-      [campaignId],
-    );
-    const channelSubmissionRows = await this.dataSource.query(
-      `SELECT s.channel AS channel, COUNT(*)::int AS submissions
-       FROM submissions s JOIN forms f ON f.id = s.form_id WHERE f.campaign_id = $1 GROUP BY s.channel`,
+    const submissionRows = await this.dataSource.query(
+      `SELECT COALESCE(s.channel, '__total__') AS channel,
+              COUNT(DISTINCT s.id)::int AS submissions
+       FROM submissions s JOIN forms f ON f.id = s.form_id
+       WHERE f.campaign_id = $1
+       GROUP BY GROUPING SETS ((s.channel), ())`,
       [campaignId],
     );
 
-    const visits = Number(totals?.visits ?? 0);
-    const visitors = Number(totals?.visitors ?? 0);
-    const submissions = Number(submissionTotals?.submissions ?? 0);
+    const totalVisitRow = visitRows.find((row: { channel: string }) => row.channel === '__total__');
+    const totalSubmissionRow = submissionRows.find((row: { channel: string }) => row.channel === '__total__');
+    const channelVisitRows = visitRows.filter((row: { channel: string }) => row.channel !== '__total__');
+    const channelSubmissionRows = submissionRows.filter((row: { channel: string }) => row.channel !== '__total__');
+
+    const visits = Number(totalVisitRow?.visits ?? 0);
+    const visitors = Number(totalVisitRow?.visitors ?? 0);
+    const submissions = Number(totalSubmissionRow?.submissions ?? 0);
 
     return {
       campaignId,

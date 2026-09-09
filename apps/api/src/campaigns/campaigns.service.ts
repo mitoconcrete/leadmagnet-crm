@@ -30,6 +30,12 @@ export class CampaignsService {
     return this.campaignRepo.find({ order: { createdAt: 'DESC' } });
   }
 
+  /** ADR 0017: stats 조회용 존재 확인. 폼까지 조회하는 findOneWithForms보다 가볍다(쿼리 1개). */
+  async ensureExists(id: string): Promise<void> {
+    const campaign = await this.campaignRepo.findOne({ where: { id } });
+    if (!campaign) throw new NotFoundException('캠페인을 찾을 수 없습니다');
+  }
+
   async findOneWithForms(id: string): Promise<CampaignWithForms> {
     const campaign = await this.campaignRepo.findOne({ where: { id } });
     if (!campaign) throw new NotFoundException('캠페인을 찾을 수 없습니다');

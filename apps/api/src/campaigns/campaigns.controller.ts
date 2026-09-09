@@ -38,7 +38,7 @@ export class CampaignsController {
 
   @Get(':id/stats')
   async stats(@Param('id', new ParseUUIDPipe()) id: string) {
-    await this.campaignsService.findOneWithForms(id);
+    await this.campaignsService.ensureExists(id);
     return this.analyticsService.campaignStats(id);
   }
 }

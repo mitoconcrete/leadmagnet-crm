@@ -27,8 +27,17 @@ export class AuthService {
     return { session, operator };
   }
 
+  /**
+   * ADR 0017: findOne({relations})은 take:1+JOIN 조합에서 id 조회 1개 + 본문 조회 1개로
+   * 나뉘어(TypeORM의 페이지네이션 안전 전략) 매 요청마다 쿼리가 2개 나간다. QueryBuilder로
+   * 직접 leftJoinAndSelect+getOne을 쓰면 단일 쿼리로 끝난다.
+   */
   async validateSession(id: string): Promise<Operator | null> {
-    const session = await this.sessions.findOne({ where: { id }, relations: ['operator'] });
+    const session = await this.sessions
+      .createQueryBuilder('session')
+      .leftJoinAndSelect('session.operator', 'operator')
+      .where('session.id = :id', { id })
+      .getOne();
     if (!session) return null;
     if (session.expiresAt.getTime() <= Date.now()) {
       await this.sessions.delete(session.id);
