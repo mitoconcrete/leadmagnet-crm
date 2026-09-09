@@ -74,6 +74,30 @@ describe('SubmissionTable', () => {
     await waitFor(() => expect(screen.getByText('신청 내역이 없습니다.')).toBeInTheDocument());
   });
 
+  it('payload 값이 객체이면 JSON 문자열로 방어 렌더한다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      items: [
+        {
+          id: 's1',
+          formId: 'f1',
+          formName: '기본 신청폼',
+          campaignId: 'c1',
+          channel: 'instagram',
+          payload: { name: { nested: true } },
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+
+    render(<SubmissionTable campaignId="c1" />);
+
+    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
+    expect(screen.getByText(JSON.stringify({ nested: true }), { exact: false })).toBeInTheDocument();
+  });
+
   it('조회에 실패하면 오류 토스트를 띄우고 빈 상태를 보여준다(무한 로딩에 빠지지 않는다)', async () => {
     vi.mocked(apiFetch).mockRejectedValue(new ApiError(500, '신청 명단을 불러오지 못했습니다'));
 
