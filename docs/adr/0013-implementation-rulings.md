@@ -24,6 +24,7 @@
 | 제출 `fields` 값 타입 | `string` 또는 `string[]`만 허용, 그 외 400 | 계약 §4.7 그대로. 정규화가 아니라 거절이므로 ADR 0002/0007과 충돌하지 않는다 |
 | 방문당 신청 | `submissions.visit_id` UNIQUE, 재제출 409 | 전환율 범위 0.0~1.0 보장(ADR 0005·0006) |
 | slug 형식 | `^[a-z0-9가-힣][a-z0-9가-힣-]{0,78}$` | 자동 생성 규칙과 같은 문자 집합. URL 라우팅과 주입 스크립트 리터럴 안전 |
+| 템플릿 미리보기 | `GET /api/admin/templates/:id/preview`: 공개 페이지와 같은 래퍼(sandbox·CSP)로 렌더, 제출 스크립트 미주입·방문 미기록. 화면은 sandbox iframe으로 연다 | 등록 HTML 확인 단계가 없으면 공개 URL을 열어야 해 통계가 오염된다. 격리 3겹은 그대로 |
 | 커버리지 측정 제외 | `main.ts`, `openapi-export.ts`, `migrations/**`(API), `components/ui/**`, `app/layout.tsx`(web) | 실행이 검증하는 부트스트랩·raw SQL과 생성물만 제외(ADR 0011) |
 
 ## 결과

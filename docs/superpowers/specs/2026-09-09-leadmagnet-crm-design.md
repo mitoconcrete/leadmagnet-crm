@@ -81,6 +81,7 @@
 | POST | / | multipart `file`(.html), `name?` | 201 `{id,name,originalFilename,sizeBytes,createdAt}`. 400: 확장자≠.html, >512KB, `<form` 없음 |
 | GET | / | – | 200 `[{id,name,originalFilename,sizeBytes,createdAt}]` |
 | GET | /:id | – | 200 `{…, html}` / 404 |
+| GET | /:id/preview | – | 200 `text/html` 래퍼(공개 페이지와 같은 sandbox 속성·CSP·`X-Frame-Options: SAMEORIGIN`·`Cache-Control: no-store`). 원본 HTML을 srcdoc에 넣되 제출 스크립트를 주입하지 않고 방문을 기록하지 않는다 / 401 / 404 |
 
 ### 4.3 캠페인 `/api/admin/campaigns`
 | 메서드 | 경로 | 요청 | 응답 |
@@ -133,7 +134,7 @@
 |---|---|
 | /login | 이메일/비밀번호 → POST /api/admin/auth/login. 성공 시 `/` |
 | / | 대시보드: 캠페인별 성과 표(GET /api/admin/analytics/campaigns) + 채널별 성과 표(GET /api/admin/analytics/channels) + 캠페인 생성 다이얼로그 |
-| /templates | HTML 업로드 폼(파일 + 이름) + 목록 |
+| /templates | AI 생성 안내 박스 + HTML 업로드 폼(파일 + 이름) + 목록(행마다 "미리보기" → Dialog 안 `<iframe sandbox="allow-scripts allow-forms" src="/api/admin/templates/{id}/preview">`) |
 | /campaigns/[id] | 캠페인 정보·stats 카드·채널 breakdown, 폼 목록 + 폼 생성 다이얼로그(템플릿 선택·이름·성공 메시지), 폼마다 배포 링크 4채널 생성/복사 버튼과 공개 URL, 신청 명단 표(GET /api/admin/submissions?campaignId=) |
 
 - 데이터 접근: 클라이언트 컴포넌트에서 `fetch('/api/admin/…', {credentials:'include'})`. `next.config.ts` rewrites `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`.
