@@ -47,6 +47,7 @@ describe('auth e2e (§4.1 /api/admin/auth)', () => {
     expect(sidCookie).toContain('Path=/api/admin');
     expect(sidCookie).toContain('HttpOnly');
     expect(sidCookie).toContain('SameSite=Lax');
+    expect(sidCookie).toContain('Max-Age=604800');
   });
 
   it('필수 필드(password)가 없으면 400이다', async () => {
