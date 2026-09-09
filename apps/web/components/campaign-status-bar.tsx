@@ -3,19 +3,9 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ApiError, apiFetch } from '@/lib/api';
-import { formatRate } from '@/lib/format';
-import {
-  CHANNELS,
-  CHANNEL_LABELS,
-  type Campaign,
-  type CampaignStats,
-  type ChannelOrDirect,
-  type Form,
-} from '@/lib/types';
-import { StatCards } from '@/components/stat-cards';
+import type { Campaign, Form } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,25 +17,21 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const CHANNEL_ORDER: ChannelOrDirect[] = ['direct', ...CHANNELS];
 const STATUS_CHANGE_ERROR_MESSAGE = '캠페인 상태를 변경하지 못했습니다';
 
 type FormCountState = { status: 'loading' } | { status: 'loaded'; count: number } | { status: 'error' };
 
 /**
- * 캠페인 정보와 stats(전체 + 채널 breakdown 5행)를 보여준다. 데이터 조회는 상위(캠페인 상세)가 담당하고,
- * 이 컴포넌트는 표시와 종료/재개 액션(ADR 0019)만 담당한다.
- * stats가 null이면(조회 실패) 배지·버튼은 그대로 두고 통계 자리에는 안내 문구를 보여준다(무한 로딩 방지).
+ * 캠페인 상세 화면의 상단 바(ADR 0021): 이름·설명·상태 배지·종료/재개 액션(ADR 0019).
+ * 성과(stat cards·채널 breakdown)는 CampaignStatsPanel이 담당한다.
  */
-export function CampaignHeader({
+export function CampaignStatusBar({
   campaignId,
   campaign,
-  stats,
   onCampaignUpdated,
 }: {
   campaignId: string;
   campaign: Campaign;
-  stats: CampaignStats | null;
   onCampaignUpdated: (campaign: Campaign) => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -97,8 +83,6 @@ export function CampaignHeader({
     }
   }
 
-  const byChannel = new Map((stats?.channels ?? []).map((s) => [s.channel, s]));
-
   function confirmDescription() {
     if (formCount.status === 'error') {
       return '폼 수를 확인하지 못했습니다. 종료하면 소속 폼이 모두 닫히고 공개 링크가 404가 됩니다. 집계와 명단은 유지됩니다. 종료할까요?';
@@ -110,12 +94,13 @@ export function CampaignHeader({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-semibold">{campaign.name}</h1>
         <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
           {campaign.status === 'active' ? '진행중' : '보관됨'}
         </Badge>
+        {campaign.description && <p className="text-sm text-muted-foreground">{campaign.description}</p>}
         {campaign.status === 'active' ? (
           <Button variant="destructive" size="sm" disabled={changingStatus} onClick={openConfirm}>
             캠페인 종료
@@ -126,46 +111,6 @@ export function CampaignHeader({
           </Button>
         )}
       </div>
-      {campaign.description && <p className="text-sm text-muted-foreground">{campaign.description}</p>}
-
-      {stats ? (
-        <>
-          <StatCards
-            visits={stats.visits}
-            visitors={stats.visitors}
-            submissions={stats.submissions}
-            conversionRate={stats.conversionRate}
-          />
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>채널</TableHead>
-                <TableHead>방문</TableHead>
-                <TableHead>방문자</TableHead>
-                <TableHead>신청</TableHead>
-                <TableHead>전환율</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {CHANNEL_ORDER.map((channel) => {
-                const stat = byChannel.get(channel);
-                return (
-                  <TableRow key={channel}>
-                    <TableCell>{CHANNEL_LABELS[channel]}</TableCell>
-                    <TableCell>{stat?.visits ?? 0}</TableCell>
-                    <TableCell>{stat?.visitors ?? 0}</TableCell>
-                    <TableCell>{stat?.submissions ?? 0}</TableCell>
-                    <TableCell>{formatRate(stat?.conversionRate ?? 0)}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </>
-      ) : (
-        <p className="text-sm text-destructive">성과를 불러오지 못했습니다</p>
-      )}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

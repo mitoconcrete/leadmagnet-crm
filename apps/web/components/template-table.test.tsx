@@ -237,7 +237,7 @@ describe('TemplateTable', () => {
     await waitFor(() => expect(screen.queryByText('<form></form>', { selector: 'pre' })).not.toBeInTheDocument());
   });
 
-  it('행이 많아져도 페이지가 길어지지 않도록 고정 높이 스크롤 영역과 sticky thead를 가진다', async () => {
+  it('템플릿이 많아져도 페이지가 길어지지 않도록 자기 영역 안에서만 스크롤하고 sticky thead를 가진다(ADR 0021)', async () => {
     vi.mocked(apiFetch).mockResolvedValue(templates);
 
     render(<TemplateTable />);
@@ -245,6 +245,9 @@ describe('TemplateTable', () => {
 
     const region = screen.getByRole('region', { name: '템플릿 목록' });
     expect(region).toHaveClass('overflow-y-auto');
+    expect(region.className).toContain('min-h-0');
+    expect(region.className).toContain('flex-1');
+    expect(region.className).not.toContain('max-h-[60vh]');
 
     const thead = region.querySelector('thead');
     expect(thead).toHaveClass('sticky');

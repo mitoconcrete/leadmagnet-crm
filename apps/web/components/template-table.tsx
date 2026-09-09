@@ -144,14 +144,14 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
       <div
         role="region"
         aria-label="템플릿 목록"
-        className="max-h-[60vh] overflow-y-auto max-md:max-h-[50vh]"
+        className="min-h-0 flex-1 overflow-y-auto"
       >
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
               <TableHead>이름</TableHead>
               <TableHead>파일명</TableHead>
-              <TableHead>크기</TableHead>
+              <TableHead className="text-right tabular-nums">크기</TableHead>
               <TableHead>등록일</TableHead>
               <TableHead />
             </TableRow>
@@ -161,7 +161,7 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
               <TableRow key={template.id}>
                 <TableCell>{template.name}</TableCell>
                 <TableCell>{template.originalFilename}</TableCell>
-                <TableCell>{(template.sizeBytes / 1024).toFixed(1)}KB</TableCell>
+                <TableCell className="text-right tabular-nums">{(template.sizeBytes / 1024).toFixed(1)}KB</TableCell>
                 <TableCell>{formatDateKST(template.createdAt)}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">

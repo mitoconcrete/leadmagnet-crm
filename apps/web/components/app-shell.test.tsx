@@ -30,6 +30,23 @@ describe('AppShell', () => {
     expect(screen.getByText('본문')).toBeInTheDocument();
   });
 
+  it('데스크톱 우선 레이아웃(ADR 0021): 셸은 h-screen 그리드이고 main은 데스크톱에서 overflow-hidden이다', () => {
+    const { container } = render(
+      <AppShell>
+        <div>본문</div>
+      </AppShell>,
+    );
+
+    const shell = container.firstElementChild as HTMLElement;
+    expect(shell.className).toContain('h-screen');
+    expect(shell.className).toContain('grid-rows-[auto_1fr]');
+
+    const main = screen.getByText('본문').closest('main');
+    expect(main).not.toBeNull();
+    expect(main?.className).toContain('min-h-0');
+    expect(main?.className).toContain('lg:overflow-hidden');
+  });
+
   it('로그아웃 버튼을 누르면 로그아웃 API를 호출하고 /login으로 이동한다', async () => {
     vi.mocked(apiFetch).mockResolvedValue(undefined);
 

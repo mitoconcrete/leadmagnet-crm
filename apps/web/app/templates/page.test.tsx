@@ -47,4 +47,12 @@ describe('TemplatesPage', () => {
 
     expect(after).not.toBe(before);
   });
+
+  it('데스크톱 우선 레이아웃(ADR 0021): 2열(1:2) 그리드로 안내·등록과 목록을 나눠 갖는다', () => {
+    render(<TemplatesPage />);
+
+    const columns = screen.getByTestId('templates-columns');
+    expect(columns.className).toContain('min-h-0');
+    expect(columns.className).toContain('lg:grid-cols-[1fr_2fr]');
+  });
 });

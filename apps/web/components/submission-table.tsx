@@ -32,16 +32,16 @@ export function SubmissionTable({
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <div
         role="region"
         aria-label="신청 명단"
-        className="max-h-[60vh] overflow-y-auto max-md:max-h-[50vh]"
+        className="min-h-0 flex-1 overflow-y-auto"
       >
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
-              <TableHead>시각</TableHead>
+              <TableHead className="text-right tabular-nums">시각</TableHead>
               <TableHead>폼</TableHead>
               <TableHead>채널</TableHead>
               <TableHead>내용</TableHead>
@@ -50,7 +50,7 @@ export function SubmissionTable({
           <TableBody>
             {items.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{formatDateKST(item.createdAt)}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatDateKST(item.createdAt)}</TableCell>
                 <TableCell>{item.formName}</TableCell>
                 <TableCell>{CHANNEL_LABELS[item.channel]}</TableCell>
                 <TableCell>

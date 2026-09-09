@@ -66,6 +66,8 @@ export interface Form {
   createdAt: string;
   updatedAt: string;
   links?: Link[];
+  /** 폼이 참조하는 템플릿이 소프트 삭제됐는지(백엔드 필드 없으면 false로 취급). */
+  templateDeleted?: boolean;
 }
 
 export interface Link {
@@ -84,6 +86,8 @@ export interface Template {
   sizeBytes: number;
   createdAt: string;
   html?: string;
+  /** 등록 점검 경고(ADR 0018). 백엔드가 안 주면 빈 배열로 취급한다. */
+  warnings?: string[];
 }
 
 export interface Submission {

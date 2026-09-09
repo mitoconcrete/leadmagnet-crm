@@ -23,21 +23,28 @@ vi.mock('@/components/app-shell', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div data-testid="app-shell">{children}</div>,
 }));
 
-const campaignHeaderCalls: { campaign: Campaign; stats: CampaignStats | null }[] = [];
-vi.mock('@/components/campaign-header', () => ({
-  CampaignHeader: (props: {
+const campaignStatusBarCalls: { campaign: Campaign }[] = [];
+vi.mock('@/components/campaign-status-bar', () => ({
+  CampaignStatusBar: (props: {
     campaignId: string;
     campaign: Campaign;
-    stats: CampaignStats | null;
     onCampaignUpdated: (campaign: Campaign) => void;
   }) => {
-    campaignHeaderCalls.push({ campaign: props.campaign, stats: props.stats });
+    campaignStatusBarCalls.push({ campaign: props.campaign });
     return (
-      <div data-testid="campaign-header">
+      <div data-testid="campaign-status-bar">
         {props.campaignId}
         <button onClick={() => props.onCampaignUpdated({ ...props.campaign, status: 'archived' })}>종료 모의</button>
       </div>
     );
+  },
+}));
+
+const campaignStatsPanelCalls: { stats: CampaignStats | null }[] = [];
+vi.mock('@/components/campaign-stats-panel', () => ({
+  CampaignStatsPanel: (props: { stats: CampaignStats | null }) => {
+    campaignStatsPanelCalls.push({ stats: props.stats });
+    return <div data-testid="campaign-stats-panel" />;
   },
 }));
 
@@ -124,7 +131,8 @@ describe('CampaignDetailView', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z')); // KST 09:00:00
     vi.clearAllMocks();
-    campaignHeaderCalls.length = 0;
+    campaignStatusBarCalls.length = 0;
+    campaignStatsPanelCalls.length = 0;
     submissionTableCalls.length = 0;
     formListProps.length = 0;
     mockApi();
@@ -139,14 +147,24 @@ describe('CampaignDetailView', () => {
     await flush();
 
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
-    expect(screen.getByTestId('campaign-header')).toHaveTextContent('c1');
+    expect(screen.getByTestId('campaign-status-bar')).toHaveTextContent('c1');
+    expect(screen.getByTestId('campaign-stats-panel')).toBeInTheDocument();
     expect(screen.getByTestId('form-list')).toBeInTheDocument();
     expect(screen.getByTestId('submission-table')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '폼 만들기' })).toBeInTheDocument();
     expect(screen.getByText('마지막 갱신 09:00:00')).toBeInTheDocument();
 
-    expect(campaignHeaderCalls.at(-1)?.stats).toEqual(stats);
+    expect(campaignStatsPanelCalls.at(-1)?.stats).toEqual(stats);
     expect(submissionTableCalls.at(-1)?.data).toEqual(makeSubmissionPage(1));
+  });
+
+  it('데스크톱 우선 레이아웃(ADR 0021): 3열 그리드로 성과·폼·명단을 나눠 갖는다', async () => {
+    render(<CampaignDetailView campaignId="c1" />);
+    await flush();
+
+    const columns = screen.getByTestId('campaign-columns');
+    expect(columns.className).toContain('min-h-0');
+    expect(columns.className).toContain('lg:grid-cols-3');
   });
 
   it('캠페인 정보 조회에 실패하면 오류 문구를 보여주고 무한 로딩에 빠지지 않는다', async () => {
@@ -157,7 +175,7 @@ describe('CampaignDetailView', () => {
 
     expect(toast.error).toHaveBeenCalledWith('캠페인 정보를 불러오지 못했습니다');
     expect(screen.getByText('캠페인 정보를 불러오지 못했습니다')).toBeInTheDocument();
-    expect(screen.queryByTestId('campaign-header')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('campaign-status-bar')).not.toBeInTheDocument();
   });
 
   it('stats 조회만 실패해도 캠페인 정보는 정상 표시되고, stats는 null로 전달된다(무한 로딩 없음)', async () => {
@@ -166,8 +184,8 @@ describe('CampaignDetailView', () => {
     render(<CampaignDetailView campaignId="c1" />);
     await flush();
 
-    expect(screen.getByTestId('campaign-header')).toBeInTheDocument();
-    expect(campaignHeaderCalls.at(-1)?.stats).toBeNull();
+    expect(screen.getByTestId('campaign-status-bar')).toBeInTheDocument();
+    expect(campaignStatsPanelCalls.at(-1)?.stats).toBeNull();
     expect(screen.getByText('갱신 실패')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '지금 갱신' })).toBeInTheDocument();
   });
