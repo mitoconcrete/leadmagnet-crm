@@ -18,7 +18,7 @@ export function CampaignStatsPanel({ stats }: { stats: CampaignStats | null }) {
   const byChannel = new Map(stats.channels.map((s) => [s.channel, s]));
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
       <StatCards
         visits={stats.visits}
         visitors={stats.visitors}
@@ -30,10 +30,10 @@ export function CampaignStatsPanel({ stats }: { stats: CampaignStats | null }) {
         <TableHeader>
           <TableRow>
             <TableHead>채널</TableHead>
-            <TableHead>방문</TableHead>
-            <TableHead>방문자</TableHead>
-            <TableHead>신청</TableHead>
-            <TableHead>전환율</TableHead>
+            <TableHead className="text-right tabular-nums">방문</TableHead>
+            <TableHead className="text-right tabular-nums">방문자</TableHead>
+            <TableHead className="text-right tabular-nums">신청</TableHead>
+            <TableHead className="text-right tabular-nums">전환율</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -42,10 +42,10 @@ export function CampaignStatsPanel({ stats }: { stats: CampaignStats | null }) {
             return (
               <TableRow key={channel}>
                 <TableCell>{CHANNEL_LABELS[channel]}</TableCell>
-                <TableCell>{stat?.visits ?? 0}</TableCell>
-                <TableCell>{stat?.visitors ?? 0}</TableCell>
-                <TableCell>{stat?.submissions ?? 0}</TableCell>
-                <TableCell>{formatRate(stat?.conversionRate ?? 0)}</TableCell>
+                <TableCell className="text-right tabular-nums">{stat?.visits ?? 0}</TableCell>
+                <TableCell className="text-right tabular-nums">{stat?.visitors ?? 0}</TableCell>
+                <TableCell className="text-right tabular-nums">{stat?.submissions ?? 0}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatRate(stat?.conversionRate ?? 0)}</TableCell>
               </TableRow>
             );
           })}

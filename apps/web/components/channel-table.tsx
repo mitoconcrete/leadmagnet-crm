@@ -20,10 +20,10 @@ export function ChannelTable({ stats, loading }: { stats: ChannelStat[]; loading
       <TableHeader>
         <TableRow>
           <TableHead>채널</TableHead>
-          <TableHead>방문</TableHead>
-          <TableHead>방문자</TableHead>
-          <TableHead>신청</TableHead>
-          <TableHead>전환율</TableHead>
+          <TableHead className="text-right tabular-nums">방문</TableHead>
+          <TableHead className="text-right tabular-nums">방문자</TableHead>
+          <TableHead className="text-right tabular-nums">신청</TableHead>
+          <TableHead className="text-right tabular-nums">전환율</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -32,10 +32,10 @@ export function ChannelTable({ stats, loading }: { stats: ChannelStat[]; loading
           return (
             <TableRow key={channel}>
               <TableCell>{CHANNEL_LABELS[channel]}</TableCell>
-              <TableCell>{stat?.visits ?? 0}</TableCell>
-              <TableCell>{stat?.visitors ?? 0}</TableCell>
-              <TableCell>{stat?.submissions ?? 0}</TableCell>
-              <TableCell>{formatRate(stat?.conversionRate ?? 0)}</TableCell>
+              <TableCell className="text-right tabular-nums">{stat?.visits ?? 0}</TableCell>
+              <TableCell className="text-right tabular-nums">{stat?.visitors ?? 0}</TableCell>
+              <TableCell className="text-right tabular-nums">{stat?.submissions ?? 0}</TableCell>
+              <TableCell className="text-right tabular-nums">{formatRate(stat?.conversionRate ?? 0)}</TableCell>
             </TableRow>
           );
         })}

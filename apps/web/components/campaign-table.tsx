@@ -27,10 +27,10 @@ export function CampaignTable({ rows, loading }: { rows: CampaignRow[]; loading:
           <TableRow>
             <TableHead>이름</TableHead>
             <TableHead>상태</TableHead>
-            <TableHead>방문</TableHead>
-            <TableHead>방문자</TableHead>
-            <TableHead>신청</TableHead>
-            <TableHead>전환율</TableHead>
+            <TableHead className="text-right tabular-nums">방문</TableHead>
+            <TableHead className="text-right tabular-nums">방문자</TableHead>
+            <TableHead className="text-right tabular-nums">신청</TableHead>
+            <TableHead className="text-right tabular-nums">전환율</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -46,10 +46,10 @@ export function CampaignTable({ rows, loading }: { rows: CampaignRow[]; loading:
                   {row.status === 'active' ? '진행중' : '보관됨'}
                 </Badge>
               </TableCell>
-              <TableCell>{row.visits}</TableCell>
-              <TableCell>{row.visitors}</TableCell>
-              <TableCell>{row.submissions}</TableCell>
-              <TableCell>{formatRate(row.conversionRate)}</TableCell>
+              <TableCell className="text-right tabular-nums">{row.visits}</TableCell>
+              <TableCell className="text-right tabular-nums">{row.visitors}</TableCell>
+              <TableCell className="text-right tabular-nums">{row.submissions}</TableCell>
+              <TableCell className="text-right tabular-nums">{formatRate(row.conversionRate)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

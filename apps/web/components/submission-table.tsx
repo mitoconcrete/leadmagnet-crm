@@ -41,7 +41,7 @@ export function SubmissionTable({
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
-              <TableHead>시각</TableHead>
+              <TableHead className="text-right tabular-nums">시각</TableHead>
               <TableHead>폼</TableHead>
               <TableHead>채널</TableHead>
               <TableHead>내용</TableHead>
@@ -50,7 +50,7 @@ export function SubmissionTable({
           <TableBody>
             {items.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{formatDateKST(item.createdAt)}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatDateKST(item.createdAt)}</TableCell>
                 <TableCell>{item.formName}</TableCell>
                 <TableCell>{CHANNEL_LABELS[item.channel]}</TableCell>
                 <TableCell>
