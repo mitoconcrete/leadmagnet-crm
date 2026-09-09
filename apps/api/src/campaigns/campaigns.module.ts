@@ -8,10 +8,15 @@ import { AuthModule } from '../auth/auth.module';
 import { PUBLIC_BASE_URL } from '../common/tokens';
 import { loadEnv } from '../config/env';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { isDocsOnly, stubRepositoryProviders } from '../common/docs-only';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Campaign, Form]), AuthModule, AnalyticsModule],
-  providers: [CampaignsService, { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl }],
+  imports: [...(isDocsOnly() ? [] : [TypeOrmModule.forFeature([Campaign, Form])]), AuthModule, AnalyticsModule],
+  providers: [
+    CampaignsService,
+    { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl },
+    ...(isDocsOnly() ? stubRepositoryProviders([Campaign, Form]) : []),
+  ],
   controllers: [CampaignsController],
   exports: [CampaignsService],
 })

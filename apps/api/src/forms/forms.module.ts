@@ -8,10 +8,15 @@ import { FormsController } from './forms.controller';
 import { AuthModule } from '../auth/auth.module';
 import { PUBLIC_BASE_URL } from '../common/tokens';
 import { loadEnv } from '../config/env';
+import { isDocsOnly, stubRepositoryProviders } from '../common/docs-only';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Form, Campaign, HtmlTemplate]), AuthModule],
-  providers: [FormsService, { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl }],
+  imports: [...(isDocsOnly() ? [] : [TypeOrmModule.forFeature([Form, Campaign, HtmlTemplate])]), AuthModule],
+  providers: [
+    FormsService,
+    { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl },
+    ...(isDocsOnly() ? stubRepositoryProviders([Form, Campaign, HtmlTemplate]) : []),
+  ],
   controllers: [FormsController],
   exports: [FormsService],
 })

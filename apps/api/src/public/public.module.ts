@@ -10,10 +10,17 @@ import { PublicPageController } from './public-page.controller';
 import { PublicApiController } from './public-api.controller';
 import { PUBLIC_BASE_URL } from '../common/tokens';
 import { loadEnv } from '../config/env';
+import { isDocsOnly, stubRepositoryProviders } from '../common/docs-only';
+
+const ENTITIES = [Form, Visitor, Visit, Submission, DistributionLink];
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Form, Visitor, Visit, Submission, DistributionLink])],
-  providers: [PublicService, { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl }],
+  imports: [...(isDocsOnly() ? [] : [TypeOrmModule.forFeature(ENTITIES)])],
+  providers: [
+    PublicService,
+    { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl },
+    ...(isDocsOnly() ? stubRepositoryProviders(ENTITIES) : []),
+  ],
   controllers: [PublicPageController, PublicApiController],
 })
 export class PublicModule {}

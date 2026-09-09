@@ -6,14 +6,16 @@ import { AuthService, SESSION_TTL_SECONDS } from './auth.service';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { loadEnv } from '../config/env';
+import { isDocsOnly, stubRepositoryProviders } from '../common/docs-only';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Operator, Session])],
+  imports: [...(isDocsOnly() ? [] : [TypeOrmModule.forFeature([Operator, Session])])],
   controllers: [AuthController],
   providers: [
     AuthService,
     AuthGuard,
     { provide: SESSION_TTL_SECONDS, useFactory: () => loadEnv().sessionTtlSeconds },
+    ...(isDocsOnly() ? stubRepositoryProviders([Operator, Session]) : []),
   ],
   exports: [AuthService, AuthGuard],
 })

@@ -8,10 +8,15 @@ import { AuthModule } from '../auth/auth.module';
 import { FormsModule } from '../forms/forms.module';
 import { PUBLIC_BASE_URL } from '../common/tokens';
 import { loadEnv } from '../config/env';
+import { isDocsOnly, stubRepositoryProviders } from '../common/docs-only';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DistributionLink, Form]), AuthModule, FormsModule],
-  providers: [LinksService, { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl }],
+  imports: [...(isDocsOnly() ? [] : [TypeOrmModule.forFeature([DistributionLink, Form])]), AuthModule, FormsModule],
+  providers: [
+    LinksService,
+    { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl },
+    ...(isDocsOnly() ? stubRepositoryProviders([DistributionLink, Form]) : []),
+  ],
   controllers: [LinksController],
   exports: [LinksService],
 })
