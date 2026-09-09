@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { ApiError, apiFetch } from '@/lib/api';
 import { formatDateKST } from '@/lib/format';
 import type { Template } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 /**
@@ -13,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -42,25 +45,48 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>이름</TableHead>
-          <TableHead>파일명</TableHead>
-          <TableHead>크기</TableHead>
-          <TableHead>등록일</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {templates.map((template) => (
-          <TableRow key={template.id}>
-            <TableCell>{template.name}</TableCell>
-            <TableCell>{template.originalFilename}</TableCell>
-            <TableCell>{(template.sizeBytes / 1024).toFixed(1)}KB</TableCell>
-            <TableCell>{formatDateKST(template.createdAt)}</TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>이름</TableHead>
+            <TableHead>파일명</TableHead>
+            <TableHead>크기</TableHead>
+            <TableHead>등록일</TableHead>
+            <TableHead />
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {templates.map((template) => (
+            <TableRow key={template.id}>
+              <TableCell>{template.name}</TableCell>
+              <TableCell>{template.originalFilename}</TableCell>
+              <TableCell>{(template.sizeBytes / 1024).toFixed(1)}KB</TableCell>
+              <TableCell>{formatDateKST(template.createdAt)}</TableCell>
+              <TableCell>
+                <Button variant="outline" size="sm" onClick={() => setPreviewTemplate(template)}>
+                  미리보기
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <Dialog open={previewTemplate !== null} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{previewTemplate?.name}</DialogTitle>
+          </DialogHeader>
+          {previewTemplate && (
+            <iframe
+              title="템플릿 미리보기"
+              sandbox="allow-scripts allow-forms"
+              src={`/api/admin/templates/${previewTemplate.id}/preview`}
+              className="h-[70vh] w-full border-0"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
