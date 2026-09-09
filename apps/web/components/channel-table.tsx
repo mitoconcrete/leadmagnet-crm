@@ -1,8 +1,3 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
-import { ApiError, apiFetch } from '@/lib/api';
 import { formatRate } from '@/lib/format';
 import { CHANNELS, CHANNEL_LABELS, type ChannelOrDirect, type ChannelStat } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,30 +6,9 @@ const CHANNEL_ORDER: ChannelOrDirect[] = ['direct', ...CHANNELS];
 
 /**
  * 채널별 성과 표. 항상 direct, instagram, x, youtube, threads 5행을 순서대로 보여준다.
+ * 데이터 조회는 상위(대시보드)에서 usePolling으로 처리하고, 이 컴포넌트는 표시만 담당한다.
  */
-export function ChannelTable({ refreshKey = 0 }: { refreshKey?: number }) {
-  const [stats, setStats] = useState<ChannelStat[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    apiFetch<ChannelStat[]>('/api/admin/analytics/channels')
-      .then((data) => {
-        if (active) setStats(data);
-      })
-      .catch((error) => {
-        if (!active) return;
-        toast.error(error instanceof ApiError ? error.message : '채널 성과를 불러오지 못했습니다');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [refreshKey]);
-
+export function ChannelTable({ stats, loading }: { stats: ChannelStat[]; loading: boolean }) {
   if (loading) {
     return <p className="text-sm text-muted-foreground">불러오는 중…</p>;
   }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatDateKST, formatRate } from './format';
+import { formatDateKST, formatRate, formatTimeKST } from './format';
 
 describe('formatRate', () => {
   it('0.3333을 33.3%로 표시한다', () => {
@@ -39,6 +39,18 @@ describe('formatDateKST', () => {
 
     // 실제 KST 시각은 09:00이지만, ICU가 '24'로 표기하는 상황을 모킹해 정규화 분기를 검증한다.
     expect(formatDateKST('2026-01-01T00:00:00.000Z')).toBe('2026-01-01 00:00');
+  });
+});
+
+describe('formatTimeKST', () => {
+  it('Date를 Asia/Seoul 기준 HH:mm:ss로 표시한다', () => {
+    // UTC 2026-01-01T00:00:00Z -> KST 09:00:00
+    expect(formatTimeKST(new Date('2026-01-01T00:00:00.000Z'))).toBe('09:00:00');
+  });
+
+  it('자정 경계를 넘어가는 시각도 올바르게 표시한다', () => {
+    // UTC 2026-01-01T15:30:45Z -> KST 2026-01-02T00:30:45
+    expect(formatTimeKST(new Date('2026-01-01T15:30:45.000Z'))).toBe('00:30:45');
   });
 });
 

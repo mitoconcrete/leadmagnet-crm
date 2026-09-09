@@ -237,6 +237,19 @@ describe('TemplateTable', () => {
     await waitFor(() => expect(screen.queryByText('<form></form>', { selector: 'pre' })).not.toBeInTheDocument());
   });
 
+  it('행이 많아져도 페이지가 길어지지 않도록 고정 높이 스크롤 영역과 sticky thead를 가진다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(templates);
+
+    render(<TemplateTable />);
+    await waitFor(() => expect(screen.getByText('가을 랜딩')).toBeInTheDocument());
+
+    const region = screen.getByRole('region', { name: '템플릿 목록' });
+    expect(region).toHaveClass('overflow-y-auto');
+
+    const thead = region.querySelector('thead');
+    expect(thead).toHaveClass('sticky');
+  });
+
   it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {
     let resolveFn: (value: Template[]) => void = () => {};
     vi.mocked(apiFetch).mockReturnValue(
