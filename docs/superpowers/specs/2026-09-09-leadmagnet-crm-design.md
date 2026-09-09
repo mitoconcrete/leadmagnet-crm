@@ -113,7 +113,7 @@
 | POST | / | `{campaignId, templateId, name, slug?, successMessage?}` (종료된 캠페인 409, 소프트 삭제된 템플릿 404) | 201 Form. slug 미지정 시 name 기반 slugify + 4자 난수. 중복 slug 409 |
 | GET | /?campaignId= | – | 200 `Form[]` |
 | GET | /:id | – | 200 Form(+`links: Link[]`) / 404 |
-| PATCH | /:id | `{name?, successMessage?, isActive?, templateId?}` (`templateDeleted`인 폼에 `isActive:true` → 409 `템플릿이 삭제된 폼은 다시 활성화할 수 없습니다`; `templateId`를 살아 있는 템플릿으로 바꾸면 그 뒤 활성화 가능) | 200 Form |
+| PATCH | /:id | `{name?, successMessage?, isActive?, templateId?}` (캠페인이 `archived`인 폼에 `isActive:true` → 409 `종료된 캠페인입니다`; `templateDeleted`인 폼에 `isActive:true` → 409 `템플릿이 삭제된 폼은 다시 활성화할 수 없습니다`; `templateId`를 살아 있는 템플릿으로 바꾸면 그 뒤 활성화 가능) | 200 Form |
 | POST | /:id/links | `{channel}` | 201 Link. 같은 채널 중복 409 |
 | GET | /:id/links | – | 200 `Link[]` |
 
@@ -130,7 +130,7 @@
 ### 4.7 공개
 | 메서드 | 경로 | 동작 |
 |---|---|---|
-| GET | /p/:slug?src=CODE | 폼 없음/비활성/템플릿 삭제됨 404(`is_active`와 무관하게 참조 템플릿의 `deleted_at`이 있으면 404). `vid` 쿠키 없으면 visitors 생성 후 `Set-Cookie: vid=<uuid>; Path=/p; HttpOnly; SameSite=Lax; Max-Age=31536000`. visits 1행 생성(src가 유효한 링크 코드면 link_id/channel, 아니면 direct). 위 CSP 헤더와 함께 래퍼 HTML 반환. 래퍼는 `<iframe sandbox="allow-scripts allow-forms" srcdoc="…등록 HTML + 주입 스크립트…">`를 전체 화면으로 렌더한다. |
+| GET | /p/:slug?src=CODE | 폼 없음/비활성/템플릿 삭제됨/캠페인 종료됨 404(`is_active`와 무관하게 참조 템플릿의 `deleted_at`이 있으면 404). `vid` 쿠키 없으면 visitors 생성 후 `Set-Cookie: vid=<uuid>; Path=/p; HttpOnly; SameSite=Lax; Max-Age=31536000`. visits 1행 생성(src가 유효한 링크 코드면 link_id/channel, 아니면 direct). 위 CSP 헤더와 함께 래퍼 HTML 반환. 래퍼는 `<iframe sandbox="allow-scripts allow-forms" srcdoc="…등록 HTML + 주입 스크립트…">`를 전체 화면으로 렌더한다. |
 | POST | /api/public/forms/:slug/submissions | 본문 `{visitToken: <visit id>, fields: {name: string \| string[]}}`. 폼 없음/비활성/템플릿 삭제됨 404, visitToken이 그 폼의 visit가 아니면 400, fields가 빈 객체면 400. 201 `{id, message: form.successMessage}`. `Access-Control-Allow-Origin: *`. |
 
 주입 스크립트(`apps/api/src/public/inject.ts`가 문자열 생성) 동작:
@@ -145,11 +145,11 @@
 | 경로 | 내용 |
 |---|---|
 | /login | 이메일/비밀번호 → POST /api/admin/auth/login. 성공 시 `/` |
-| / | 대시보드: 캠페인별 성과 표(GET /api/admin/analytics/campaigns) + 채널별 성과 표(GET /api/admin/analytics/channels) + 캠페인 생성 다이얼로그. 30초 자동 갱신, 마지막 갱신 시각, 지금 갱신 버튼(ADR 0016) |
+| / | 대시보드: 캠페인별 성과 표(GET /api/admin/analytics/campaigns) + 채널별 성과 표(GET /api/admin/analytics/channels) + 캠페인 생성 다이얼로그. 30초 자동 갱신, 마지막 갱신 시각, 지금 갱신 버튼(ADR 0016). "종료 캠페인 숨기기" 토글, 폼(활성/전체) 열, 진행중인데 활성 폼 0개면 "활성 폼 없음" 배지(ADR 0019) |
 | /templates | AI 생성 안내 박스 + 등록 폼(탭: 파일 업로드 / HTML 붙여넣기, 이름. 파일 입력은 네이티브 버튼 대신 shadcn Button "파일 선택" + 숨긴 `<input type=file>` + 선택한 파일명 표시 — 호버·포커스 상태가 보이도록) + 목록(행마다 "미리보기" → Dialog 안 `<iframe sandbox="allow-scripts allow-forms" src="/api/admin/templates/{id}/preview">`, "코드" → Dialog 안 `<pre>` 텍스트 + 복사 버튼(렌더 금지), "삭제" → DELETE; 409(details)면 폼·방문·신청 수를 보여 주는 확인 대화상자 → `?force=true`로 재요청). 수정 UI 없음(ADR 0014) |
 | (공통) | **데스크톱 우선(ADR 0021)**: 앱 셸 `h-screen` + `main overflow-hidden`, 페이지는 그리드 열(대시보드 2열 2:1, 캠페인 상세 3열, 템플릿 2열)로 남은 높이를 나눠 갖고 바깥 문서는 스크롤하지 않는다(뷰포트 높이 < 640px 예외). 섹션 헤더·마지막 갱신·버튼은 스크롤 영역 밖 고정. 좁은 화면(<1024px)은 열을 세로로 쌓는다. 검증: RTL 레이아웃 클래스 + Playwright 1440×900 `scrollHeight <= innerHeight` |
-| (공통) | 목록 섹션은 자기 열 안에서 세로 스크롤한다(`min-h-0` + `overflow-y-auto`, 고정 `max-h` 대신 그리드가 준 높이를 채움): 캠페인 성과 표·신청 명단·폼 목록·템플릿 목록은 `max-height` 약 60vh(모바일 50vh) + `overflow-y: auto`, 표 헤더는 `position: sticky`로 고정. 채널 성과 표는 5행 고정이라 스크롤 없음. 페이지 자체가 표 길이만큼 늘어나지 않게 한다 |
-| /campaigns/[id] | "캠페인 종료"/"다시 진행" 버튼(확인 대화상자, ADR 0019), 30초 자동 갱신 + 마지막 갱신 시각 + 지금 갱신(ADR 0016), 캠페인 정보·stats 카드·채널 breakdown, 폼 목록 + 폼 생성 다이얼로그(템플릿 선택·이름·성공 메시지), 폼마다 배포 링크 4채널 생성/복사 버튼과 공개 URL, 신청 명단 표(GET /api/admin/submissions?campaignId=) |
+| (공통) | 목록 섹션은 자기 열 안에서 세로 스크롤한다(`min-h-0` + `overflow-y-auto`, 그리드가 준 높이를 채움): 캠페인 성과 표·신청 명단·폼 목록·템플릿 목록. 표 헤더는 `position: sticky`로 고정. 채널 성과 표는 5행 고정이라 스크롤 없음. 페이지 자체가 표 길이만큼 늘어나지 않게 한다 |
+| /campaigns/[id] | "캠페인 종료"/"다시 진행"·"삭제" 버튼(확인 대화상자, 삭제는 이벤트 있으면 409 안내와 종료 유도, ADR 0019), 30초 자동 갱신 + 마지막 갱신 시각 + 지금 갱신(ADR 0016), 캠페인 정보·stats 카드·채널 breakdown, 폼 목록 + 폼 생성 다이얼로그(템플릿 선택·이름·성공 메시지), 폼마다 배포 링크 4채널 생성/복사 버튼과 공개 URL, 신청 명단 표(GET /api/admin/submissions?campaignId=) |
 
 - 데이터 접근: 클라이언트 컴포넌트에서 `fetch('/api/admin/…', {credentials:'include'})`. `next.config.ts` rewrites `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`.
 - 401이면 `/login`으로 이동(`lib/api.ts`의 공통 fetch 래퍼).

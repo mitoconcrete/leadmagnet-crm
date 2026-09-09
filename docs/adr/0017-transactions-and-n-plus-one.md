@@ -16,7 +16,7 @@
 | 제출 `submit` | visit 검증 + 중복 확인 + submission insert | `UNIQUE(visit_id)`가 최후 방어. 위반 시 409 |
 | 템플릿 강제 삭제 | `deleted_at` 설정 + 참조 폼 `is_active=false` 일괄 | 부분 적용 방지 |
 | 캠페인 종료 | `status=archived` + 소속 폼 `is_active=false` 일괄 | 부분 적용 방지 |
-| 운영자 비활성화 | `is_active=false` + 세션 전부 삭제 | 비활성화 즉시 로그아웃 |
+| 운영자 비활성화(다음 단계, ADR 0020) | `is_active=false` + 세션 전부 삭제 | 비활성화 즉시 로그아웃. 관리 API가 생길 때 적용 |
 
 - 격리 수준은 PostgreSQL 기본(READ COMMITTED). 유일성은 코드의 선조회가 아니라 DB 제약(UNIQUE)이 보장하며, 코드의 선조회는 친절한 오류 메시지용이다.
 - 단일 insert/update(캠페인 생성, 링크 생성 등)는 트랜잭션을 두지 않는다. 문장 하나가 이미 원자적이다.

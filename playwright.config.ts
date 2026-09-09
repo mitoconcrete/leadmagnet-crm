@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * ADR 0018: 격리 시나리오(e2e/isolation.spec.ts) 1개 파일에만 쓰는 브라우저 검증.
+ * 브라우저로만 검증되는 두 가지에만 쓴다: 격리 공격 시나리오(e2e/isolation.spec.ts, ADR 0018)와 데스크톱 레이아웃 실측(e2e/layout.spec.ts, ADR 0021).
  * 실행 중인 compose 스택(web 3000, api 3001)을 전제로 한다.
  */
 export default defineConfig({
