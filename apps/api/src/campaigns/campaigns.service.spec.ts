@@ -198,16 +198,40 @@ describe('CampaignsService', () => {
     });
   });
 
-  describe('remove (ADR 0019 개정: 이벤트 없는 캠페인만 삭제)', () => {
-    it('캠페인이 없으면 404', async () => {
+  describe('remove (ADR 0019 개정 + TOCTOU 픽스: 트랜잭션 안에서 락·재집계)', () => {
+    it('캠페인이 없으면 404이고 트랜잭션을 시작하지 않는다', async () => {
       campaignRepo.findOne.mockResolvedValue(null);
       await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
-      expect(dataSource.query).not.toHaveBeenCalled();
+      expect(dataSource.transaction).not.toHaveBeenCalled();
     });
 
-    it('방문이 1건이라도 있으면 409와 details를 던지고 아무것도 지우지 않는다', async () => {
+    it('트랜잭션 안에서 캠페인 행을 SELECT … FOR UPDATE로 잠그고, 같은 manager로 이벤트를 재집계해 0이면 링크→폼→캠페인 순으로 지운다', async () => {
+      campaignRepo.findOne.mockResolvedValue({ id: 'camp-1', name: 'X', status: 'archived' } as Campaign);
+      manager.query
+        .mockResolvedValueOnce([{ id: 'camp-1' }]) // FOR UPDATE 락
+        .mockResolvedValueOnce([{ forms: 1, visits: 0, submissions: 0 }]) // 재집계
+        .mockResolvedValueOnce(undefined) // DELETE distribution_links
+        .mockResolvedValueOnce(undefined); // DELETE forms
+
+      await service.remove('camp-1');
+
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+      expect(dataSource.query).not.toHaveBeenCalled();
+      expect(manager.query.mock.calls[0][0]).toMatch(/FOR UPDATE/i);
+      expect(manager.query.mock.calls[1][0]).toMatch(/COUNT/i);
+      expect(manager.query.mock.calls[1][0]).toMatch(/campaign_id/i);
+      expect(manager.query.mock.calls[2][0]).toMatch(/DELETE FROM distribution_links/i);
+      expect(manager.query.mock.calls[3][0]).toMatch(/DELETE FROM forms/i);
+      expect(txCampaignRepo.delete).toHaveBeenCalledWith('camp-1');
+      // 트랜잭션 밖 리포지토리·dataSource로는 읽지도 쓰지도 않는다(재집계는 반드시 같은 manager로).
+      expect(campaignRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('재집계 결과 방문이 1건이라도 있으면 409+details를 던지고 롤백한다(삭제 쿼리를 실행하지 않는다)', async () => {
       campaignRepo.findOne.mockResolvedValue({ id: 'camp-1', name: 'X', status: 'active' } as Campaign);
-      dataSource.query.mockResolvedValue([{ forms: 2, visits: 1, submissions: 0 }]);
+      manager.query
+        .mockResolvedValueOnce([{ id: 'camp-1' }]) // FOR UPDATE 락
+        .mockResolvedValueOnce([{ forms: 2, visits: 1, submissions: 0 }]); // 재집계: 방문 있음
 
       await expect(service.remove('camp-1')).rejects.toMatchObject({
         status: 409,
@@ -216,32 +240,48 @@ describe('CampaignsService', () => {
           details: { forms: 2, visits: 1, submissions: 0 },
         }),
       });
-      expect(dataSource.transaction).not.toHaveBeenCalled();
+
+      expect(manager.query).toHaveBeenCalledTimes(2); // 락 + 재집계뿐, DELETE는 없다
+      expect(txCampaignRepo.delete).not.toHaveBeenCalled();
     });
 
-    it('신청이 1건이라도 있으면 409와 details를 던진다', async () => {
+    it('재집계 결과 신청이 1건이라도 있으면 409+details를 던진다', async () => {
       campaignRepo.findOne.mockResolvedValue({ id: 'camp-1', name: 'X', status: 'active' } as Campaign);
-      dataSource.query.mockResolvedValue([{ forms: 1, visits: 0, submissions: 1 }]);
+      manager.query
+        .mockResolvedValueOnce([{ id: 'camp-1' }])
+        .mockResolvedValueOnce([{ forms: 1, visits: 0, submissions: 1 }]);
 
       await expect(service.remove('camp-1')).rejects.toMatchObject({
         status: 409,
         response: expect.objectContaining({ details: { forms: 1, visits: 0, submissions: 1 } }),
       });
-      expect(dataSource.transaction).not.toHaveBeenCalled();
+      expect(txCampaignRepo.delete).not.toHaveBeenCalled();
     });
 
-    it('이벤트가 전혀 없으면(archived여도) 트랜잭션 안에서 링크→폼→캠페인 순으로 지운다', async () => {
-      campaignRepo.findOne.mockResolvedValue({ id: 'camp-1', name: 'X', status: 'archived' } as Campaign);
-      dataSource.query.mockResolvedValue([{ forms: 1, visits: 0, submissions: 0 }]);
+    it('TOCTOU 최후 방어: 재집계는 0이었지만 삭제 도중 FK 위반(23503)이 나면 409로 매핑한다', async () => {
+      campaignRepo.findOne.mockResolvedValue({ id: 'camp-1', name: 'X', status: 'active' } as Campaign);
+      manager.query
+        .mockResolvedValueOnce([{ id: 'camp-1' }]) // FOR UPDATE 락
+        .mockResolvedValueOnce([{ forms: 1, visits: 0, submissions: 0 }]) // 재집계: 0
+        .mockResolvedValueOnce(undefined) // DELETE distribution_links
+        .mockRejectedValueOnce(Object.assign(new Error('foreign key violation'), { code: '23503' })); // DELETE forms 중 경합 발생
 
-      await service.remove('camp-1');
+      await expect(service.remove('camp-1')).rejects.toMatchObject({
+        status: 409,
+        response: expect.objectContaining({
+          message: '이벤트가 있는 캠페인은 삭제할 수 없습니다. 종료(보관)하세요',
+        }),
+      });
+    });
 
-      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
-      expect(manager.query.mock.calls[0][0]).toMatch(/DELETE FROM distribution_links/i);
-      expect(manager.query.mock.calls[1][0]).toMatch(/DELETE FROM forms/i);
-      expect(txCampaignRepo.delete).toHaveBeenCalledWith('camp-1');
-      // 트랜잭션 밖 리포지토리로는 지우지 않는다.
-      expect(campaignRepo.update).not.toHaveBeenCalled();
+    it('FK 위반이 아닌 다른 오류는 그대로 던진다(409로 뭉개지 않는다)', async () => {
+      campaignRepo.findOne.mockResolvedValue({ id: 'camp-1', name: 'X', status: 'active' } as Campaign);
+      manager.query
+        .mockResolvedValueOnce([{ id: 'camp-1' }])
+        .mockResolvedValueOnce([{ forms: 1, visits: 0, submissions: 0 }])
+        .mockRejectedValueOnce(new Error('커넥션 끊김'));
+
+      await expect(service.remove('camp-1')).rejects.toThrow('커넥션 끊김');
     });
   });
 });
