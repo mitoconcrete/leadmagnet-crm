@@ -51,6 +51,7 @@ describe('analytics e2e (§4.3 stats, §4.5 submissions, §4.6 analytics)', () =
     const thCode = flow.links.threads.code;
 
     const v1First = await ctx.http().get(`/p/${flow.form.slug}?src=${igCode}`);
+    expect(v1First.status).toBe(200);
     const v1Cookie = (v1First.headers['set-cookie'] as unknown as string[])
       .find((c) => c.startsWith('vid='))!
       .split(';')[0]
@@ -59,12 +60,14 @@ describe('analytics e2e (§4.3 stats, §4.5 submissions, §4.6 analytics)', () =
     await ctx.http().get(`/p/${flow.form.slug}?src=${igCode}`).set('Cookie', `vid=${v1Cookie}`);
 
     const v2 = await ctx.http().get(`/p/${flow.form.slug}?src=${igCode}`);
+    expect(v2.status).toBe(200);
     const v2Cookie = (v2.headers['set-cookie'] as unknown as string[])
       .find((c) => c.startsWith('vid='))!
       .split(';')[0]
       .split('=')[1];
 
     const v3 = await ctx.http().get(`/p/${flow.form.slug}?src=${thCode}`);
+    expect(v3.status).toBe(200);
     const v3Cookie = (v3.headers['set-cookie'] as unknown as string[])
       .find((c) => c.startsWith('vid='))!
       .split(';')[0]

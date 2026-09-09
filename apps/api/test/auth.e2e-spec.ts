@@ -104,7 +104,7 @@ describe('auth e2e (§4.1 /api/admin/auth)', () => {
     expect(res.body.id).toBeDefined();
   });
 
-  it('ADR 0020: is_active=false로 바꾸면 me는 401, 재로그인도 401, 세션은 즉시 전부 삭제된다', async () => {
+  it('ADR 0020: is_active=false로 바꾸면 me는 401, 재로그인도 401, 해당 세션이 삭제된다', async () => {
     await seedOperator(ctx.ds);
     const { agent } = await loginAgent(ctx);
     const meBefore = await agent.get('/api/admin/auth/me');
