@@ -24,46 +24,55 @@ interface SeedResult {
   formSlugs: string[];
 }
 
-/** 관리자로 로그인한 API 컨텍스트로 캠페인 30개, 폼 10개(+링크), 템플릿 20개(+폼용 템플릿 1개)를 만든다. */
+/**
+ * 관리자로 로그인한 API 컨텍스트로 캠페인 30개, 폼 10개(+링크), 템플릿 21개(폼용 1개 +
+ * 붙여넣기 20개)를 만든다. 서로 의존하지 않는 호출(캠페인 30개, 템플릿 21개, 폼+링크 10쌍)은
+ * Promise.all로 병렬화해 순차 실행 대비 시딩 시간을 크게 줄인다.
+ */
 async function seedAdminData(api: APIRequestContext): Promise<SeedResult> {
   const loginRes = await api.post('/api/admin/auth/login', {
     data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });
   expect(loginRes.ok(), '관리자 로그인 실패').toBeTruthy();
 
-  let campaignId = '';
-  for (let i = 0; i < 30; i += 1) {
-    const res = await api.post('/api/admin/campaigns', { data: { name: `레이아웃 실측 캠페인 ${i + 1}` } });
-    expect(res.ok()).toBeTruthy();
-    const campaign = (await res.json()) as { id: string };
-    if (i === 0) campaignId = campaign.id;
-  }
+  const CAMPAIGN_COUNT = 30;
+  const campaignResults = await Promise.all(
+    Array.from({ length: CAMPAIGN_COUNT }, (_, i) =>
+      api.post('/api/admin/campaigns', { data: { name: `레이아웃 실측 캠페인 ${i + 1}` } }),
+    ),
+  );
+  for (const res of campaignResults) expect(res.ok()).toBeTruthy();
+  const campaigns = (await Promise.all(campaignResults.map((res) => res.json()))) as { id: string }[];
+  const campaignId = campaigns[0].id;
 
-  const templateRes = await api.post('/api/admin/templates', {
-    multipart: { html: SEED_HTML, name: '레이아웃 실측 폼 템플릿' },
-  });
-  expect(templateRes.ok()).toBeTruthy();
-  const template = (await templateRes.json()) as { id: string };
+  const PASTE_TEMPLATE_COUNT = 20;
+  const [formTemplateRes, ...pasteTemplateResults] = await Promise.all([
+    api.post('/api/admin/templates', { multipart: { html: SEED_HTML, name: '레이아웃 실측 폼 템플릿' } }),
+    ...Array.from({ length: PASTE_TEMPLATE_COUNT }, (_, i) =>
+      api.post('/api/admin/templates', {
+        multipart: { html: SEED_HTML, name: `레이아웃 실측 템플릿 ${i + 1}` },
+      }),
+    ),
+  ]);
+  expect(formTemplateRes.ok()).toBeTruthy();
+  for (const res of pasteTemplateResults) expect(res.ok()).toBeTruthy();
+  const formTemplate = (await formTemplateRes.json()) as { id: string };
 
-  const formSlugs: string[] = [];
-  for (let i = 0; i < 10; i += 1) {
-    const formRes = await api.post('/api/admin/forms', {
-      data: { campaignId, templateId: template.id, name: `레이아웃 실측 폼 ${i + 1}` },
-    });
-    expect(formRes.ok()).toBeTruthy();
-    const form = (await formRes.json()) as { id: string; slug: string };
-    formSlugs.push(form.slug);
+  const FORM_COUNT = 10;
+  const formSlugs = await Promise.all(
+    Array.from({ length: FORM_COUNT }, async (_, i) => {
+      const formRes = await api.post('/api/admin/forms', {
+        data: { campaignId, templateId: formTemplate.id, name: `레이아웃 실측 폼 ${i + 1}` },
+      });
+      expect(formRes.ok()).toBeTruthy();
+      const form = (await formRes.json()) as { id: string; slug: string };
 
-    const linkRes = await api.post(`/api/admin/forms/${form.id}/links`, { data: { channel: 'instagram' } });
-    expect(linkRes.ok()).toBeTruthy();
-  }
+      const linkRes = await api.post(`/api/admin/forms/${form.id}/links`, { data: { channel: 'instagram' } });
+      expect(linkRes.ok()).toBeTruthy();
 
-  for (let i = 0; i < 20; i += 1) {
-    const res = await api.post('/api/admin/templates', {
-      multipart: { html: SEED_HTML, name: `레이아웃 실측 템플릿 ${i + 1}` },
-    });
-    expect(res.ok()).toBeTruthy();
-  }
+      return form.slug;
+    }),
+  );
 
   return { campaignId, formSlugs };
 }
@@ -107,13 +116,19 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
   let seed: SeedResult;
 
   test.beforeAll(async ({ browser }) => {
+    // 캠페인 30개(병렬)·템플릿 21개(병렬)·폼 10개+링크 10개(병렬 쌍) API 호출과 브라우저
+    // 제출 25회를 한 훅에서 처리해 기본 60초를 넘길 수 있다. 넉넉히 240초로 늘린다.
+    test.setTimeout(240_000);
+
     const api = await playwrightRequest.newContext({ baseURL: API_BASE_URL });
     seed = await seedAdminData(api);
 
     // 신청 명단이 목록 안에서 스크롤될 만큼 쌓이도록 공개 페이지를 방문·제출한다.
+    // GET /api/admin/submissions는 기본 limit=20(페이지당 20건)이므로 25건이면 첫 페이지
+    // 20행이 꽉 차 목록 영역이 넘치기(overflow)에 충분하다(스펙: 60건 목표, 시간이 길면 30건 허용).
     const context = await browser.newContext();
     const page = await context.newPage();
-    const SUBMISSION_COUNT = 30; // 스펙: 60건 목표, 시간이 길면 30건
+    const SUBMISSION_COUNT = 25;
     for (let i = 0; i < SUBMISSION_COUNT; i += 1) {
       const slug = seed.formSlugs[i % seed.formSlugs.length];
       await visitAndSubmit(page, slug, i);
