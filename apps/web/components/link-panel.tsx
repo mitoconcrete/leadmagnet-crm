@@ -20,6 +20,8 @@ export function LinkPanel({ formId }: { formId: string }) {
     try {
       const data = await apiFetch<Link[]>(`/api/admin/forms/${formId}/links`);
       setLinks(data);
+    } catch {
+      toast.error('배포 링크 목록을 불러오지 못했습니다');
     } finally {
       setLoading(false);
     }
