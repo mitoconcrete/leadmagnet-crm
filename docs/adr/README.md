@@ -14,5 +14,6 @@
 | [0010](0010-github-actions-ci-integration.md) | GitHub Actions CI로 프론트엔드·백엔드 통합 검증 |
 | [0011](0011-tdd-and-coverage-gate.md) | TDD 규율과 테스트 커버리지 90% 게이트 |
 | [0012](0012-ai-generation-boundary.md) | AI 생성은 시스템 경계 밖, 입력 계약과 샘플로 증명 |
+| [0013](0013-implementation-rulings.md) | 구현 중 확정한 세부 규칙(uuid 400/404, 헬스 경로, Bruno 구조 등) |
 
 다이어그램(ER·흐름·격리·집계·파이프라인, Mermaid): [../diagrams.md](../diagrams.md)
