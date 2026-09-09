@@ -24,3 +24,4 @@
 - 공개 제출 API는 `Access-Control-Allow-Origin: *`를 낸다. opaque 오리진(`null`)에서 오는 fetch를 받으려면 필요하며, 이 API는 쿠키를 쓰지 않으므로 안전하다.
 - e2e `isolation` 스펙이 sandbox 속성, CSP 헤더, 쿠키 Path, `/api/public`에 sid를 실어 보내도 관리자 API 401을 검증한다.
 - 외부 이미지/폰트(`img-src *`, `font-src *`)는 허용해 AI 생성 HTML의 외형을 유지한다.
+- 잔여 위험: 운영자가 올린 HTML 안의 스크립트는 방문자 입력을 `img` 비콘으로 외부에 보낼 수 있다. 이 위협 모델에서 운영자는 신뢰 주체이며, 격리의 목적은 관리자 자격 증명·관리자 API 보호다.
