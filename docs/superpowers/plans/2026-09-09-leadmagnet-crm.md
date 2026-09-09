@@ -25,7 +25,7 @@
 - 문서·주석·커밋 본문은 한국어. 코드 식별자는 영어.
 - 워크스페이스 패키지 이름: `api`, `web`. 루트 스크립트는 `pnpm --filter api …`, `pnpm --filter web …` 형태.
 - CI(`.github/workflows/ci.yml`)는 검증 인프라이며 Seed 범위 밖의 기능이 아니다(ADR 0010). guardian은 이를 범위 이탈로 판정하지 않는다.
-- **저장소에 넣지 않는 것**: API 키·토큰·비밀번호 실값, 개인·회사 계정명, 회사명, 사용자 홈 절대 경로, 개인 이메일, 도구 세션 링크. 이런 값이 필요하면 `.env`(gitignore)나 저장소 밖 `../rizz-notes/`에 둔다. 커밋 전 가드(git hook + Claude 훅)가 자동으로 차단하며, 차단되면 값을 빼고 다시 커밋한다. 우회(`--no-verify`) 금지.
+- **저장소에 넣지 않는 것**: API 키·토큰·비밀번호 실값, 개인·회사 계정명, 회사명, 사용자 홈 절대 경로, 개인 이메일, 도구 세션 링크. 이런 값이 필요하면 `.env`(gitignore)나 저장소 밖 비공개 노트에 둔다. 커밋 전 검사(git hook)가 차단하며, 차단되면 값을 빼고 다시 커밋한다. 우회(`--no-verify`) 금지.
 - 서브에이전트는 자기 트랙의 파일만 만진다. 공유 파일(`pnpm-lock.yaml`, `apps/api/package.json`)은 Track A가 확정하며, 의존성 추가가 꼭 필요하면 보고서에 적고 통합 단계에서 반영한다.
 
 ---
@@ -1049,7 +1049,7 @@ export async function createFixtureFlow(agent): Promise<{ templateId; campaignId
 ### Task E4: 문서 마무리
 - [ ] `pnpm openapi:export` 결과 커밋. README 실행/테스트 절차가 실제와 일치하는지 재확인(README에는 실행·테스트만).
 - [ ] ADR에 구현 중 바뀐 결정이 있으면 새 번호로 추가. `docs/adr/README.md` 갱신.
-- [ ] 제출 메일 초안(저장소 주소, 미완료 항목)은 저장소 밖 비공개 노트 디렉터리(저장소의 형제 디렉터리 `../rizz-notes/`)의 `submission.md`에 작성.
+- [ ] 제출 메일 초안(저장소 주소, 미완료 항목)은 저장소 밖 비공개 노트에 작성(저장소 미포함).
 
 ### Task E5: 최종 리뷰
 - [ ] superpowers:requesting-code-review로 브랜치 전체 리뷰 1회. 발견 사항은 한 번의 수정 디스패치로 처리.
