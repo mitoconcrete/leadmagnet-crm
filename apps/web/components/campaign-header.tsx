@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { toast } from 'sonner';
+import { ApiError, apiFetch } from '@/lib/api';
 import { formatRate } from '@/lib/format';
 import { CHANNELS, CHANNEL_LABELS, type Campaign, type CampaignStats, type ChannelOrDirect } from '@/lib/types';
 import { StatCards } from '@/components/stat-cards';
@@ -9,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const CHANNEL_ORDER: ChannelOrDirect[] = ['direct', ...CHANNELS];
+const LOAD_ERROR_MESSAGE = '캠페인 정보를 불러오지 못했습니다';
 
 /**
  * 캠페인 정보와 stats(전체 + 채널 breakdown 5행)를 보여준다.
@@ -16,19 +18,37 @@ const CHANNEL_ORDER: ChannelOrDirect[] = ['direct', ...CHANNELS];
 export function CampaignHeader({ campaignId }: { campaignId: string }) {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [stats, setStats] = useState<CampaignStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    apiFetch<Campaign>(`/api/admin/campaigns/${campaignId}`).then((data) => {
-      if (active) setCampaign(data);
-    });
-    apiFetch<CampaignStats>(`/api/admin/campaigns/${campaignId}/stats`).then((data) => {
-      if (active) setStats(data);
-    });
+    setError(null);
+
+    function handleError(err: unknown) {
+      if (!active) return;
+      const message = err instanceof ApiError ? err.message : LOAD_ERROR_MESSAGE;
+      toast.error(message);
+      setError(message);
+    }
+
+    apiFetch<Campaign>(`/api/admin/campaigns/${campaignId}`)
+      .then((data) => {
+        if (active) setCampaign(data);
+      })
+      .catch(handleError);
+    apiFetch<CampaignStats>(`/api/admin/campaigns/${campaignId}/stats`)
+      .then((data) => {
+        if (active) setStats(data);
+      })
+      .catch(handleError);
     return () => {
       active = false;
     };
   }, [campaignId]);
+
+  if (error) {
+    return <p className="text-sm text-destructive">{error}</p>;
+  }
 
   if (!campaign || !stats) {
     return <p className="text-sm text-muted-foreground">불러오는 중…</p>;

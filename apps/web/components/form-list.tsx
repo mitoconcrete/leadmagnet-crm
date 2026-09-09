@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { apiFetch } from '@/lib/api';
+import { ApiError, apiFetch } from '@/lib/api';
 import type { Form } from '@/lib/types';
 import { LinkPanel } from '@/components/link-panel';
 
@@ -21,6 +21,10 @@ export function FormList({ campaignId, refreshKey = 0 }: { campaignId: string; r
     apiFetch<Form[]>(`/api/admin/forms?campaignId=${campaignId}`)
       .then((data) => {
         if (active) setForms(data);
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast.error(error instanceof ApiError ? error.message : '폼 목록을 불러오지 못했습니다');
       })
       .finally(() => {
         if (active) setLoading(false);

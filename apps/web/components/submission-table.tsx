@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { toast } from 'sonner';
+import { ApiError, apiFetch } from '@/lib/api';
 import { formatDateKST } from '@/lib/format';
 import { CHANNEL_LABELS, type SubmissionPage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,12 @@ export function SubmissionTable({ campaignId }: { campaignId: string }) {
     apiFetch<SubmissionPage>(`/api/admin/submissions?campaignId=${campaignId}&page=${page}`)
       .then((res) => {
         if (active) setData(res);
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast.error(error instanceof ApiError ? error.message : '신청 명단을 불러오지 못했습니다');
+        // 무한 로딩에 빠지지 않도록 빈 목록으로 대체해 "신청 내역이 없습니다." 상태를 보여준다.
+        setData({ items: [], total: 0, page, limit: 20 });
       })
       .finally(() => {
         if (active) setLoading(false);

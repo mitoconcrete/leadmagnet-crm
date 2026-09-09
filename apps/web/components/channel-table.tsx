@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { toast } from 'sonner';
+import { ApiError, apiFetch } from '@/lib/api';
 import { formatRate } from '@/lib/format';
 import { CHANNELS, CHANNEL_LABELS, type ChannelOrDirect, type ChannelStat } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +22,10 @@ export function ChannelTable({ refreshKey = 0 }: { refreshKey?: number }) {
     apiFetch<ChannelStat[]>('/api/admin/analytics/channels')
       .then((data) => {
         if (active) setStats(data);
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast.error(error instanceof ApiError ? error.message : '채널 성과를 불러오지 못했습니다');
       })
       .finally(() => {
         if (active) setLoading(false);

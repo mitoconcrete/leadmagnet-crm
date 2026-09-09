@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { toast } from 'sonner';
+import { ApiError, apiFetch } from '@/lib/api';
 import { formatDateKST } from '@/lib/format';
 import type { Template } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,6 +20,10 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
     apiFetch<Template[]>('/api/admin/templates')
       .then((data) => {
         if (active) setTemplates(data);
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast.error(error instanceof ApiError ? error.message : '템플릿 목록을 불러오지 못했습니다');
       })
       .finally(() => {
         if (active) setLoading(false);

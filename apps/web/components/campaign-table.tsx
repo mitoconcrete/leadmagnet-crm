@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { toast } from 'sonner';
+import { ApiError, apiFetch } from '@/lib/api';
 import { formatRate } from '@/lib/format';
 import type { CampaignRow } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,10 @@ export function CampaignTable({ refreshKey = 0 }: { refreshKey?: number }) {
     apiFetch<CampaignRow[]>('/api/admin/analytics/campaigns')
       .then((data) => {
         if (active) setRows(data);
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast.error(error instanceof ApiError ? error.message : '캠페인 성과를 불러오지 못했습니다');
       })
       .finally(() => {
         if (active) setLoading(false);
