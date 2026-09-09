@@ -330,4 +330,61 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
       expect(res.body.status).toBe('active');
     });
   });
+
+  describe('캠페인 삭제(ADR 0019 개정)', () => {
+    it('폼·링크만 있고 이벤트가 없으면 204이고 폼·링크·캠페인이 함께 삭제된다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '삭제 대상' });
+      const templateId = await uploadTemplate(agent);
+      const form = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '폼' });
+      await agent.post(`/api/admin/forms/${form.body.id}/links`).send({ channel: 'instagram' });
+
+      const res = await agent.delete(`/api/admin/campaigns/${campaign.body.id}`);
+      expect(res.status).toBe(204);
+
+      const campaignAfter = await agent.get(`/api/admin/campaigns/${campaign.body.id}`);
+      expect(campaignAfter.status).toBe(404);
+      const formAfter = await agent.get(`/api/admin/forms/${form.body.id}`);
+      expect(formAfter.status).toBe(404);
+      const linksAfter = await agent.get(`/api/admin/forms/${form.body.id}/links`);
+      expect(linksAfter.status).toBe(404);
+    });
+
+    it('방문이 1건이라도 있으면 409와 details를 반환하고 아무것도 지우지 않는다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '방문 있는 캠페인' });
+      const templateId = await uploadTemplate(agent);
+      const form = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '폼' });
+      await ctx.http().get(`/p/${form.body.slug}`);
+
+      const res = await agent.delete(`/api/admin/campaigns/${campaign.body.id}`);
+      expect(res.status).toBe(409);
+      expect(res.body.message).toBe('이벤트가 있는 캠페인은 삭제할 수 없습니다. 종료(보관)하세요');
+      expect(res.body.details).toEqual({ forms: 1, visits: 1, submissions: 0 });
+
+      const campaignAfter = await agent.get(`/api/admin/campaigns/${campaign.body.id}`);
+      expect(campaignAfter.status).toBe(200);
+    });
+
+    it('종료(archived) 상태여도 이벤트가 없으면 삭제할 수 있다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '종료된 빈 캠페인' });
+      await agent.patch(`/api/admin/campaigns/${campaign.body.id}`).send({ status: 'archived' });
+
+      const res = await agent.delete(`/api/admin/campaigns/${campaign.body.id}`);
+      expect(res.status).toBe(204);
+    });
+
+    it('형식은 유효하지만 없는 uuid를 삭제하면 404이다', async () => {
+      const res = await agent.delete(`/api/admin/campaigns/${randomUUID()}`);
+      expect(res.status).toBe(404);
+    });
+
+    it('미인증 상태에서 삭제하면 401이다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '미인증 삭제 테스트' });
+      const res = await ctx.http().delete(`/api/admin/campaigns/${campaign.body.id}`);
+      expect(res.status).toBe(401);
+    });
+  });
 });
