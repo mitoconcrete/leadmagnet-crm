@@ -1,10 +1,13 @@
 export class ApiError extends Error {
   status: number;
+  /** 409 등 오류 응답의 details 필드(예: {forms, visits, submissions}). 없으면 undefined. */
+  details?: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, details?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -17,6 +20,7 @@ interface ErrorBody {
   statusCode?: number;
   message?: string | string[];
   error?: string;
+  details?: unknown;
 }
 
 /**
@@ -54,6 +58,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
 
   if (!res.ok) {
     let message = res.statusText || '요청 처리 중 오류가 발생했습니다';
+    let details: unknown;
     try {
       const data = (await res.json()) as ErrorBody;
       if (Array.isArray(data.message)) {
@@ -61,10 +66,11 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       } else if (typeof data.message === 'string') {
         message = data.message;
       }
+      details = data.details;
     } catch {
       // 본문이 JSON이 아니면 기본 메시지를 유지한다.
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, details);
   }
 
   if (res.status === 204) {

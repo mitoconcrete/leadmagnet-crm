@@ -156,6 +156,87 @@ describe('TemplateTable', () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalled());
   });
 
+  it('코드 조회에 실패하면 오류 토스트를 띄우고 Dialog를 닫는다', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(templates); // GET list
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(404, '템플릿을 찾을 수 없습니다')); // GET detail 실패
+
+    render(<TemplateTable />);
+    await waitFor(() => expect(screen.getByText('가을 랜딩')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: '코드' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('템플릿을 찾을 수 없습니다'));
+    expect(screen.queryByRole('heading', { name: '가을 랜딩 코드' })).not.toBeInTheDocument();
+  });
+
+  it('삭제가 409가 아닌 오류면 서버 메시지를 토스트로 보여주고 대화상자를 띄우지 않는다', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(templates); // GET list
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(500, '삭제 중 오류가 발생했습니다')); // DELETE 실패
+
+    render(<TemplateTable />);
+    await waitFor(() => expect(screen.getByText('가을 랜딩')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('삭제 중 오류가 발생했습니다'));
+    expect(screen.queryByRole('button', { name: '정말 삭제' })).not.toBeInTheDocument();
+  });
+
+  it('force 삭제에 실패하면 오류 토스트를 띄우고 대화상자를 닫는다', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(templates); // GET list
+    vi.mocked(apiFetch).mockRejectedValueOnce(
+      new ApiError(409, '사용 중인 템플릿입니다(폼 1개, 방문 0건, 신청 0건)', { forms: 1, visits: 0, submissions: 0 }),
+    ); // DELETE(force 아님)
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(500, 'force 삭제 실패')); // DELETE(force=true)
+
+    render(<TemplateTable />);
+    await waitFor(() => expect(screen.getByText('가을 랜딩')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    await screen.findByText(/폼 1개, 방문 0건, 신청 0건/);
+
+    fireEvent.click(screen.getByRole('button', { name: '정말 삭제' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('force 삭제 실패'));
+    expect(screen.queryByRole('button', { name: '정말 삭제' })).not.toBeInTheDocument();
+  });
+
+  it('삭제 확인 대화상자에서 취소를 누르면 force 요청 없이 닫힌다', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(templates); // GET list
+    vi.mocked(apiFetch).mockRejectedValueOnce(
+      new ApiError(409, '사용 중인 템플릿입니다(폼 1개, 방문 0건, 신청 0건)', { forms: 1, visits: 0, submissions: 0 }),
+    ); // DELETE(force 아님)
+
+    render(<TemplateTable />);
+    await waitFor(() => expect(screen.getByText('가을 랜딩')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    await screen.findByText(/폼 1개, 방문 0건, 신청 0건/);
+
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: '정말 삭제' })).not.toBeInTheDocument());
+    expect(apiFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('미리보기·코드 Dialog는 닫기 버튼으로 닫을 수 있다', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(templates); // GET list
+    vi.mocked(apiFetch).mockResolvedValueOnce({ ...templates[0], html: '<form></form>' }); // GET detail
+
+    render(<TemplateTable />);
+    await waitFor(() => expect(screen.getByText('가을 랜딩')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: '미리보기' }));
+    await screen.findByTitle('템플릿 미리보기');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]);
+    await waitFor(() => expect(screen.queryByTitle('템플릿 미리보기')).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: '코드' }));
+    await screen.findByText('<form></form>', { selector: 'pre' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]);
+    await waitFor(() => expect(screen.queryByText('<form></form>', { selector: 'pre' })).not.toBeInTheDocument());
+  });
+
   it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {
     let resolveFn: (value: Template[]) => void = () => {};
     vi.mocked(apiFetch).mockReturnValue(
