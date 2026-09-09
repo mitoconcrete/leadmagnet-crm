@@ -18,3 +18,6 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 
 ## 보고
 보고서 파일(경로는 지시받음)에 구현 내용, TDD 증거(RED 명령·출력, GREEN 명령·출력), 변경 파일, 자체 리뷰, 우려를 적고, 최종 메시지는 15줄 이내: Status(DONE|DONE_WITH_CONCERNS|BLOCKED|NEEDS_CONTEXT), 커밋 SHA 목록, 테스트 요약, 보고서 경로.
+
+## 저장소 위생
+- 코드·문서·커밋 메시지에 비밀값, 계정명, 회사명, 사용자 홈 절대 경로, 개인 이메일을 쓰지 않는다. 커밋이 가드에 차단되면 해당 값을 제거하고 다시 커밋한다(`--no-verify` 금지).

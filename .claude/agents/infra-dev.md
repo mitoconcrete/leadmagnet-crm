@@ -16,6 +16,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 - Task A5의 `.github/workflows/ci.yml`은 계획서 블록 그대로. 원격이 없으므로 CI 실행 여부는 확인하지 않고 `docker compose config -q`와 `bash -n scripts/ci-smoke.sh`만 통과시킨다.
 - 커밋 접두사 `chore:`. 태스크마다 커밋.
 - 서브에이전트를 만들지 않는다.
+- 코드·문서·커밋 메시지에 비밀값, 계정명, 회사명, 사용자 홈 절대 경로, 개인 이메일을 쓰지 않는다. 커밋이 가드에 차단되면 해당 값을 제거하고 다시 커밋한다(`--no-verify` 금지).
 
 ## 보고
 최종 메시지 15줄 이내: Status, 커밋 SHA, `pnpm install`·빌드·compose 검증 결과, 바꾼 버전이 있으면 목록, 보고서 경로.

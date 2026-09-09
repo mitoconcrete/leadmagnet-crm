@@ -16,6 +16,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 - `skip`, `todo`, 조건 완화 어설션 금지. 격리 스펙(D7)은 특히 정확하게: `allow-same-origin` 부재, CSP 문자열, 쿠키 Path, 관리자 API CORS 부재.
 - Bruno: 요청마다 `assert`를 넣고, 변수 전달은 `bru.setVar`. `bru run bruno/leadmagnet-crm --env local`로 실행 가능한 구조.
 - 서브에이전트를 만들지 않는다.
+- 코드·문서·커밋 메시지에 비밀값, 계정명, 회사명, 사용자 홈 절대 경로, 개인 이메일을 쓰지 않는다. 커밋이 가드에 차단되면 해당 값을 제거하고 다시 커밋한다(`--no-verify` 금지).
 
 ## 보고
 보고서에 스펙별 케이스 수, 실행 결과(예상된 실패 포함), 계약 해석에서 확신이 없는 지점을 적고, 최종 메시지 15줄 이내: Status, 커밋 SHA, 스펙/케이스 수, 보고서 경로.

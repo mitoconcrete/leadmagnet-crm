@@ -16,6 +16,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 - 시각은 `Asia/Seoul`로 표시. 전환율은 `formatRate`(소수 1자리 %).
 - shadcn 컴포넌트는 이미 설치된 것(button, input, label, card, table, dialog, badge, sonner)만 쓴다. 추가 설치가 필요하면 보고서에 적는다.
 - 서브에이전트를 만들지 않는다.
+- 코드·문서·커밋 메시지에 비밀값, 계정명, 회사명, 사용자 홈 절대 경로, 개인 이메일을 쓰지 않는다. 커밋이 가드에 차단되면 해당 값을 제거하고 다시 커밋한다(`--no-verify` 금지).
 
 ## 보고
 보고서 파일에 구현 화면, 테스트 결과, 빌드 결과, 변경 파일, 우려를 적고, 최종 메시지는 15줄 이내: Status, 커밋 SHA, 테스트/빌드 요약, 보고서 경로.
