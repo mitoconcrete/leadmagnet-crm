@@ -69,7 +69,11 @@ export function SubmissionTable({ campaignId }: { campaignId: string }) {
                   {Object.entries(item.payload).map(([key, value]) => (
                     <li key={key}>
                       <span className="text-muted-foreground">{key}:</span>{' '}
-                      {Array.isArray(value) ? value.join(', ') : value}
+                      {typeof value === 'string'
+                        ? value
+                        : Array.isArray(value)
+                          ? value.join(', ')
+                          : JSON.stringify(value)}
                     </li>
                   ))}
                 </ul>
