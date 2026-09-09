@@ -98,7 +98,8 @@
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
 | POST | / | `{name, description?}` | 201 Campaign |
-| GET | / | – | 200 `Campaign[]` |
+| GET | / | – | 200 `Campaign[]` (각 행에 `forms`, `activeForms` 수 포함) |
+| DELETE | /:id | – | 204(소속 폼의 방문·신청 0건일 때, 폼·링크 함께 삭제, 트랜잭션). 이벤트 있으면 409 `이벤트가 있는 캠페인은 삭제할 수 없습니다. 종료(보관)하세요`. 404 |
 | GET | /:id | – | 200 Campaign(+`forms: FormSummary[]`) / 404 |
 | PATCH | /:id | `{name?, description?, status?}` (`status:'archived'` → 소속 폼 전부 `isActive=false`, 트랜잭션. `'active'` → 캠페인만 재개, 폼은 그대로. ADR 0019) | 200 Campaign |
 | GET | /:id/stats | – | 200 `CampaignStats` |
@@ -124,7 +125,7 @@
 
 ### 4.6 채널 성과 `/api/admin/analytics`
 | GET | /channels | 200 `[{channel, visits, visitors, submissions, conversionRate}]` 전체 캠페인 합산, 5행 고정 |
-| GET | /campaigns | 200 `[{campaignId, name, status, visits, visitors, submissions, conversionRate}]` 대시보드용 |
+| GET | /campaigns | 200 `[{campaignId, name, status, forms, activeForms, visits, visitors, submissions, conversionRate}]` 대시보드용 |
 
 ### 4.7 공개
 | 메서드 | 경로 | 동작 |
