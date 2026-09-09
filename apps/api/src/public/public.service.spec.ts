@@ -122,5 +122,31 @@ describe('PublicService', () => {
       expect(result.message).toBe('신청이 완료되었습니다.');
       expect(result.id).toBeDefined();
     });
+
+    it('문자열 배열 값도 허용한다', async () => {
+      formRepo.findOne.mockResolvedValue(activeForm);
+      visitRepo.findOne.mockResolvedValue({ id: 'v1', formId: 'form-1', visitorId: 'visitor-1', linkId: null, channel: 'direct' });
+      const result = await service.submit('my-form', {
+        visitToken: 'v1',
+        fields: { interest: ['A', 'B'] },
+      });
+      expect(result.id).toBeDefined();
+    });
+
+    it('값이 객체이면 400', async () => {
+      formRepo.findOne.mockResolvedValue(activeForm);
+      visitRepo.findOne.mockResolvedValue({ id: 'v1', formId: 'form-1', visitorId: 'visitor-1', linkId: null, channel: 'direct' });
+      await expect(
+        service.submit('my-form', { visitToken: 'v1', fields: { name: { nested: true } } }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('값이 문자열이 아닌 원소를 포함한 배열이면 400', async () => {
+      formRepo.findOne.mockResolvedValue(activeForm);
+      visitRepo.findOne.mockResolvedValue({ id: 'v1', formId: 'form-1', visitorId: 'visitor-1', linkId: null, channel: 'direct' });
+      await expect(
+        service.submit('my-form', { visitToken: 'v1', fields: { name: ['a', 1] } }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 });

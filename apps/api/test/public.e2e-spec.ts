@@ -176,6 +176,16 @@ describe('public e2e (§4.7 /p/:slug, /api/public/forms/:slug/submissions)', () 
     expect(res.status).toBe(400);
   });
 
+  it('fields의 값이 객체이면 400이다', async () => {
+    const page = await ctx.http().get(`/p/${flow.form.slug}?src=${flow.links.instagram.code}`);
+    const visitToken = extractVisitToken(page.text);
+    const res = await ctx
+      .http()
+      .post(`/api/public/forms/${flow.form.slug}/submissions`)
+      .send({ visitToken, fields: { name: { nested: true } } });
+    expect(res.status).toBe(400);
+  });
+
   it('잘못된 visitToken은 400이다', async () => {
     const res = await ctx
       .http()
