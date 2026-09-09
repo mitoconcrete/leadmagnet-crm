@@ -19,7 +19,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 2. Track A는 `infra-dev` 하나에 순차로 맡긴다. 완료 후 `main`에 커밋되어 있는지 확인한다.
 3. Track B/C/D는 각각 워크트리를 만든 뒤(`git worktree add .worktrees/backend -b track/backend` 등) `backend-dev`, `frontend-dev`, `test-dev`에 **같은 응답에서** 동시에 디스패치한다. 각 에이전트에게는 자기 트랙 본문 전체와 Global Constraints, 작업 디렉터리, 보고서 경로만 준다. 대화 이력은 주지 않는다.
 4. 트랙이 끝날 때마다 `guardian`에게 그 브랜치의 diff 리뷰를 맡긴다. 지적이 계약 위반이면 같은 구현 에이전트를 재개해 고치게 한다(최대 3라운드, 이후 새 에이전트). 설계 질문이 나오면 `architect`에게 넘긴다.
-5. Track E(통합)는 직접 수행한다: 머지 순서 backend → test → frontend, `pnpm install`, `docker compose --profile test run --rm api-test`. 실패는 영역별로 나눠 Sonnet 수정 에이전트에 병렬 위임한다.
+5. Track E(통합)는 직접 수행한다: 머지 순서 backend → test → frontend, `pnpm install`, `docker compose --profile test run --rm --build api-test`. 실패는 영역별로 나눠 Sonnet 수정 에이전트에 병렬 위임한다.
 6. 모든 결정은 원장에 `Ruling: <결정> — <이유> — <틀리면 비용>` 형식으로 적는다.
 
 ## 멈추는 경우

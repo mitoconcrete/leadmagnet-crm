@@ -175,7 +175,7 @@
 ## 7. 실행·테스트 환경 (docker-compose.yaml)
 
 - `docker compose up --build` → db(5432, volume) + api(3001; 기동 시 `migration:run` → `seed` → `start:prod`) + web(3000).
-- `docker compose --profile test run --rm api-test` → db-test(tmpfs, 별도 서비스) 기동 후 `pnpm --filter api test && pnpm --filter api test:e2e` 실행. `DATABASE_URL`이 db-test를 가리킨다.
+- `docker compose --profile test run --rm --build api-test` → db-test(tmpfs, 별도 서비스) 기동 후 `pnpm --filter api test && pnpm --filter api test:e2e` 실행. `DATABASE_URL`이 db-test를 가리킨다.
 - 로컬 개발: `pnpm install`, `docker compose up db`, `pnpm --filter api start:dev`, `pnpm --filter web dev`. e2e는 `TEST_DATABASE_URL`을 읽으며 없으면 `DATABASE_URL`의 db명에 `_test`를 붙인다.
 - 이미지: `node:22-alpine`, pnpm 10은 `corepack enable`로 고정(`package.json`의 `packageManager` 필드). api Dockerfile은 컨텍스트가 저장소 루트인 단일 스테이지 빌드로, dev 의존성을 포함해 같은 이미지를 `api-test` 러너에 재사용한다. web은 `pnpm --filter web build` 후 `next start`로 실행한다(standalone 미사용).
 - api 컨테이너 엔트리: `node dist/data-source-cli.js migration:run` 대신 `pnpm --filter api migration:run && pnpm --filter api seed && node apps/api/dist/main.js` 순서의 `apps/api/docker-entrypoint.sh`.
@@ -197,7 +197,7 @@
 - `.github/workflows/ci.yml`, 트리거 `main` push + pull request, 동시 실행 취소, 잡당 20분 제한. 잡 3개는 병렬.
 - `api` 잡: `postgres:16-alpine` 서비스 컨테이너(`app/app/leadmagnet_test`), `TEST_DATABASE_URL=postgres://app:app@localhost:5432/leadmagnet_test`. `pnpm --filter api test:cov`(단위+e2e+커버리지 게이트) → `openapi:export`(DOCS_ONLY=1) → `docs/openapi.json` 아티팩트.
 - `web` 잡: `pnpm --filter web test:cov` → `pnpm --filter web build`(`API_INTERNAL_URL=http://localhost:3001`).
-- `integration` 잡: `docker compose up --build -d --wait` → `docker compose --profile test run --rm api-test`(= `test:cov`) → `pnpm bruno:run` → `bash scripts/ci-smoke.sh` → 항상 `docker compose logs --no-color > compose.log` 아티팩트 + `docker compose down -v`.
+- `integration` 잡: `docker compose up --build -d --wait` → `docker compose --profile test run --rm --build api-test`(= `test:cov`) → `pnpm bruno:run` → `bash scripts/ci-smoke.sh` → 항상 `docker compose logs --no-color > compose.log` 아티팩트 + `docker compose down -v`.
 - compose healthcheck: `api`는 `wget -qO- http://localhost:3001/api/health`, `web`은 `wget -qO- http://localhost:3000/login`. `--wait`는 이 healthcheck에 의존한다.
 - `scripts/ci-smoke.sh` 검사 항목: `GET http://localhost:3000/login` 200 + 본문에 `<form` 포함, `GET http://localhost:3000/api/admin/auth/me` 401(rewrite 프록시 확인). 실패 시 종료 코드 1.
 - Bruno `public/page.bru`는 `res.status 200`, `res.headers['content-security-policy']`에 `frame-src 'self'` 포함, 본문에 `sandbox="allow-scripts allow-forms"` 포함을 단언한다.

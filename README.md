@@ -7,7 +7,7 @@
 4. API 문서 http://localhost:3001/api/docs (OpenAPI JSON: http://localhost:3001/api/docs-json, 파일: `docs/openapi.json`)
 
 ## 테스트
-- 도커: `docker compose --profile test run --rm api-test` (단위 + e2e + 커버리지 게이트 90%, 테스트 전용 DB)
+- 도커: `docker compose --profile test run --rm --build api-test` (단위 + e2e + 커버리지 게이트 90%, 테스트 전용 DB)
 - 로컬: `pnpm install` → `docker compose up -d db-test` → `.env`를 셸에 로드(`set -a && . ./.env && set +a`) → `pnpm test` → `pnpm test:e2e`
 - 커버리지 게이트(90%): API `pnpm --filter api test:cov`(단위 + e2e 합산, 위 `.env` 로드 필요), 관리자 화면 `pnpm --filter web test:cov`
 - Bruno 컬렉션: API 실행 후 `pnpm bruno:run`

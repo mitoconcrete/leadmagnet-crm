@@ -54,7 +54,7 @@ Track A (인프라, 단독 선행) ──▶ Track B (백엔드) ─┐
 
 - Track A는 `main`에서 순차 실행 후 커밋. B/C/D는 각각 `.worktrees/<track>` 워크트리, 브랜치 `track/backend`, `track/frontend`, `track/test`에서 병렬 실행.
 - Track D의 e2e는 Track A의 스켈레톤 API에 대해 **빨간 상태**로 커밋된다. 초록은 Track E에서 확인한다.
-- Track E는 컨트롤러가 브랜치를 `main`에 순서대로 머지(backend → test → frontend)하고, `docker compose --profile test run --rm api-test`로 검증한다.
+- Track E는 컨트롤러가 브랜치를 `main`에 순서대로 머지(backend → test → frontend)하고, `docker compose --profile test run --rm --build api-test`로 검증한다.
 
 ---
 
@@ -501,7 +501,7 @@ volumes:
 4. API 문서 http://localhost:3001/api/docs (OpenAPI JSON: http://localhost:3001/api/docs-json, 파일: `docs/openapi.json`)
 
 ## 테스트
-- 도커: `docker compose --profile test run --rm api-test` (단위 + e2e, 테스트 전용 DB)
+- 도커: `docker compose --profile test run --rm --build api-test` (단위 + e2e, 테스트 전용 DB)
 - 로컬: `pnpm install` → `docker compose up -d db db-test` → `pnpm test` → `pnpm test:e2e`
 - 관리자 화면 단위 테스트: `pnpm --filter web test`
 - Bruno 컬렉션: API 실행 후 `pnpm bruno:run`
@@ -586,7 +586,7 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: docker compose up --build -d --wait
-      - run: docker compose --profile test run --rm api-test
+      - run: docker compose --profile test run --rm --build api-test
       - run: pnpm bruno:run
       - run: bash scripts/ci-smoke.sh
       - if: always()
@@ -1037,7 +1037,7 @@ export async function createFixtureFlow(agent): Promise<{ templateId; campaignId
 - [ ] `pnpm install && pnpm -r build`
 
 ### Task E2: 테스트 초록 만들기
-- [ ] `docker compose --profile test run --rm api-test`(= `pnpm --filter api test:cov`, 커버리지 게이트 포함) 실행. 실패 스펙을 영역별로 나눠 Sonnet 수정 에이전트에 병렬 위임(스펙 §4가 권위. 테스트가 계약을 어겼으면 테스트를, 구현이 어겼으면 구현을 고친다. 판단은 컨트롤러 룰링으로 기록).
+- [ ] `docker compose --profile test run --rm --build api-test`(= `pnpm --filter api test:cov`, 커버리지 게이트 포함) 실행. 실패 스펙을 영역별로 나눠 Sonnet 수정 에이전트에 병렬 위임(스펙 §4가 권위. 테스트가 계약을 어겼으면 테스트를, 구현이 어겼으면 구현을 고친다. 판단은 컨트롤러 룰링으로 기록).
 - [ ] `pnpm --filter web test:cov`, `pnpm --filter web build` 통과.
 - [ ] 커버리지 미달 파일이 있으면 해당 트랙 에이전트에 테스트 추가를 위임(`test:` 커밋). 임계값은 낮추지 않는다.
 - [ ] 수정 커밋은 `fix:`.

@@ -12,7 +12,7 @@ ADR 0008은 로컬 docker compose에서 단위·e2e 테스트를 돌리는 방�
 |---|---|---|
 | `api` | pnpm + Node 22, `postgres:16-alpine` 서비스 컨테이너 | `pnpm --filter api test`, `pnpm --filter api test:e2e`, `pnpm --filter api openapi:export` 후 `docs/openapi.json` 아티팩트 업로드 |
 | `web` | pnpm + Node 22 | `pnpm --filter web test`, `pnpm --filter web build` |
-| `integration` | 러너의 Docker | ① `docker compose up --build -d --wait`(db, api, web) ② `docker compose --profile test run --rm api-test` ③ `pnpm bruno:run` ④ `scripts/ci-smoke.sh` ⑤ 항상 `docker compose logs` 아티팩트 업로드와 `down -v` |
+| `integration` | 러너의 Docker | ① `docker compose up --build -d --wait`(db, api, web) ② `docker compose --profile test run --rm --build api-test` ③ `pnpm bruno:run` ④ `scripts/ci-smoke.sh` ⑤ 항상 `docker compose logs` 아티팩트 업로드와 `down -v` |
 
 - `--wait`가 동작하도록 compose의 `api`는 `GET /api/health`, `web`은 `GET /login`을 healthcheck로 갖는다.
 - Bruno 컬렉션이 통합 잡의 API 계약 검증을 담당한다. 로그인 → 템플릿 업로드 → 캠페인 → 폼 → 링크 → 공개 페이지 → 제출 → 통계 순서로 실행되며, 공개 페이지 응답의 `sandbox` 속성과 CSP 헤더도 단언한다.
