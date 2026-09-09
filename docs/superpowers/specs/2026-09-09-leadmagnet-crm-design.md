@@ -71,9 +71,9 @@
 ### 4.1 인증 `/api/admin/auth`
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
-| POST | /login | `{email, password}` | 200 `{operator:{id,email}}` + `Set-Cookie: sid=<uuid>; Path=/api/admin; HttpOnly; SameSite=Lax; Max-Age=604800`. 실패 401 |
+| POST | /login | `{email, password}` | 200 `{operator:{id,email,role}}` + `Set-Cookie: sid=<uuid>; Path=/api/admin; HttpOnly; SameSite=Lax; Max-Age=604800`. 실패 401 |
 | POST | /logout | – | 204, 쿠키 만료 |
-| GET | /me | – | 200 `{id,email}` / 401 |
+| GET | /me | – | 200 `{id,email,role}` / 401 |
 
 ### 4.2 HTML 템플릿 `/api/admin/templates`
 | 메서드 | 경로 | 요청 | 응답 |
