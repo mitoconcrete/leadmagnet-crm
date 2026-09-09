@@ -1,0 +1,26 @@
+meta {
+  name: campaigns-archive
+  type: http
+  seq: 16.7
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/campaigns/{{campaignId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+body:json {
+  {
+    "status": "archived"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq archived
+}
