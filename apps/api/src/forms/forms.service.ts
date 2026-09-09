@@ -49,6 +49,7 @@ export class FormsService {
   async create(dto: CreateFormDto): Promise<Form> {
     const campaign = await this.campaignRepo.findOne({ where: { id: dto.campaignId } });
     if (!campaign) throw new NotFoundException('캠페인을 찾을 수 없습니다');
+    if (campaign.status === 'archived') throw new ConflictException('종료된 캠페인입니다');
     const template = await this.templateRepo.findOne({ where: { id: dto.templateId, deletedAt: IsNull() } });
     if (!template) throw new NotFoundException('템플릿을 찾을 수 없습니다');
 

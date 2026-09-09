@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Campaign } from '../entities/campaign.entity';
 import { Form } from '../entities/form.entity';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
@@ -18,6 +18,7 @@ export class CampaignsService {
     @InjectRepository(Campaign) private readonly campaignRepo: Repository<Campaign>,
     @InjectRepository(Form) private readonly formRepo: Repository<Form>,
     @Inject(PUBLIC_BASE_URL) private readonly publicBaseUrl: string,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   create(dto: CreateCampaignDto): Promise<Campaign> {
@@ -43,12 +44,29 @@ export class CampaignsService {
     return { ...campaign, forms: forms.map((f) => toFormResponse(f, this.publicBaseUrl)) };
   }
 
+  /**
+   * ADR 0019: status가 'archived'로 "바뀌는" 경우에만 트랜잭션 안에서 캠페인 갱신 +
+   * 소속 폼 전부 isActive=false를 함께 한다. 'active' 재개나 동일 상태 PATCH는
+   * 단일 update(캠페인만)이므로 트랜잭션을 쓰지 않는다(ADR 0017: 단일 쓰기는 트랜잭션 불필요).
+   */
   async update(id: string, dto: UpdateCampaignDto): Promise<Campaign> {
     const campaign = await this.campaignRepo.findOne({ where: { id } });
     if (!campaign) throw new NotFoundException('캠페인을 찾을 수 없습니다');
+
+    const archiving = dto.status === 'archived' && campaign.status !== 'archived';
+
     if (dto.name !== undefined) campaign.name = dto.name;
     if (dto.description !== undefined) campaign.description = dto.description;
     if (dto.status !== undefined) campaign.status = dto.status;
+
+    if (archiving) {
+      return this.dataSource.transaction(async (manager) => {
+        const saved = await manager.getRepository(Campaign).save(campaign);
+        await manager.getRepository(Form).update({ campaignId: id }, { isActive: false });
+        return saved;
+      });
+    }
+
     return this.campaignRepo.save(campaign);
   }
 }

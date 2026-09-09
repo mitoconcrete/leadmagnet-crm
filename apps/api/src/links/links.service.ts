@@ -19,8 +19,9 @@ export class LinksService {
   ) {}
 
   async create(formId: string, channel: Channel): Promise<DistributionLink> {
-    const form = await this.formRepo.findOne({ where: { id: formId } });
+    const form = await this.formRepo.findOne({ where: { id: formId }, relations: ['campaign'] });
     if (!form) throw new NotFoundException('폼을 찾을 수 없습니다');
+    if (form.campaign?.status === 'archived') throw new ConflictException('종료된 캠페인입니다');
 
     const existing = await this.linkRepo.findOne({ where: { formId, channel } });
     if (existing) throw new ConflictException('이미 해당 채널의 배포 링크가 있습니다');
