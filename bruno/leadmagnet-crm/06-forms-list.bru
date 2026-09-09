@@ -1,0 +1,19 @@
+meta {
+  name: forms-list
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/admin/forms?campaignId={{campaignId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+assert {
+  res.status: eq 200
+}

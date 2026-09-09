@@ -1,0 +1,19 @@
+meta {
+  name: auth-logout
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/admin/auth/logout
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+assert {
+  res.status: eq 204
+}

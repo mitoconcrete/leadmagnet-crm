@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "leadmagnet-crm",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

@@ -1,0 +1,19 @@
+meta {
+  name: analytics-campaigns
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/admin/analytics/campaigns
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+assert {
+  res.status: eq 200
+}

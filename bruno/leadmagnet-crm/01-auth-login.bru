@@ -1,0 +1,32 @@
+meta {
+  name: auth-login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/admin/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "admin@example.com",
+    "password": "admin1234"
+  }
+}
+
+script:post-response {
+  const setCookie = res.headers['set-cookie'];
+  const cookies = Array.isArray(setCookie) ? setCookie : (setCookie ? [setCookie] : []);
+  const sidHeader = cookies.find((c) => c.startsWith('sid='));
+  if (sidHeader) {
+    bru.setVar('sid', sidHeader.split(';')[0].split('=')[1]);
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.operator.email: eq admin@example.com
+}
