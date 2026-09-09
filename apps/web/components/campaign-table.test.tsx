@@ -54,4 +54,26 @@ describe('CampaignTable', () => {
     const thead = region.querySelector('thead');
     expect(thead).toHaveClass('sticky');
   });
+
+  it('밀도(ADR 0021): 방문·방문자·신청·전환율 열은 헤더·셀 모두 우측 정렬 고정폭 숫자다', () => {
+    render(<CampaignTable rows={rows} loading={false} />);
+
+    const headerCells = screen.getAllByRole('columnheader');
+    const numericHeaders = headerCells.filter((cell) =>
+      ['방문', '방문자', '신청', '전환율'].includes(cell.textContent ?? ''),
+    );
+    expect(numericHeaders).toHaveLength(4);
+    for (const header of numericHeaders) {
+      expect(header.className).toContain('text-right');
+      expect(header.className).toContain('tabular-nums');
+    }
+
+    const visitsCell = screen.getByText('100');
+    expect(visitsCell.className).toContain('text-right');
+    expect(visitsCell.className).toContain('tabular-nums');
+
+    const rateCell = screen.getByText('25.0%');
+    expect(rateCell.className).toContain('text-right');
+    expect(rateCell.className).toContain('tabular-nums');
+  });
 });
