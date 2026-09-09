@@ -193,7 +193,7 @@
 - `api` 잡: `postgres:16-alpine` 서비스 컨테이너(`app/app/leadmagnet_test`), `TEST_DATABASE_URL=postgres://app:app@localhost:5432/leadmagnet_test`. `pnpm --filter api test` → `test:e2e` → `openapi:export`(DOCS_ONLY=1) → `docs/openapi.json` 아티팩트.
 - `web` 잡: `pnpm --filter web test` → `pnpm --filter web build`(`API_INTERNAL_URL=http://localhost:3001`).
 - `integration` 잡: `docker compose up --build -d --wait` → `docker compose --profile test run --rm api-test` → `pnpm bruno:run` → `bash scripts/ci-smoke.sh` → 항상 `docker compose logs --no-color > compose.log` 아티팩트 + `docker compose down -v`.
-- compose healthcheck: `api`는 `wget -qO- http://localhost:3001/health`, `web`은 `wget -qO- http://localhost:3000/login`. `--wait`는 이 healthcheck에 의존한다.
+- compose healthcheck: `api`는 `wget -qO- http://localhost:3001/api/health`, `web`은 `wget -qO- http://localhost:3000/login`. `--wait`는 이 healthcheck에 의존한다.
 - `scripts/ci-smoke.sh` 검사 항목: `GET http://localhost:3000/login` 200 + 본문에 `<form` 포함, `GET http://localhost:3000/api/admin/auth/me` 401(rewrite 프록시 확인). 실패 시 종료 코드 1.
 - Bruno `public/page.bru`는 `res.status 200`, `res.headers['content-security-policy']`에 `frame-src 'self'` 포함, 본문에 `sandbox="allow-scripts allow-forms"` 포함을 단언한다.
 

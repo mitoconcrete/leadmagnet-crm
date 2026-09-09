@@ -129,6 +129,10 @@ PORT=3001
 
 `.node-version`: `22`
 
+`.editorconfig`: `root = true`, `[*]` indent_style=space, indent_size=2, end_of_line=lf, charset=utf-8, insert_final_newline=true.
+
+pnpm 10은 의존성의 빌드 스크립트를 기본 차단한다. 설치 시 경고가 나오면 루트 `package.json`에 `"pnpm": { "onlyBuiltDependencies": ["esbuild", "sharp", "@tailwindcss/oxide", "unrs-resolver"] }`를 추가한다(경고에 나온 패키지 이름으로).
+
 - [ ] **Step 2: 커밋**
 ```bash
 git add package.json pnpm-workspace.yaml tsconfig.base.json .env.example .node-version .editorconfig
@@ -313,10 +317,10 @@ git commit -m "chore: NestJS API 스켈레톤과 의존성 확정"
 - [ ] **Step 1: 스캐폴드**
 ```bash
 cd apps && pnpm create next-app@latest web --ts --tailwind --eslint --app --src-dir=false --import-alias "@/*" --use-pnpm --no-turbopack --yes
-cd web && pnpm dlx shadcn@latest init -d && pnpm dlx shadcn@latest add button input label card table dialog badge sonner -y
+cd web && pnpm dlx shadcn@latest init -d && pnpm dlx shadcn@latest add button input label card table dialog badge sonner select switch skeleton -y
 pnpm add -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/jest-dom
 ```
-`package.json`의 `name`을 `web`으로, scripts에 `"test": "vitest run"` 추가.
+`package.json`의 `name`을 `web`으로, scripts에 `"test": "vitest run"` 추가. create-next-app이 만든 `apps/web/README.md`는 삭제한다(루트 README만 유지). create-next-app 플래그 이름은 버전에 따라 다를 수 있다(`--no-src-dir`, `--no-turbopack` 등). 목표는 App Router + TypeScript + Tailwind + ESLint, `src/` 없음, alias `@/*`이며 결과 구조가 맞으면 된다.
 
 - [ ] **Step 2: next.config.ts**
 ```ts
@@ -432,7 +436,7 @@ services:
       PORT: "3001"
     ports: ["3001:3001"]
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/health || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -750,8 +754,8 @@ Expected: 9개 테이블 + migrations.
 ### Task B2: 인증 모듈
 
 **Files:**
-- Create: `src/auth/auth.module.ts`, `auth.service.ts`, `auth.service.spec.ts`, `auth.controller.ts`, `auth.guard.ts`, `dto/login.dto.ts`, `current-operator.decorator.ts`, `src/common/cookies.ts`
-- Modify: `src/main.ts` (cookie-parser, ValidationPipe), `src/app.module.ts`
+- Create: `src/auth/auth.module.ts`, `auth.service.ts`, `auth.service.spec.ts`, `auth.controller.ts`, `auth.guard.ts`, `dto/login.dto.ts`, `current-operator.decorator.ts`, `src/common/cookies.ts`, `src/app.setup.ts`
+- Modify: `src/main.ts` (`configureApp(app)` 호출), `src/app.module.ts`
 
 **Interfaces:**
 - Produces: `AuthService.login(email, password): Promise<{session: Session, operator: Operator}>` (실패 시 `UnauthorizedException`), `AuthService.validateSession(id): Promise<Operator|null>`, `AuthService.logout(id)`. `AuthGuard`(`CanActivate`): `req.cookies.sid` → operator를 `req.operator`에 부착. `SESSION_COOKIE = 'sid'`, `sessionCookieOptions(ttlSeconds)`.
@@ -772,7 +776,7 @@ export const visitorCookieOptions = (): CookieOptions => ({ httpOnly: true, same
 
 `AuthGuard`: 쿠키 없음/세션 없음/만료 → `UnauthorizedException`. 만료 세션은 삭제.
 
-`main.ts`: `app.use(cookieParser())`, `app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))`. CORS는 전역으로 켜지 않는다.
+`src/app.setup.ts`: `export function configureApp(app: INestApplication): void { app.use(cookieParser()); app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true })); }`. `main.ts`는 `configureApp(app)`을 호출한다. Track D의 `createTestApp`이 같은 함수를 쓴다. CORS는 전역으로 켜지 않는다.
 
 - [ ] **Step 3: 테스트 통과·커밋** `feat: 운영자 로그인/로그아웃/세션 가드`
 
@@ -822,6 +826,7 @@ export const visitorCookieOptions = (): CookieOptions => ({ httpOnly: true, same
   - `buildInjectedHtml(html: string, opts: {submitUrl: string; visitToken: string}): string` — `</body>` 앞(대소문자 무시) 또는 끝에 `<script>` 삽입.
   - `buildWrapperPage(opts: {title: string; srcdoc: string}): string` — `<iframe sandbox="allow-scripts allow-forms" srcdoc="…(HTML 이스케이프)…" style="border:0;width:100%;height:100vh">`.
   - `buildCsp(publicBaseUrl: string): string` — 스펙 §2 4번 문자열.
+  - `visitToken`은 `visit.id`(uuid)다. 래퍼 페이지는 srcdoc을 HTML 이스케이프하므로 응답 본문에는 `VISIT_TOKEN=&quot;<uuid>&quot;` 형태로 나타난다.
   - `PublicService.recordVisit({slug, src?, visitorId?, userAgent?}): Promise<{form, visit, visitor}>` — 폼 없음/비활성 `NotFoundException`; visitor 없거나 미존재면 생성, 있으면 `lastSeenAt` 갱신; `src`가 그 폼의 링크 코드면 `linkId/channel`, 아니면 `channel='direct'`.
   - `PublicService.submit(slug, dto: {visitToken: string; fields: Record<string, unknown>})` — 폼 404, `fields`가 객체가 아니거나 빈 객체면 400, visit 없거나 `visit.formId !== form.id`면 400. 저장 후 `{id, message: form.successMessage}`.
 - 라우트: `GET /p/:slug` (`@Res()`로 직접 헤더·쿠키·HTML 응답, `Content-Type: text/html; charset=utf-8`, `Content-Security-Policy`, `X-Frame-Options: SAMEORIGIN`, `Cache-Control: no-store`), `POST /api/public/forms/:slug/submissions` (`@Header('Access-Control-Allow-Origin','*')`, `OPTIONS` 프리플라이트도 204 + `Access-Control-Allow-Headers: Content-Type`, `Access-Control-Allow-Methods: POST`).
@@ -980,7 +985,7 @@ export async function createFixtureFlow(agent): Promise<{ templateId; campaignId
 
 **D5 `links.e2e-spec.ts`**: 4채널 생성 201(`url`이 `/p/${slug}?src=${code}`, code 8자) / 같은 채널 재생성 409 / 잘못된 채널 400 / 없는 폼 404 / 목록.
 
-**D6 `public.e2e-spec.ts`**: `GET /p/:slug?src=code` 200, `text/html`, `set-cookie`에 `vid=`·`Path=/p`, 본문에 `sandbox="allow-scripts allow-forms"`와 `srcdoc` / 같은 vid로 2회 방문 시 visits 2, visitors 1 (DB 직접 조회) / 없는 slug 404 / 비활성 폼 404 / 제출: 래퍼 본문에서 `VISIT_TOKEN` 값을 정규식으로 추출 → `POST /api/public/forms/:slug/submissions` 201 `{id, message}` + DB submissions 1행 `channel='instagram'`, `payload.name` / 빈 fields 400 / 잘못된 visitToken 400 / 다른 폼의 visitToken 400 / 응답 헤더 `access-control-allow-origin: *` / `OPTIONS` 204.
+**D6 `public.e2e-spec.ts`**: `GET /p/:slug?src=code` 200, `text/html`, `set-cookie`에 `vid=`·`Path=/p`, 본문에 `sandbox="allow-scripts allow-forms"`와 `srcdoc` / 같은 vid로 2회 방문 시 visits 2, visitors 1 (DB 직접 조회) / 없는 slug 404 / 비활성 폼 404 / 제출: 래퍼 본문에서 `VISIT_TOKEN` 값을 정규식으로 추출(srcdoc은 HTML 이스케이프되어 `VISIT_TOKEN=&quot;<uuid>&quot;` 형태. 정규식 `/VISIT_TOKEN=(?:"|&quot;)([0-9a-f-]{36})/`) → `POST /api/public/forms/:slug/submissions` 201 `{id, message}` + DB submissions 1행 `channel='instagram'`, `payload.name` / 빈 fields 400 / 잘못된 visitToken 400 / 다른 폼의 visitToken 400 / 응답 헤더 `access-control-allow-origin: *` / `OPTIONS` 204.
 
 **D7 `isolation.e2e-spec.ts`**: `GET /p/:slug` 응답의 `content-security-policy`에 `connect-src ${PUBLIC_BASE_URL}/api/public/`와 `default-src 'none'` 포함, `x-frame-options: SAMEORIGIN` / srcdoc 안에 `allow-same-origin` 없음 / 로그인 쿠키 `Path=/api/admin`이라 `Cookie: sid=…`를 `GET /p/:slug`에 보내도 응답이 세션 정보를 포함하지 않음(단순히 200이며 body에 이메일 문자열 없음) / `/api/admin/campaigns`에 `Origin: null`로 요청 시 `access-control-allow-origin` 헤더 없음 / `/api/public/...`는 `sid` 쿠키를 보내도 관리자 데이터 미노출(`GET /api/public/forms/:slug/submissions` 404 또는 405).
 
@@ -992,7 +997,7 @@ export async function createFixtureFlow(agent): Promise<{ templateId; campaignId
 
 **Files:** `bruno/leadmagnet-crm/bruno.json`, `environments/local.bru`, `auth/login.bru`, `auth/me.bru`, `auth/logout.bru`, `templates/upload.bru`, `templates/list.bru`, `campaigns/create.bru`, `campaigns/stats.bru`, `forms/create.bru`, `forms/list.bru`, `links/create.bru`, `links/list.bru`, `public/page.bru`, `public/submit.bru`, `analytics/channels.bru`, `analytics/campaigns.bru`, `submissions/list.bru`
 
-- `login.bru`의 `script:post-response`에서 `res.headers['set-cookie']`의 `sid`를 `bru.setVar('sid', …)`, 이후 요청은 `headers { Cookie: sid={{sid}} }`. `create` 요청은 `bru.setVar('campaignId'|'formId'|'slug'|'code', res.body.…)`. `page.bru`는 `res.body`에서 `VISIT_TOKEN` 추출해 `visitToken` 변수 저장.
+- `login.bru`의 `script:post-response`에서 `res.headers['set-cookie']`의 `sid`를 `bru.setVar('sid', …)`, 이후 요청은 `headers { Cookie: sid={{sid}} }`. `create` 요청은 `bru.setVar('campaignId'|'formId'|'slug'|'code', res.body.…)`. `page.bru`는 `res.body`에서 `VISIT_TOKEN` 추출해 `visitToken` 변수 저장(본문은 `VISIT_TOKEN=&quot;<uuid>&quot;` 형태, 정규식 `/VISIT_TOKEN=(?:"|&quot;)([0-9a-f-]{36})/`).
 - 각 요청에 `assert { res.status: eq 201 }` 등 최소 어설션. `seq`로 실행 순서 고정.
 - `page.bru`는 추가로 `res.headers['content-security-policy']`에 `frame-src 'self'` 포함, `res.body`에 `sandbox="allow-scripts allow-forms"` 포함을 단언한다(CI 통합 잡의 격리 검증, ADR 0010).
 - 컬렉션은 `bru run bruno/leadmagnet-crm --env local`로 사람 개입 없이 처음부터 끝까지 통과해야 한다(CI에서 그대로 실행).
