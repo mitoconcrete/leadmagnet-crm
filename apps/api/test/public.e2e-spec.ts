@@ -146,6 +146,23 @@ describe('public e2e (§4.7 /p/:slug, /api/public/forms/:slug/submissions)', () 
     expect(rows[0].payload.name).toBe('테스트 사용자');
   });
 
+  it('같은 visitToken으로 2번 제출하면 첫 번째는 201, 두 번째는 409이다', async () => {
+    const page = await ctx.http().get(`/p/${flow.form.slug}?src=${flow.links.instagram.code}`);
+    const visitToken = extractVisitToken(page.text);
+
+    const first = await ctx
+      .http()
+      .post(`/api/public/forms/${flow.form.slug}/submissions`)
+      .send({ visitToken, fields: { name: '테스트 사용자' } });
+    expect(first.status).toBe(201);
+
+    const second = await ctx
+      .http()
+      .post(`/api/public/forms/${flow.form.slug}/submissions`)
+      .send({ visitToken, fields: { name: '테스트 사용자' } });
+    expect(second.status).toBe(409);
+  });
+
   it('빈 fields는 400이다', async () => {
     const page = await ctx.http().get(`/p/${flow.form.slug}?src=${flow.links.instagram.code}`);
     const visitToken = extractVisitToken(page.text);

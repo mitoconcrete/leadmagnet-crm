@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PublicService } from './public.service';
 import { Form } from '../entities/form.entity';
 
@@ -147,6 +147,26 @@ describe('PublicService', () => {
       await expect(
         service.submit('my-form', { visitToken: 'v1', fields: { name: ['a', 1] } }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('같은 visit으로 이미 제출된 적이 있으면 409', async () => {
+      formRepo.findOne.mockResolvedValue(activeForm);
+      visitRepo.findOne.mockResolvedValue({ id: 'v1', formId: 'form-1', visitorId: 'visitor-1', linkId: null, channel: 'direct' });
+      submissionRepo.findOne.mockResolvedValue({ id: 'sub-1', visitId: 'v1' });
+      await expect(service.submit('my-form', { visitToken: 'v1', fields: { name: 'a' } })).rejects.toThrow(
+        ConflictException,
+      );
+      expect(submissionRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('저장 시 UNIQUE 위반(경쟁 상태)이면 409로 변환한다', async () => {
+      formRepo.findOne.mockResolvedValue(activeForm);
+      visitRepo.findOne.mockResolvedValue({ id: 'v1', formId: 'form-1', visitorId: 'visitor-1', linkId: null, channel: 'direct' });
+      submissionRepo.findOne.mockResolvedValue(null);
+      submissionRepo.save.mockRejectedValue(Object.assign(new Error('duplicate key'), { code: '23505' }));
+      await expect(service.submit('my-form', { visitToken: 'v1', fields: { name: 'a' } })).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 });
