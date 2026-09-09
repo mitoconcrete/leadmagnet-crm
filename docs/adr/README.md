@@ -15,5 +15,6 @@
 | [0011](0011-tdd-and-coverage-gate.md) | TDD 규율과 테스트 커버리지 90% 게이트 |
 | [0012](0012-ai-generation-boundary.md) | AI 생성은 시스템 경계 밖, 입력 계약과 샘플로 증명 |
 | [0013](0013-implementation-rulings.md) | 구현 중 확정한 세부 규칙(uuid 400/404, 헬스 경로, Bruno 구조 등) |
+| [0014](0014-template-lifecycle.md) | 템플릿 생애주기: 불변, 참조 없을 때만 삭제, 미리보기·코드 보기, 붙여넣기 등록 |
 
 다이어그램(ER·흐름·격리·집계·파이프라인, Mermaid): [../diagrams.md](../diagrams.md)
