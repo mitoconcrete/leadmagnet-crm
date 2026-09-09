@@ -31,11 +31,11 @@ export class TemplatesController {
   @UseFilters(MulterExceptionFilter)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_HTML_BYTES } }))
   @ApiConsumes('multipart/form-data')
-  async create(@UploadedFile() file: Express.Multer.File, @Body('name') name?: string) {
+  async create(@UploadedFile() file: Express.Multer.File, @Body('name') name?: unknown) {
     if (!file) throw new BadRequestException('.html 파일만 등록할 수 있습니다');
     const created = await this.templatesService.create(
       { originalname: file.originalname, size: file.size, buffer: file.buffer },
-      name,
+      typeof name === 'string' ? name : undefined,
     );
     return toListItem(created);
   }
