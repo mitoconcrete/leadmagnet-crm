@@ -26,9 +26,13 @@ export function usePolling<T>(fetcher: () => Promise<T>, intervalMs = POLL_INTER
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetcherRef = useRef(fetcher);
-  fetcherRef.current = fetcher;
   const mountedRef = useRef(true);
   const hasErroredRef = useRef(false);
+
+  // 렌더 중 ref를 직접 대입하지 않고 effect에서 최신 fetcher로 갱신한다(react-hooks/refs).
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  });
 
   const run = useCallback(async () => {
     setIsRefreshing(true);
