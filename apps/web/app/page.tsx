@@ -31,23 +31,27 @@ export default function DashboardPage() {
   return (
     <AuthGate>
       <AppShell>
-        <div className="flex flex-col gap-8">
-          <div className="flex items-center justify-end">
-            <LastUpdated lastUpdatedAt={lastUpdatedAt} error={error} isRefreshing={isRefreshing} onRefresh={refresh} />
-          </div>
-
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">캠페인 성과</h2>
+        {/* 데스크톱 우선(ADR 0021): 바깥은 h-full 그리드로 상단 바·본문 두 행만 나누고, 스크롤은 각 섹션 안에서만 일어난다. */}
+        <div className="grid h-full min-h-0 grid-rows-[auto_1fr] gap-4 p-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold">대시보드</h1>
+            <div className="flex items-center gap-3">
+              <LastUpdated lastUpdatedAt={lastUpdatedAt} error={error} isRefreshing={isRefreshing} onRefresh={refresh} />
               <CreateCampaignDialog onCreated={refresh} />
             </div>
-            <CampaignTable rows={data?.campaigns ?? []} loading={loading} />
-          </section>
+          </div>
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">채널 성과</h2>
-            <ChannelTable stats={data?.channels ?? []} loading={loading} />
-          </section>
+          <div data-testid="dashboard-columns" className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+            <section className="flex min-h-0 flex-col gap-3">
+              <h2 className="text-lg font-semibold">캠페인 성과</h2>
+              <CampaignTable rows={data?.campaigns ?? []} loading={loading} />
+            </section>
+
+            <section className="flex min-h-0 flex-col gap-3">
+              <h2 className="text-lg font-semibold">채널 성과</h2>
+              <ChannelTable stats={data?.channels ?? []} loading={loading} />
+            </section>
+          </div>
         </div>
       </AppShell>
     </AuthGate>

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
 import { AuthGate } from '@/components/auth-gate';
-import { CampaignHeader } from '@/components/campaign-header';
+import { CampaignStatsPanel } from '@/components/campaign-stats-panel';
+import { CampaignStatusBar } from '@/components/campaign-status-bar';
 import { CreateFormDialog } from '@/components/create-form-dialog';
 import { FormList } from '@/components/form-list';
 import { LastUpdated } from '@/components/last-updated';
@@ -103,44 +104,50 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   return (
     <AuthGate>
       <AppShell>
-        <div className="flex flex-col gap-8">
-          <div className="flex items-center justify-end">
+        {/* 데스크톱 우선(ADR 0021): 상단 바(이름·배지·종료 재개·마지막 갱신) + 3열 본문. */}
+        <div className="grid h-full min-h-0 grid-rows-[auto_1fr] gap-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CampaignStatusBar
+              campaignId={campaignId}
+              campaign={campaign}
+              onCampaignUpdated={handleCampaignUpdated}
+            />
             <LastUpdated lastUpdatedAt={lastUpdatedAt} error={error} isRefreshing={isRefreshing} onRefresh={refresh} />
           </div>
 
-          <CampaignHeader
-            campaignId={campaignId}
-            campaign={campaign}
-            stats={data?.stats ?? null}
-            onCampaignUpdated={handleCampaignUpdated}
-          />
+          <div data-testid="campaign-columns" className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-3">
+            <section className="flex min-h-0 flex-col gap-3">
+              <h2 className="text-lg font-semibold">성과</h2>
+              <CampaignStatsPanel stats={data?.stats ?? null} />
+            </section>
 
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">폼</h2>
-              <div className="flex items-center gap-2">
-                {isArchived && (
-                  <span className="text-xs text-muted-foreground">종료된 캠페인에는 새 폼을 만들 수 없습니다</span>
-                )}
-                <CreateFormDialog
-                  campaignId={campaignId}
-                  disabled={isArchived}
-                  onCreated={() => setFormRefreshKey((key) => key + 1)}
-                />
+            <section className="flex min-h-0 flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">폼</h2>
+                <div className="flex items-center gap-2">
+                  {isArchived && (
+                    <span className="text-xs text-muted-foreground">종료된 캠페인에는 새 폼을 만들 수 없습니다</span>
+                  )}
+                  <CreateFormDialog
+                    campaignId={campaignId}
+                    disabled={isArchived}
+                    onCreated={() => setFormRefreshKey((key) => key + 1)}
+                  />
+                </div>
               </div>
-            </div>
-            <FormList campaignId={campaignId} refreshKey={formRefreshKey} linksDisabled={isArchived} />
-          </section>
+              <FormList campaignId={campaignId} refreshKey={formRefreshKey} linksDisabled={isArchived} />
+            </section>
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">신청 명단</h2>
-            <SubmissionTable
-              data={data?.submissions ?? null}
-              loading={submissionsLoading}
-              page={page}
-              onPageChange={setPage}
-            />
-          </section>
+            <section className="flex min-h-0 flex-col gap-3">
+              <h2 className="text-lg font-semibold">신청 명단</h2>
+              <SubmissionTable
+                data={data?.submissions ?? null}
+                loading={submissionsLoading}
+                page={page}
+                onPageChange={setPage}
+              />
+            </section>
+          </div>
         </div>
       </AppShell>
     </AuthGate>

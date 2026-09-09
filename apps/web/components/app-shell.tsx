@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="grid h-screen grid-rows-[auto_1fr]">
       <header className="flex items-center justify-between border-b bg-white px-6 py-3">
         <nav className="flex items-center gap-4 text-sm font-medium text-zinc-700">
           <Link href="/" className="hover:text-zinc-950">
@@ -32,7 +32,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           로그아웃
         </Button>
       </header>
-      <main className="flex-1 p-6">{children}</main>
+      {/* 데스크톱(lg 이상)에서는 바깥 문서를 스크롤하지 않는다(ADR 0021). 좁은 화면만 main이 스크롤된다. */}
+      <main className="min-h-0 overflow-y-auto lg:overflow-hidden">{children}</main>
     </div>
   );
 }

@@ -13,11 +13,21 @@ export default function TemplatesPage() {
   return (
     <AuthGate>
       <AppShell>
-        <div className="flex flex-col gap-6">
+        {/* 데스크톱 우선(ADR 0021): 좌 안내+등록, 우 목록 2열. 좌 열도 내용이 길면 자체 스크롤한다. */}
+        <div className="grid h-full min-h-0 grid-rows-[auto_1fr] gap-4 p-4">
           <h1 className="text-xl font-semibold">HTML 템플릿</h1>
-          <AiPromptBox />
-          <TemplateUploadForm onUploaded={() => setRefreshKey((key) => key + 1)} />
-          <TemplateTable refreshKey={refreshKey} />
+
+          <div data-testid="templates-columns" className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr]">
+            <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+              <AiPromptBox />
+              <TemplateUploadForm onUploaded={() => setRefreshKey((key) => key + 1)} />
+            </div>
+
+            <section className="flex min-h-0 flex-col gap-3">
+              <h2 className="text-lg font-semibold">템플릿 목록</h2>
+              <TemplateTable refreshKey={refreshKey} />
+            </section>
+          </div>
         </div>
       </AppShell>
     </AuthGate>

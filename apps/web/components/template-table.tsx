@@ -144,7 +144,7 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
       <div
         role="region"
         aria-label="템플릿 목록"
-        className="max-h-[60vh] overflow-y-auto max-md:max-h-[50vh]"
+        className="min-h-0 flex-1 overflow-y-auto"
       >
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">

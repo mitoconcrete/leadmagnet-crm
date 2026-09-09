@@ -20,7 +20,7 @@ export function CampaignTable({ rows, loading }: { rows: CampaignRow[]; loading:
     <div
       role="region"
       aria-label="캠페인 성과 목록"
-      className="max-h-[60vh] overflow-y-auto max-md:max-h-[50vh]"
+      className="min-h-0 flex-1 overflow-y-auto"
     >
       <Table>
         <TableHeader className="sticky top-0 z-10 bg-background">

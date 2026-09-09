@@ -70,31 +70,69 @@ export function FormList({
     <div
       role="region"
       aria-label="폼 목록"
-      className="max-h-[60vh] overflow-y-auto max-md:max-h-[50vh]"
+      className="min-h-0 flex-1 overflow-y-auto"
     >
       <div className="flex flex-col gap-4">
         {forms.map((form) => (
-          <div key={form.id} className="flex flex-col gap-3 rounded-lg border p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{form.name}</p>
-                <p className="text-xs text-muted-foreground">{form.slug}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">활성</span>
-                <Switch checked={form.isActive} onCheckedChange={(checked) => handleToggle(form, checked)} />
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="truncate text-muted-foreground">{form.publicUrl}</span>
-              <Button variant="outline" size="sm" onClick={() => handleCopy(form.publicUrl)}>
-                복사
-              </Button>
-            </div>
-            <LinkPanel formId={form.id} disabled={linksDisabled} />
-          </div>
+          <FormRow
+            key={form.id}
+            form={form}
+            linksDisabled={linksDisabled}
+            onToggle={(isActive) => handleToggle(form, isActive)}
+            onCopy={() => handleCopy(form.publicUrl)}
+          />
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * 폼 한 행. 배포 링크 패널은 기본 접혀 있고, 펼치기 전에는 LinkPanel을 마운트하지 않는다
+ * (열기 전까지 링크 목록을 조회하지 않는다).
+ */
+function FormRow({
+  form,
+  linksDisabled,
+  onToggle,
+  onCopy,
+}: {
+  form: Form;
+  linksDisabled: boolean;
+  onToggle: (isActive: boolean) => void;
+  onCopy: () => void;
+}) {
+  const [linksOpen, setLinksOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-medium">{form.name}</p>
+          <p className="text-xs text-muted-foreground">{form.slug}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">활성</span>
+          <Switch checked={form.isActive} onCheckedChange={onToggle} />
+        </div>
+      </div>
+      <div className="flex items-center gap-2 text-sm">
+        <span className="truncate text-muted-foreground">{form.publicUrl}</span>
+        <Button variant="outline" size="sm" onClick={onCopy}>
+          복사
+        </Button>
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="self-start"
+        aria-expanded={linksOpen}
+        onClick={() => setLinksOpen((open) => !open)}
+      >
+        배포 링크
+      </Button>
+      {linksOpen && <LinkPanel formId={form.id} disabled={linksDisabled} />}
     </div>
   );
 }
