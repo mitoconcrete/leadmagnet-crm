@@ -1,11 +1,17 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SubmissionTable } from './submission-table';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, ApiError } from '@/lib/api';
+import { toast } from 'sonner';
 import type { SubmissionPage } from '@/lib/types';
 
-vi.mock('@/lib/api', () => ({
-  apiFetch: vi.fn(),
+vi.mock('@/lib/api', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
+  return { ...actual, apiFetch: vi.fn() };
+});
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
 }));
 
 function makePage(page: number): SubmissionPage {
@@ -66,5 +72,16 @@ describe('SubmissionTable', () => {
     render(<SubmissionTable campaignId="c1" />);
 
     await waitFor(() => expect(screen.getByText('신청 내역이 없습니다.')).toBeInTheDocument());
+  });
+
+  it('조회에 실패하면 오류 토스트를 띄우고 빈 상태를 보여준다(무한 로딩에 빠지지 않는다)', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new ApiError(500, '신청 명단을 불러오지 못했습니다'));
+
+    render(<SubmissionTable campaignId="c1" />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('신청 명단을 불러오지 못했습니다');
+    });
+    expect(screen.getByText('신청 내역이 없습니다.')).toBeInTheDocument();
   });
 });

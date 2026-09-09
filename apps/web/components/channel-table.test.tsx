@@ -1,11 +1,17 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { ChannelTable } from './channel-table';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, ApiError } from '@/lib/api';
+import { toast } from 'sonner';
 import type { ChannelStat } from '@/lib/types';
 
-vi.mock('@/lib/api', () => ({
-  apiFetch: vi.fn(),
+vi.mock('@/lib/api', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
+  return { ...actual, apiFetch: vi.fn() };
+});
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
 }));
 
 const stats: ChannelStat[] = [
@@ -40,6 +46,18 @@ describe('ChannelTable', () => {
     render(<ChannelTable />);
 
     await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(6));
+    expect(screen.getAllByText('0.0%')).toHaveLength(5);
+  });
+
+  it('조회에 실패하면 오류 토스트를 띄우고 5행을 0으로 보여준다', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new ApiError(500, '채널 성과를 불러오지 못했습니다'));
+
+    render(<ChannelTable />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('채널 성과를 불러오지 못했습니다');
+    });
+    expect(screen.getAllByRole('row')).toHaveLength(6);
     expect(screen.getAllByText('0.0%')).toHaveLength(5);
   });
 });

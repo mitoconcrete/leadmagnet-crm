@@ -1,13 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { FormList } from './form-list';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, ApiError } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Form } from '@/lib/types';
 
-vi.mock('@/lib/api', () => ({
-  apiFetch: vi.fn(),
-}));
+vi.mock('@/lib/api', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
+  return { ...actual, apiFetch: vi.fn() };
+});
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -98,5 +99,32 @@ describe('FormList', () => {
     render(<FormList campaignId="c1" />);
 
     await waitFor(() => expect(screen.getByText('등록된 폼이 없습니다.')).toBeInTheDocument());
+  });
+
+  it('목록 조회에 실패하면 오류 토스트를 띄우고 빈 상태를 보여준다', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new ApiError(500, '폼 목록을 불러오지 못했습니다'));
+
+    render(<FormList campaignId="c1" />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('폼 목록을 불러오지 못했습니다');
+    });
+    expect(screen.getByText('등록된 폼이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {
+    let resolveFn: (value: Form[]) => void = () => {};
+    vi.mocked(apiFetch).mockReturnValue(
+      new Promise((resolve) => {
+        resolveFn = resolve;
+      }),
+    );
+
+    const { unmount } = render(<FormList campaignId="c1" />);
+    unmount();
+    resolveFn([form]);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });
