@@ -173,7 +173,7 @@
 - `docker compose up --build` → db(5432, volume) + api(3001; 기동 시 `migration:run` → `seed` → `start:prod`) + web(3000).
 - `docker compose --profile test run --rm api-test` → db-test(tmpfs, 별도 서비스) 기동 후 `pnpm --filter api test && pnpm --filter api test:e2e` 실행. `DATABASE_URL`이 db-test를 가리킨다.
 - 로컬 개발: `pnpm install`, `docker compose up db`, `pnpm --filter api start:dev`, `pnpm --filter web dev`. e2e는 `TEST_DATABASE_URL`을 읽으며 없으면 `DATABASE_URL`의 db명에 `_test`를 붙인다.
-- 이미지: `node:22-alpine`, pnpm 10은 `corepack enable`로 고정(`package.json`의 `packageManager` 필드). api Dockerfile은 컨텍스트가 저장소 루트인 다단계 빌드(deps → build → runner). web은 `pnpm --filter web build` 후 `next start`로 실행한다(standalone 미사용).
+- 이미지: `node:22-alpine`, pnpm 10은 `corepack enable`로 고정(`package.json`의 `packageManager` 필드). api Dockerfile은 컨텍스트가 저장소 루트인 단일 스테이지 빌드로, dev 의존성을 포함해 같은 이미지를 `api-test` 러너에 재사용한다. web은 `pnpm --filter web build` 후 `next start`로 실행한다(standalone 미사용).
 - api 컨테이너 엔트리: `node dist/data-source-cli.js migration:run` 대신 `pnpm --filter api migration:run && pnpm --filter api seed && node apps/api/dist/main.js` 순서의 `apps/api/docker-entrypoint.sh`.
 - 시간: DB는 `timestamptz`, API는 ISO 8601 UTC 반환, 화면은 `Asia/Seoul`로 표시.
 - 환경변수: `DATABASE_URL`, `TEST_DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SESSION_TTL_SECONDS=604800`, `PUBLIC_BASE_URL=http://localhost:3001`, `API_INTERNAL_URL=http://api:3001`(web→api rewrite), `PORT`.
