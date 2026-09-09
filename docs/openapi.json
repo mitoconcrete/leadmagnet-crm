@@ -108,7 +108,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "등록 성공. warnings는 등록 시점 점검 경고(ADR 0018)로, 있어도 등록은 그대로 성공한다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateCreatedDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -729,6 +736,42 @@
       "LoginDto": {
         "type": "object",
         "properties": {}
+      },
+      "TemplateCreatedDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "originalFilename": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "warnings": {
+            "description": "등록 시점 점검 경고(ADR 0018). 등록을 막지 않는다. name 없는 입력, 외부 script, form의 action/method/onsubmit, 제출 버튼 없음, 페이지 이동 시도, 관리자 API 호출, 개인정보 수집 동의 체크박스 없음을 안내한다.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "originalFilename",
+          "sizeBytes",
+          "createdAt",
+          "warnings"
+        ]
       },
       "CreateCampaignDto": {
         "type": "object",
