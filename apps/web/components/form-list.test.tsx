@@ -134,6 +134,36 @@ describe('FormList', () => {
     expect(region.className).not.toContain('max-h-[60vh]');
   });
 
+  it('templateDeleted인 폼은 배지를 보여주고 활성 스위치·복사 버튼을 비활성화한다', async () => {
+    const deletedForm: Form = { ...form, templateDeleted: true };
+    vi.mocked(apiFetch).mockResolvedValue([deletedForm]);
+
+    render(<FormList campaignId="c1" />);
+
+    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
+
+    expect(screen.getByText('템플릿 삭제됨')).toBeInTheDocument();
+
+    const toggle = screen.getByRole('switch', { name: '템플릿이 삭제되어 활성화할 수 없습니다' });
+    expect(toggle).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(toggle);
+    expect(apiFetch).not.toHaveBeenCalledWith('/api/admin/forms/f1', expect.anything());
+
+    expect(screen.getByRole('button', { name: '복사' })).toBeDisabled();
+  });
+
+  it('templateDeleted가 false면 배지 없이 기존과 동일하게 동작한다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([{ ...form, templateDeleted: false }]);
+
+    render(<FormList campaignId="c1" />);
+
+    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
+
+    expect(screen.queryByText('템플릿 삭제됨')).not.toBeInTheDocument();
+    expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', { name: '복사' })).not.toBeDisabled();
+  });
+
   it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {
     let resolveFn: (value: Form[]) => void = () => {};
     vi.mocked(apiFetch).mockReturnValue(
