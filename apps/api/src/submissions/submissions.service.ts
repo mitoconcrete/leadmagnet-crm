@@ -33,7 +33,7 @@ export class SubmissionsService {
 
   async list(opts: ListSubmissionsOptions): Promise<SubmissionListResult> {
     const page = opts.page && opts.page > 0 ? opts.page : 1;
-    const limit = opts.limit && opts.limit > 0 ? opts.limit : 20;
+    const limit = opts.limit && opts.limit > 0 ? Math.min(opts.limit, 100) : 20;
 
     const baseQb = () => {
       const qb = this.repo
