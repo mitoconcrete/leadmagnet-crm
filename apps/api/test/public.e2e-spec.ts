@@ -61,6 +61,19 @@ describe('public e2e (§4.7 /p/:slug, /api/public/forms/:slug/submissions)', () 
     expect(res.text).toContain('srcdoc');
   });
 
+  it('vid 쿠키가 uuid 형식이 아니면 500이 아니라 200이고 새 vid로 Set-Cookie를 갱신한다', async () => {
+    const res = await ctx
+      .http()
+      .get(`/p/${flow.form.slug}?src=${flow.links.instagram.code}`)
+      .set('Cookie', 'vid=not-a-uuid');
+
+    expect(res.status).toBe(200);
+    const setCookie = res.headers['set-cookie'] as unknown as string[];
+    const vidCookie = setCookie?.find((c) => c.startsWith('vid='));
+    expect(vidCookie).toBeDefined();
+    expect(vidCookie).not.toContain('vid=not-a-uuid');
+  });
+
   it('같은 vid로 2회 방문하면 visits는 2, visitors는 1이다', async () => {
     const first = await ctx.http().get(`/p/${flow.form.slug}?src=${flow.links.instagram.code}`);
     const vid = extractVidCookie(first.headers['set-cookie'] as unknown as string[]);

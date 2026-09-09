@@ -70,11 +70,19 @@ describe('PublicService', () => {
     });
 
     it('visitorId가 있으면 방문자를 갱신하고, 없으면 생성한다', async () => {
+      const visitorId = '11111111-1111-1111-1111-111111111111';
       formRepo.findOne.mockResolvedValue(activeForm);
-      visitorRepo.findOne.mockResolvedValue({ id: 'visitor-1', firstSeenAt: new Date(), lastSeenAt: new Date() });
-      const result = await service.recordVisit({ slug: 'my-form', visitorId: 'visitor-1' });
-      expect(result.visitor.id).toBe('visitor-1');
+      visitorRepo.findOne.mockResolvedValue({ id: visitorId, firstSeenAt: new Date(), lastSeenAt: new Date() });
+      const result = await service.recordVisit({ slug: 'my-form', visitorId });
+      expect(result.visitor.id).toBe(visitorId);
       expect(visitorRepo.save).toHaveBeenCalled();
+    });
+
+    it('visitorId가 uuid 형식이 아니면 조회하지 않고 새 visitor를 발급한다', async () => {
+      formRepo.findOne.mockResolvedValue(activeForm);
+      const result = await service.recordVisit({ slug: 'my-form', visitorId: 'not-a-uuid' });
+      expect(visitorRepo.findOne).not.toHaveBeenCalled();
+      expect(result.visitor.id).toBe('id-1');
     });
   });
 
