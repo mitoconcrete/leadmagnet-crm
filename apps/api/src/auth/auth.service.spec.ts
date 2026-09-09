@@ -10,6 +10,16 @@ function repoMock() {
     save: jest.fn((v: unknown) => Promise.resolve(v)),
     create: jest.fn((v: unknown) => v),
     delete: jest.fn(),
+    createQueryBuilder: jest.fn(),
+  };
+}
+
+/** ADR 0017: validateSession이 findOne(relations) 대신 단일 JOIN 쿼리(getOne)를 쓰는지 검증하기 위한 체이닝 mock. */
+function queryBuilderMock(result: unknown) {
+  return {
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    getOne: jest.fn().mockResolvedValue(result),
   };
 }
 
@@ -57,34 +67,53 @@ describe('AuthService', () => {
 
   describe('validateSession', () => {
     it('만료 세션은 null을 반환한다', async () => {
-      sessions.findOne.mockResolvedValue({
-        id: 'sess-1',
-        operatorId: 'op-1',
-        operator,
-        expiresAt: new Date(Date.now() - 1000),
-        createdAt: new Date(),
-      });
+      sessions.createQueryBuilder.mockReturnValue(
+        queryBuilderMock({
+          id: 'sess-1',
+          operatorId: 'op-1',
+          operator,
+          expiresAt: new Date(Date.now() - 1000),
+          createdAt: new Date(),
+        }),
+      );
       const result = await service.validateSession('sess-1');
       expect(result).toBeNull();
       expect(sessions.delete).toHaveBeenCalledWith('sess-1');
     });
 
     it('유효한 세션이면 operator를 반환한다', async () => {
-      sessions.findOne.mockResolvedValue({
+      sessions.createQueryBuilder.mockReturnValue(
+        queryBuilderMock({
+          id: 'sess-1',
+          operatorId: 'op-1',
+          operator,
+          expiresAt: new Date(Date.now() + 1000),
+          createdAt: new Date(),
+        }),
+      );
+      const result = await service.validateSession('sess-1');
+      expect(result).toBe(operator);
+    });
+
+    it('세션이 없으면 null을 반환한다', async () => {
+      sessions.createQueryBuilder.mockReturnValue(queryBuilderMock(null));
+      const result = await service.validateSession('missing');
+      expect(result).toBeNull();
+    });
+
+    it('ADR 0017: findOne(relations) 대신 leftJoinAndSelect + getOne으로 단일 쿼리에 operator를 조인한다', async () => {
+      const qb = queryBuilderMock({
         id: 'sess-1',
         operatorId: 'op-1',
         operator,
         expiresAt: new Date(Date.now() + 1000),
         createdAt: new Date(),
       });
-      const result = await service.validateSession('sess-1');
-      expect(result).toBe(operator);
-    });
-
-    it('세션이 없으면 null을 반환한다', async () => {
-      sessions.findOne.mockResolvedValue(null);
-      const result = await service.validateSession('missing');
-      expect(result).toBeNull();
+      sessions.createQueryBuilder.mockReturnValue(qb);
+      await service.validateSession('sess-1');
+      expect(sessions.createQueryBuilder).toHaveBeenCalled();
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('session.operator', 'operator');
+      expect(sessions.findOne).not.toHaveBeenCalled();
     });
   });
 });

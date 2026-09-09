@@ -5,6 +5,7 @@ import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
+import type { Logger, QueryRunner } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 
@@ -137,4 +138,33 @@ export async function createFixtureFlow(
   }
 
   return { templateId, campaignId, form, links };
+}
+
+const TRANSACTION_STATEMENT_PATTERN = /^(BEGIN|COMMIT|ROLLBACK|START TRANSACTION|SAVEPOINT|RELEASE SAVEPOINT)/i;
+
+/**
+ * ADR 0017 N+1 회귀 방지용 쿼리 카운터. `ds.logger`를 실행 중인 SQL 수를 세는 로거로
+ * 잠깐 바꿔치기하고 fn()을 실행한 뒤 원래 로거로 복원한다. BEGIN/COMMIT 등 트랜잭션
+ * 제어 구문은 세지 않는다(비즈니스 쿼리 수만 비교하기 위함).
+ */
+export async function countQueries<T>(ds: DataSource, fn: () => Promise<T>): Promise<{ result: T; count: number }> {
+  const original = ds.logger;
+  let count = 0;
+  const countingLogger: Logger = {
+    logQuery(query: string, _parameters?: unknown[], _queryRunner?: QueryRunner) {
+      if (!TRANSACTION_STATEMENT_PATTERN.test(query.trim())) count += 1;
+    },
+    logQueryError() {},
+    logQuerySlow() {},
+    logSchemaBuild() {},
+    logMigration() {},
+    log() {},
+  };
+  ds.logger = countingLogger;
+  try {
+    const result = await fn();
+    return { result, count };
+  } finally {
+    ds.logger = original;
+  }
 }

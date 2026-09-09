@@ -44,21 +44,41 @@ describe('AnalyticsService', () => {
     expect(instagram).toEqual({ channel: 'instagram', visits: 4, visitors: 2, submissions: 1, conversionRate: 0.5 });
   });
 
-  it('campaignStats는 캠페인 총계와 채널 breakdown을 함께 반환한다', async () => {
+  it('campaignStats는 캠페인 총계와 채널 breakdown을 함께 반환한다(ADR 0017: GROUPING SETS로 쿼리 2개)', async () => {
     const dataSource = dataSourceMock();
     dataSource.query
-      .mockResolvedValueOnce([{ visits: 10, visitors: 4 }]) // totals
-      .mockResolvedValueOnce([{ submissions: 2 }]) // submission totals
-      .mockResolvedValueOnce([{ channel: 'instagram', visits: 10, visitors: 4 }]) // channel visits
-      .mockResolvedValueOnce([{ channel: 'instagram', submissions: 2 }]); // channel submissions
+      // 방문: 채널별 행 + GROUPING SETS(())의 총계 행(channel = '__total__')
+      .mockResolvedValueOnce([
+        { channel: 'instagram', visits: 10, visitors: 4 },
+        { channel: '__total__', visits: 10, visitors: 4 },
+      ])
+      // 제출: 채널별 행 + 총계 행
+      .mockResolvedValueOnce([
+        { channel: 'instagram', submissions: 2 },
+        { channel: '__total__', submissions: 2 },
+      ]);
     const service = new AnalyticsService(dataSource as never);
     const result = await service.campaignStats('camp-1');
+    expect(dataSource.query).toHaveBeenCalledTimes(2);
     expect(result.campaignId).toBe('camp-1');
     expect(result.visits).toBe(10);
     expect(result.visitors).toBe(4);
     expect(result.submissions).toBe(2);
     expect(result.conversionRate).toBe(0.5);
     expect(result.channels).toHaveLength(5);
+    const instagram = result.channels.find((c) => c.channel === 'instagram');
+    expect(instagram).toEqual({ channel: 'instagram', visits: 10, visitors: 4, submissions: 2, conversionRate: 0.2 });
+  });
+
+  it('campaignStats: 방문·제출이 전혀 없으면 총계 행이 없어도 0으로 채운다', async () => {
+    const dataSource = dataSourceMock();
+    dataSource.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const service = new AnalyticsService(dataSource as never);
+    const result = await service.campaignStats('camp-1');
+    expect(result.visits).toBe(0);
+    expect(result.visitors).toBe(0);
+    expect(result.submissions).toBe(0);
+    expect(result.conversionRate).toBe(0);
   });
 
   it('campaignList는 캠페인별 성과 배열을 반환한다', async () => {

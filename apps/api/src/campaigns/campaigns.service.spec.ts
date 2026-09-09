@@ -51,6 +51,19 @@ describe('CampaignsService', () => {
     });
   });
 
+  describe('ensureExists', () => {
+    it('캠페인이 없으면 404', async () => {
+      campaignRepo.findOne.mockResolvedValue(null);
+      await expect(service.ensureExists('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('ADR 0017: 있으면 그냥 통과한다(폼은 조회하지 않는다)', async () => {
+      campaignRepo.findOne.mockResolvedValue({ id: 'camp-1', name: 'X', status: 'active' } as Campaign);
+      await expect(service.ensureExists('camp-1')).resolves.toBeUndefined();
+      expect(formRepo.find).not.toHaveBeenCalled();
+    });
+  });
+
   describe('update', () => {
     it('없는 캠페인이면 404', async () => {
       campaignRepo.findOne.mockResolvedValue(null);
