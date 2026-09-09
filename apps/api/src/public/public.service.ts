@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Form } from '../entities/form.entity';
@@ -23,6 +23,14 @@ export interface SubmitDto {
 function isValidFieldValue(value: unknown): value is string | string[] {
   if (typeof value === 'string') return true;
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+const UNIQUE_VIOLATION_CODE = '23505';
+
+function isUniqueViolation(error: unknown): boolean {
+  const code =
+    (error as { code?: unknown })?.code ?? (error as { driverError?: { code?: unknown } })?.driverError?.code;
+  return code === UNIQUE_VIOLATION_CODE;
 }
 
 @Injectable()
@@ -95,16 +103,29 @@ export class PublicService {
       throw new BadRequestException('유효하지 않은 방문 정보입니다');
     }
 
-    const submission = await this.submissionRepo.save(
-      this.submissionRepo.create({
-        formId: form.id,
-        visitId: visit.id,
-        visitorId: visit.visitorId,
-        linkId: visit.linkId,
-        channel: visit.channel,
-        payload: dto.fields,
-      }),
-    );
+    const existing = await this.submissionRepo.findOne({ where: { visitId: visit.id } });
+    if (existing) {
+      throw new ConflictException('이미 제출된 방문입니다');
+    }
+
+    let submission: Submission;
+    try {
+      submission = await this.submissionRepo.save(
+        this.submissionRepo.create({
+          formId: form.id,
+          visitId: visit.id,
+          visitorId: visit.visitorId,
+          linkId: visit.linkId,
+          channel: visit.channel,
+          payload: dto.fields,
+        }),
+      );
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('이미 제출된 방문입니다');
+      }
+      throw error;
+    }
 
     return { id: submission.id, message: form.successMessage };
   }
