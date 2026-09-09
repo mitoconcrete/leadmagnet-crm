@@ -1,0 +1,19 @@
+meta {
+  name: campaigns-delete-empty
+  type: http
+  seq: 16.9
+}
+
+delete {
+  url: {{baseUrl}}/api/admin/campaigns/{{emptyCampaignId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+assert {
+  res.status: eq 204
+}
