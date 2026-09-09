@@ -38,6 +38,8 @@
 5. 관리자 API는 `Access-Control-Allow-Origin`을 내지 않는다. 공개 API만 `*`(credentials 없음).
 6. 관리자 토큰을 브라우저 저장소에 두지 않는다(세션 쿠키만).
 
+> 그림: ER·흐름·격리·집계 다이어그램은 `docs/diagrams.md`(Mermaid) 참조.
+
 ## 3. 데이터 모델 (PostgreSQL, snake_case, uuid pk = gen_random_uuid())
 
 | 테이블 | 컬럼 |
