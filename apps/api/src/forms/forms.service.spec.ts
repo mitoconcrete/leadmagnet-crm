@@ -64,6 +64,13 @@ describe('FormsService', () => {
         service.create({ campaignId: 'camp-1', templateId: 'missing', name: 'X' }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('ADR 0019: 캠페인이 종료(archived)면 409', async () => {
+      campaignRepo.findOne.mockResolvedValue({ id: 'camp-1', status: 'archived' } as Campaign);
+      await expect(
+        service.create({ campaignId: 'camp-1', templateId: 'tpl-1', name: 'X' }),
+      ).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('toResponse', () => {

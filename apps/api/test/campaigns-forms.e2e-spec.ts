@@ -19,6 +19,14 @@ async function uploadTemplate(agent: request.SuperAgentTest): Promise<string> {
   return res.body.id as string;
 }
 
+const VISIT_TOKEN_RE = /VISIT_TOKEN=(?:"|&quot;)([0-9a-f-]{36})/;
+
+function extractVisitToken(html: string): string {
+  const match = VISIT_TOKEN_RE.exec(html);
+  if (!match) throw new Error('VISIT_TOKEN을 응답 본문에서 찾지 못했다');
+  return match[1];
+}
+
 describe('campaigns & forms e2e (§4.3, §4.4)', () => {
   let ctx: TestContext;
   let agent: request.SuperAgentTest;
@@ -226,5 +234,79 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
       .send({ successMessage: '수정된 성공 메시지' });
     expect(res.status).toBe(200);
     expect(res.body.successMessage).toBe('수정된 성공 메시지');
+  });
+
+  describe('캠페인 종료 생애주기(ADR 0019)', () => {
+    it('종료(archived) 시 소속 폼이 전부 isActive=false가 되고, 공개 페이지는 404, stats는 유지된다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '종료 캠페인' });
+      const templateId = await uploadTemplate(agent);
+      const form1 = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '폼1' });
+      const form2 = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '폼2' });
+
+      const visitRes = await ctx.http().get(`/p/${form1.body.slug}`);
+      const visitToken = extractVisitToken(visitRes.text);
+      await ctx
+        .http()
+        .post(`/api/public/forms/${form1.body.slug}/submissions`)
+        .send({ visitToken, fields: { name: '홍길동' } });
+
+      const statsBefore = await agent.get(`/api/admin/campaigns/${campaign.body.id}/stats`);
+      expect(statsBefore.body.visits).toBe(1);
+      expect(statsBefore.body.submissions).toBe(1);
+
+      const patchRes = await agent.patch(`/api/admin/campaigns/${campaign.body.id}`).send({ status: 'archived' });
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.status).toBe('archived');
+
+      const form1After = await agent.get(`/api/admin/forms/${form1.body.id}`);
+      const form2After = await agent.get(`/api/admin/forms/${form2.body.id}`);
+      expect(form1After.body.isActive).toBe(false);
+      expect(form2After.body.isActive).toBe(false);
+
+      const publicRes = await ctx.http().get(`/p/${form1.body.slug}`);
+      expect(publicRes.status).toBe(404);
+
+      const statsAfter = await agent.get(`/api/admin/campaigns/${campaign.body.id}/stats`);
+      expect(statsAfter.body).toEqual(statsBefore.body);
+    });
+
+    it('종료된 캠페인에는 새 폼을 만들 수 없다(409)', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '종료됨' });
+      await agent.patch(`/api/admin/campaigns/${campaign.body.id}`).send({ status: 'archived' });
+      const templateId = await uploadTemplate(agent);
+
+      const res = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '새 폼' });
+      expect(res.status).toBe(409);
+      expect(res.body.message).toBe('종료된 캠페인입니다');
+    });
+
+    it('재개(active)해도 폼은 자동으로 켜지지 않는다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '재개 테스트' });
+      const templateId = await uploadTemplate(agent);
+      const form = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '폼' });
+      await agent.patch(`/api/admin/campaigns/${campaign.body.id}`).send({ status: 'archived' });
+
+      const resumeRes = await agent.patch(`/api/admin/campaigns/${campaign.body.id}`).send({ status: 'active' });
+      expect(resumeRes.status).toBe(200);
+      expect(resumeRes.body.status).toBe('active');
+
+      const formAfter = await agent.get(`/api/admin/forms/${form.body.id}`);
+      expect(formAfter.body.isActive).toBe(false);
+    });
+
+    it('같은 status로 PATCH하면 변경 없이 200이다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '변화없음' });
+      const res = await agent.patch(`/api/admin/campaigns/${campaign.body.id}`).send({ status: 'active' });
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('active');
+    });
   });
 });

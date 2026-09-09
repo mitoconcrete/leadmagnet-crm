@@ -17,6 +17,7 @@ describe('links e2e (§4.4 POST/GET /api/admin/forms/:id/links)', () => {
   let agent: request.SuperAgentTest;
   let formId: string;
   let slug: string;
+  let campaignId: string;
 
   beforeAll(async () => {
     ctx = await createTestApp();
@@ -35,6 +36,7 @@ describe('links e2e (§4.4 POST/GET /api/admin/forms/:id/links)', () => {
     const form = await agent
       .post('/api/admin/forms')
       .send({ campaignId: campaign.body.id, templateId: template.body.id, name: '링크 폼' });
+    campaignId = campaign.body.id;
     formId = form.body.id;
     slug = form.body.slug;
   });
@@ -82,5 +84,12 @@ describe('links e2e (§4.4 POST/GET /api/admin/forms/:id/links)', () => {
     expect(res.status).toBe(200);
     expect(res.body.length).toBe(2);
     expect(res.body.map((l: { channel: string }) => l.channel).sort()).toEqual(['instagram', 'x']);
+  });
+
+  it('ADR 0019: 폼의 캠페인이 종료(archived)면 링크 생성은 409이다', async () => {
+    await agent.patch(`/api/admin/campaigns/${campaignId}`).send({ status: 'archived' });
+    const res = await agent.post(`/api/admin/forms/${formId}/links`).send({ channel: 'instagram' });
+    expect(res.status).toBe(409);
+    expect(res.body.message).toBe('종료된 캠페인입니다');
   });
 });

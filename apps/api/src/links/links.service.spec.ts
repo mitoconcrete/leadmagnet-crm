@@ -38,6 +38,12 @@ describe('LinksService', () => {
       await expect(service.create('form-1', 'instagram')).rejects.toThrow(ConflictException);
     });
 
+    it('ADR 0019: 폼의 캠페인이 종료(archived)면 409', async () => {
+      formRepo.findOne.mockResolvedValue({ ...form, campaign: { id: 'camp-1', status: 'archived' } });
+      await expect(service.create('form-1', 'instagram')).rejects.toThrow(ConflictException);
+      expect(formRepo.findOne).toHaveBeenCalledWith(expect.objectContaining({ relations: ['campaign'] }));
+    });
+
     it('코드는 8자 base62다', async () => {
       const link = await service.create('form-1', 'instagram');
       expect(link.code).toHaveLength(8);
