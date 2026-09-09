@@ -98,15 +98,21 @@ export class FormsService {
   /**
    * ADR 0014 보완: 템플릿이 소프트 삭제된 폼은 isActive:true로 다시 켤 수 없다(409).
    * 단, 같은 요청에 살아 있는 templateId로의 교체가 함께 오면 허용한다(템플릿 교체 후 활성화).
+   * 응답의 templateDeleted를 정확히 계산할 수 있도록 template 관계를 함께 로드하고,
+   * templateId를 바꾸는 경우 그 관계도 새 템플릿으로 갱신해 반환한다(재조회 쿼리 없이,
+   * to-one 관계라 findOne 1회로 로드됨 — ADR 0017 상한 유지).
    */
   async update(id: string, dto: UpdateFormDto): Promise<Form> {
-    const form = await this.findOne(id);
+    const form = await this.formRepo.findOne({ where: { id }, relations: ['template'] });
+    if (!form) throw new NotFoundException('폼을 찾을 수 없습니다');
+
     if (dto.templateId) {
       const template = await this.templateRepo.findOne({ where: { id: dto.templateId, deletedAt: IsNull() } });
       if (!template) throw new NotFoundException('템플릿을 찾을 수 없습니다');
       form.templateId = dto.templateId;
+      form.template = template;
     } else if (dto.isActive === true) {
-      const currentTemplate = await this.templateRepo.findOne({ where: { id: form.templateId } });
+      const currentTemplate = form.template ?? (await this.templateRepo.findOne({ where: { id: form.templateId } }));
       if (!currentTemplate || currentTemplate.deletedAt) {
         throw new ConflictException('템플릿이 삭제된 폼은 다시 활성화할 수 없습니다');
       }

@@ -67,7 +67,11 @@ function hasNavigationEscape(html: string): boolean {
   const metaRefresh = extractTags(html, 'meta').some(
     (tag) => (attrValue(tag, 'http-equiv') ?? '').toLowerCase() === 'refresh',
   );
-  const topOrParentTarget = /target\s*=\s*["']?(_top|_parent)["']?/i.test(html);
+  const targetTags = [...extractTags(html, 'a'), ...extractTags(html, 'form'), ...extractTags(html, 'base')];
+  const topOrParentTarget = targetTags.some((tag) => {
+    const target = (attrValue(tag, 'target') ?? '').toLowerCase();
+    return target === '_top' || target === '_parent';
+  });
   return metaRefresh || topOrParentTarget;
 }
 
