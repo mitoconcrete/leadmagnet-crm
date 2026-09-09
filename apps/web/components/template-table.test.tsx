@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TemplateTable } from './template-table';
 import { apiFetch, ApiError } from '@/lib/api';
 import { toast } from 'sonner';
@@ -59,6 +59,21 @@ describe('TemplateTable', () => {
       expect(toast.error).toHaveBeenCalledWith('템플릿 목록을 불러오지 못했습니다');
     });
     expect(screen.getByText('등록된 템플릿이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('미리보기 버튼을 클릭하면 Dialog가 열리고 iframe이 올바른 src와 sandbox 속성을 갖는다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(templates);
+
+    render(<TemplateTable />);
+
+    await waitFor(() => expect(screen.getByText('가을 랜딩')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: '미리보기' }));
+
+    const iframe = await screen.findByTitle('템플릿 미리보기');
+    expect(iframe).toHaveAttribute('src', '/api/admin/templates/t1/preview');
+    expect(iframe).toHaveAttribute('sandbox', 'allow-scripts allow-forms');
+    expect(screen.getByRole('heading', { name: '가을 랜딩' })).toBeInTheDocument();
   });
 
   it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {
