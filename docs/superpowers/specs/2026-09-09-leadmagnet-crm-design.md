@@ -187,12 +187,13 @@
 - 단위(Jest): `analytics.service`(전환율 계산·0 나눗셈), `templates.service`(검증 규칙), `links.service`(URL/코드), `public/inject`(스크립트 삽입 위치), `forms.service`(slug 생성).
 - e2e(supertest, 실 DB, 각 파일 시작 시 테이블 TRUNCATE): 성공/실패 흐름 전부. isolation 스펙은 `/p/:slug` 응답의 `sandbox` 속성·CSP 헤더·쿠키 Path를 검사하고, `sid` 쿠키를 들고 `/api/public/*`에 요청해도 관리자 API에는 401임을 확인한다.
 - Bruno: 폴더별 요청 + `environments/local.bru`.
+- TDD와 커버리지(ADR 0011): 제품 코드는 실패 테스트 이후에만 작성. `pnpm --filter api test:cov`(단위+e2e 합산, `jest.cov.config.ts`)와 `pnpm --filter web test:cov`(vitest coverage-v8)가 lines/statements/functions 90%, branches 80% 미달이면 실패. compose `api-test`와 CI가 이 명령을 실행한다.
 
 ### 9.1 CI (GitHub Actions, ADR 0010)
 - `.github/workflows/ci.yml`, 트리거 `main` push + pull request, 동시 실행 취소, 잡당 20분 제한. 잡 3개는 병렬.
-- `api` 잡: `postgres:16-alpine` 서비스 컨테이너(`app/app/leadmagnet_test`), `TEST_DATABASE_URL=postgres://app:app@localhost:5432/leadmagnet_test`. `pnpm --filter api test` → `test:e2e` → `openapi:export`(DOCS_ONLY=1) → `docs/openapi.json` 아티팩트.
-- `web` 잡: `pnpm --filter web test` → `pnpm --filter web build`(`API_INTERNAL_URL=http://localhost:3001`).
-- `integration` 잡: `docker compose up --build -d --wait` → `docker compose --profile test run --rm api-test` → `pnpm bruno:run` → `bash scripts/ci-smoke.sh` → 항상 `docker compose logs --no-color > compose.log` 아티팩트 + `docker compose down -v`.
+- `api` 잡: `postgres:16-alpine` 서비스 컨테이너(`app/app/leadmagnet_test`), `TEST_DATABASE_URL=postgres://app:app@localhost:5432/leadmagnet_test`. `pnpm --filter api test:cov`(단위+e2e+커버리지 게이트) → `openapi:export`(DOCS_ONLY=1) → `docs/openapi.json` 아티팩트.
+- `web` 잡: `pnpm --filter web test:cov` → `pnpm --filter web build`(`API_INTERNAL_URL=http://localhost:3001`).
+- `integration` 잡: `docker compose up --build -d --wait` → `docker compose --profile test run --rm api-test`(= `test:cov`) → `pnpm bruno:run` → `bash scripts/ci-smoke.sh` → 항상 `docker compose logs --no-color > compose.log` 아티팩트 + `docker compose down -v`.
 - compose healthcheck: `api`는 `wget -qO- http://localhost:3001/api/health`, `web`은 `wget -qO- http://localhost:3000/login`. `--wait`는 이 healthcheck에 의존한다.
 - `scripts/ci-smoke.sh` 검사 항목: `GET http://localhost:3000/login` 200 + 본문에 `<form` 포함, `GET http://localhost:3000/api/admin/auth/me` 401(rewrite 프록시 확인). 실패 시 종료 코드 1.
 - Bruno `public/page.bru`는 `res.status 200`, `res.headers['content-security-policy']`에 `frame-src 'self'` 포함, 본문에 `sandbox="allow-scripts allow-forms"` 포함을 단언한다.

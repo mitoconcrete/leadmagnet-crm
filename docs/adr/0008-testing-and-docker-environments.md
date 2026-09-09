@@ -10,7 +10,7 @@
 - 통합/e2e: supertest + 실제 PostgreSQL 테스트 DB. 인증, 템플릿, 캠페인·폼, 링크, 공개 방문·제출, 격리, 집계의 성공·실패 흐름.
 - API 문서: ADR 0009 참조(OpenAPI 생성 + Scalar UI + Bruno).
 - Playwright는 채택하지 않는다.
-- CI(GitHub Actions)에서의 통합 검증은 ADR 0010 참조.
+- CI(GitHub Actions)에서의 통합 검증은 ADR 0010 참조. TDD 규율과 커버리지 임계값은 ADR 0011 참조.
 - `docker-compose.yaml` 하나에 실행 서비스(db, api, web)와 `test` 프로파일(db-test tmpfs, api-test 러너)을 둔다. `docker compose up`은 실행, `docker compose --profile test run --rm api-test`는 테스트.
 
 ## 근거

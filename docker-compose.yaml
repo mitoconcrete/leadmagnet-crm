@@ -69,7 +69,7 @@ services:
       DATABASE_URL: postgres://app:app@db-test:5432/leadmagnet_test
       TEST_DATABASE_URL: postgres://app:app@db-test:5432/leadmagnet_test
       PUBLIC_BASE_URL: http://localhost:3001
-    command: sh -c "pnpm --filter api test && pnpm --filter api test:e2e"
+    command: sh -c "pnpm --filter api test:cov"
     depends_on:
       db-test: { condition: service_healthy }
 

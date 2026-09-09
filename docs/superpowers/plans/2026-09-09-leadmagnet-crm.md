@@ -21,6 +21,7 @@
 - HTML 등록 검증: 확장자 `.html`, `≤ 524288` bytes, 본문에 `<form` 포함(대소문자 무시).
 - 오류 형식은 Nest 기본 `{statusCode, message, error}`. 400/401/404/409.
 - 커밋: 기능 단위. 테스트 먼저 `test: …` 커밋, 구현 `feat: …` 커밋으로 분리. 스캐폴드/도커는 `chore:`, 문서는 `docs:`.
+- TDD(ADR 0011): 제품 코드는 실패 테스트를 본 뒤에만 쓴다(superpowers `test-driven-development` 스킬). 커버리지 게이트 `pnpm --filter api test:cov`(단위+e2e 합산, `apps/api/jest.cov.config.ts`), `pnpm --filter web test:cov`(`@vitest/coverage-v8`, `components/ui/**` 제외): lines/statements/functions 90%, branches 80%. 미달이면 테스트를 추가한다. 임계값을 낮추지 않는다.
 - 문서·주석·커밋 본문은 한국어. 코드 식별자는 영어.
 - 워크스페이스 패키지 이름: `api`, `web`. 루트 스크립트는 `pnpm --filter api …`, `pnpm --filter web …` 형태.
 - CI(`.github/workflows/ci.yml`)는 검증 인프라이며 Seed 범위 밖의 기능이 아니다(ADR 0010). guardian은 이를 범위 이탈로 판정하지 않는다.
@@ -865,6 +866,14 @@ fetch(SUBMIT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body
 - [ ] **Step 1: 테스트** `conversion.spec.ts`(0 나눗셈 → 0, 1/3 → 0.3333, 2/2 → 1), `analytics.service.spec.ts`(raw 결과 병합: 없는 채널 0 채움·순서 고정). Commit `test: 전환율과 채널 집계 테스트`.
 - [ ] **Step 2: 구현·커밋** `feat: CRM 명단 조회와 캠페인·채널 성과 집계`
 
+### Task B9: 커버리지 설정 (ADR 0011)
+
+**Files:** `apps/api/jest.cov.config.ts`, `apps/api/package.json`(scripts에 `test:cov`만 추가)
+
+- `jest.cov.config.ts`: rootDir `.`, testRegex `.*\.(spec|e2e-spec)\.ts$`, ts-jest, timeout 30000, `collectCoverageFrom: ['src/**/*.ts','!src/main.ts','!src/openapi-export.ts','!src/migrations/**','!src/**/*.d.ts']`, `coverageThreshold.global: {lines:90, statements:90, functions:90, branches:80}`, reporters text+lcov.
+- 스크립트 `"test:cov": "jest --config jest.cov.config.ts --coverage --runInBand"`.
+- [ ] 커밋 `chore: API 커버리지 설정(test:cov)`
+
 ### Task B8: API 문서(Scalar, OpenAPI export)
 
 **Files:**
@@ -935,6 +944,14 @@ API 계약은 스펙 §4. 백엔드가 없는 동안은 `pnpm dev:web`으로 화
 - 업로드: `<input type="file" accept=".html">` + 이름 → `FormData`로 `POST /api/admin/templates` (apiFetch에 json 없이 `body: formData`). 400 메시지를 toast로.
 - 목록: 이름, 파일명, 크기(KB), 등록일(KST).
 - [ ] 커밋 `feat: HTML 템플릿 등록 화면`
+
+### Task C6: 커버리지 설정 (ADR 0011)
+
+**Files:** `apps/web/package.json`(devDependency `@vitest/coverage-v8`, script `test:cov`), `apps/web/vitest.config.ts`, `apps/web/vitest.setup.ts`
+
+- `vitest.config.ts` `test.coverage`: provider v8, include `app/**`, `components/**`, `lib/**`, exclude `components/ui/**`, `app/layout.tsx`, 테스트 파일, setup; thresholds lines/statements/functions 90, branches 80. `setupFiles: ['./vitest.setup.ts']`(`@testing-library/jest-dom/vitest`).
+- C2~C5는 화면·컴포넌트마다 `test:` 커밋(RTL, `@/lib/api`·`next/navigation` 모킹) → `feat:` 커밋.
+- [ ] 커밋 `chore: 관리자 화면 커버리지 설정(test:cov)`
 
 ### Task C5: 캠페인 상세(폼·배포 링크·신청 명단)
 
@@ -1012,8 +1029,9 @@ export async function createFixtureFlow(agent): Promise<{ templateId; campaignId
 - [ ] `pnpm install && pnpm -r build`
 
 ### Task E2: 테스트 초록 만들기
-- [ ] `docker compose --profile test run --rm api-test` 실행. 실패 스펙을 영역별로 나눠 Sonnet 수정 에이전트에 병렬 위임(스펙 §4가 권위. 테스트가 계약을 어겼으면 테스트를, 구현이 어겼으면 구현을 고친다. 판단은 컨트롤러 룰링으로 기록).
-- [ ] `pnpm --filter web test`, `pnpm --filter web build` 통과.
+- [ ] `docker compose --profile test run --rm api-test`(= `pnpm --filter api test:cov`, 커버리지 게이트 포함) 실행. 실패 스펙을 영역별로 나눠 Sonnet 수정 에이전트에 병렬 위임(스펙 §4가 권위. 테스트가 계약을 어겼으면 테스트를, 구현이 어겼으면 구현을 고친다. 판단은 컨트롤러 룰링으로 기록).
+- [ ] `pnpm --filter web test:cov`, `pnpm --filter web build` 통과.
+- [ ] 커버리지 미달 파일이 있으면 해당 트랙 에이전트에 테스트 추가를 위임(`test:` 커밋). 임계값은 낮추지 않는다.
 - [ ] 수정 커밋은 `fix:`.
 
 ### Task E3: 수동 흐름 확인
@@ -1038,6 +1056,6 @@ export async function createFixtureFlow(agent): Promise<{ templateId; campaignId
 
 ## Self-Review 기록
 
-- **Spec coverage:** §2 격리(B6, D7), §3 모델·집계(B1, B7, D8), §4.1~4.7(B2~B7, D2~D8), §5 화면(C2~C5), §6.5 문서(B8, D9), §7 환경(A4), §9 테스트(B*, D*), §9.1 CI(A5, E5-1), §10 커밋 규칙(Global). Seed AC 11개 모두 대응 태스크 존재.
+- **Spec coverage:** §2 격리(B6, D7), §3 모델·집계(B1, B7, D8), §4.1~4.7(B2~B7, D2~D8), §5 화면(C2~C5), §6.5 문서(B8, D9), §7 환경(A4), §9 테스트(B*, D*), §9.1 CI(A5, E5-1), ADR 0011 커버리지(B9, C6, E2), §10 커밋 규칙(Global). Seed AC 11개 모두 대응 태스크 존재.
 - **Placeholder scan:** 없음. 엔티티 축약 표기는 형태 안내이며 구현 시 완전한 데코레이터를 쓴다고 명시.
 - **Type consistency:** `configureApp`(B2/D1), `buildInjectedHtml`(B6/D6), `STAT_CHANNELS` 순서(B1/B7/D8/C1), 쿠키 이름·Path(B2/B6/D2/D6/D7), `publicUrl`/`url` 조합(B4/B5/D4/D5) 일치 확인.

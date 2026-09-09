@@ -28,8 +28,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter api test
-      - run: pnpm --filter api test:e2e
+      - run: pnpm --filter api test:cov
       - run: pnpm --filter api openapi:export
       - uses: actions/upload-artifact@v4
         with: { name: openapi, path: docs/openapi.json }
@@ -45,7 +44,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter web test
+      - run: pnpm --filter web test:cov
       - run: pnpm --filter web build
 
   integration:

@@ -12,3 +12,4 @@
 | [0008](0008-testing-and-docker-environments.md) | 테스트 범위와 실행/테스트 환경 분리 |
 | [0009](0009-api-documentation-tooling.md) | API 문서: OpenAPI 생성 + Scalar UI + Bruno |
 | [0010](0010-github-actions-ci-integration.md) | GitHub Actions CI로 프론트엔드·백엔드 통합 검증 |
+| [0011](0011-tdd-and-coverage-gate.md) | TDD 규율과 테스트 커버리지 90% 게이트 |
