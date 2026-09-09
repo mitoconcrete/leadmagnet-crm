@@ -20,6 +20,11 @@ export interface SubmitDto {
   fields: Record<string, unknown>;
 }
 
+function isValidFieldValue(value: unknown): value is string | string[] {
+  if (typeof value === 'string') return true;
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
 @Injectable()
 export class PublicService {
   constructor(
@@ -79,6 +84,10 @@ export class PublicService {
 
     if (!dto.fields || typeof dto.fields !== 'object' || Array.isArray(dto.fields) || Object.keys(dto.fields).length === 0) {
       throw new BadRequestException('제출 내용이 비어 있습니다');
+    }
+
+    if (!Object.values(dto.fields).every(isValidFieldValue)) {
+      throw new BadRequestException('제출 값은 문자열 또는 문자열 배열이어야 합니다');
     }
 
     const visit = await this.visitRepo.findOne({ where: { id: dto.visitToken } });
