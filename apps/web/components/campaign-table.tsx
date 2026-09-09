@@ -1,40 +1,13 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { toast } from 'sonner';
-import { ApiError, apiFetch } from '@/lib/api';
 import { formatRate } from '@/lib/format';
 import type { CampaignRow } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 /**
- * 캠페인별 성과 표. refreshKey가 바뀌면 다시 조회한다.
+ * 캠페인별 성과 표. 데이터 조회는 상위(대시보드)에서 usePolling으로 처리하고, 이 컴포넌트는 표시만 담당한다.
  */
-export function CampaignTable({ refreshKey = 0 }: { refreshKey?: number }) {
-  const [rows, setRows] = useState<CampaignRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    apiFetch<CampaignRow[]>('/api/admin/analytics/campaigns')
-      .then((data) => {
-        if (active) setRows(data);
-      })
-      .catch((error) => {
-        if (!active) return;
-        toast.error(error instanceof ApiError ? error.message : '캠페인 성과를 불러오지 못했습니다');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [refreshKey]);
-
+export function CampaignTable({ rows, loading }: { rows: CampaignRow[]; loading: boolean }) {
   if (loading) {
     return <p className="text-sm text-muted-foreground">불러오는 중…</p>;
   }
