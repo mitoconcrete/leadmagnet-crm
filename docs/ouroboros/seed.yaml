@@ -1,0 +1,142 @@
+# Ouroboros Seed — 리드마그넷 CRM 운영 시스템 (글로우업리즈 개발자 과제)
+# 생성 경로: ooo interview (Path B, 세션 내 소크라틱 인터뷰) → ooo seed (Path B, seed-architect 역할)
+# 이 문서는 불변 명세다. 변경이 필요하면 새 Seed를 만들고 ADR로 사유를 남긴다.
+
+goal: >
+  NestJS API + Next.js 관리자 화면 모노레포로, 운영자가 로그인해 AI가 만든 HTML을 등록하고
+  캠페인·폼·채널별 배포 링크를 만들면, 방문자가 격리된 공개 폼에서 신청하고, 운영자가
+  캠페인별·채널별 방문/방문자/신청/전환율을 확인하는 리드마그넷 CRM을
+  docker compose로 실행·테스트 가능하게 구현한다.
+
+task_type: code
+
+constraints:
+  - "pnpm 워크스페이스 모노레포: apps/api(NestJS 11, TypeORM 0.3, PostgreSQL 16), apps/web(Next.js 16 App Router, React 19, shadcn/ui), Node 22"
+  - "관계형 DB는 PostgreSQL 16만 사용. 스키마 변경은 TypeORM 마이그레이션 파일로만 수행(synchronize 금지)"
+  - "실행은 저장소 루트의 docker-compose.yaml 하나로 db+api+web이 뜬다. 최초 실행 시 마이그레이션과 운영자 시드 계정 생성이 자동으로 수행된다"
+  - "운영자 인증: 회원가입 없음. 시드 계정(.env의 ADMIN_EMAIL/ADMIN_PASSWORD, bcrypt 해시 저장) + 서버 세션 + HttpOnly·SameSite=Lax 쿠키. 쿠키 Path는 관리자 API 접두사(/api/admin)로 한정"
+  - "관리자 API(/api/admin/*)는 인증 없이는 401. 신청자(리드) 데이터는 관리자 API로만 조회 가능"
+  - "공개 폼 페이지(/p/:slug)와 공개 API(/api/public/*)는 API 서버가 관리자 화면(web)과 다른 오리진(포트)으로 제공한다"
+  - "등록된 HTML은 sandbox=\"allow-forms allow-scripts\"(allow-same-origin 없음) iframe의 srcdoc으로만 렌더링하고, 래퍼 페이지에 CSP를 걸어 connect-src를 공개 제출 API 경로로만 허용한다. 관리자 쿠키·토큰이 iframe 문서에 노출되는 경로가 없어야 한다"
+  - "폼 제출 계약: 서버가 iframe 문서 말미에 스크립트를 주입해 문서 내 모든 <form>의 submit을 가로채고, 입력값(name→value)을 JSON으로 /api/public/forms/:slug/submissions에 POST한다. 운영자는 일반 <form>과 name 속성이 있는 입력만 있으면 된다. 범용 폼 빌더는 만들지 않는다"
+  - "HTML 등록 검증: 확장자 .html, 크기 512KB 이하, 문서에 <form 태그가 최소 1개. 그 외 정제(sanitize)는 하지 않고 격리로 대응한다"
+  - "방문(visit) = 공개 폼 페이지 GET 1회. 방문자(visitor) = 공개 오리진에 발급한 1년 만료 쿠키 visitor_id의 고유 수. 신청은 visit 토큰을 통해 visitor와 최초 유입 배포 링크(채널)에 귀속된다"
+  - "전환율 = 신청 수 / 방문자 수 (방문자 0이면 0). 채널은 instagram, x, youtube, threads 4종 enum이며 배포 링크 없이 들어온 방문은 channel=direct로 집계한다"
+  - "데이터 모델: HtmlTemplate 1:N Form, Campaign 1:N Form, Form 1:N DistributionLink, Form 1:N Visit, Form 1:N Submission, Visitor 1:N Visit"
+  - "테스트: Jest 단위 테스트 + supertest e2e(실 PostgreSQL 테스트 DB) + Bruno 컬렉션. Playwright는 범위 밖"
+  - "API 문서: @nestjs/swagger로 /api/docs 제공, OpenAPI JSON을 docs/openapi.json으로 내보내고, bruno/ 컬렉션으로 인증·폼 관리·공개 제출·배포 링크·성과 조회를 커버한다"
+  - "README에는 실행 방법과 테스트 방법만 적는다. 주요 의사결정은 docs/adr/NNNN-*.md로 기록한다. 문서 언어는 한국어"
+  - "git 커밋은 기능 단위로 하며 test: 커밋과 feat: 커밋을 분리한다"
+  - "범위 밖: 실제 AI 모델 연동, 실제 CRM/문자/알림톡/광고 플랫폼 연동, 범용 폼 빌더, 결제·계약·상담사 관리, 클라우드 데모 배포"
+
+acceptance_criteria:
+  - description: "docker compose up 한 번으로 db, api, web이 기동되고 마이그레이션과 시드 계정 생성이 자동으로 끝난다"
+    verify: "docker compose -f docker-compose.yaml config -q && test -f .env.example && grep -q ADMIN_EMAIL .env.example"
+    artifacts: ["docker-compose.yaml", ".env.example", "apps/api/src/migrations"]
+    expect: "NONE"
+  - description: "운영자 로그인 성공 시 세션 쿠키가 발급되고, 잘못된 비밀번호는 401이며, 인증 없는 관리자 API 호출은 401이다"
+    verify: "pnpm --filter api test:e2e -- auth"
+    artifacts: "NONE"
+    expect: "NONE"
+  - description: "운영자가 .html 파일을 등록할 수 있고, .html이 아니거나 512KB 초과이거나 <form>이 없는 파일은 400으로 거절된다"
+    verify: "pnpm --filter api test:e2e -- templates"
+    artifacts: "NONE"
+    expect: "NONE"
+  - description: "운영자가 등록한 HTML로 캠페인과 커스텀 폼(이름, slug, 성공 메시지, 활성 상태)을 만들고 조회·수정할 수 있다"
+    verify: "pnpm --filter api test:e2e -- campaigns forms"
+    artifacts: "NONE"
+    expect: "NONE"
+  - description: "운영자가 폼마다 instagram/x/youtube/threads 배포 링크를 만들 수 있고, 링크 URL은 공개 오리진의 /p/:slug?src=:code 형태다"
+    verify: "pnpm --filter api test:e2e -- links"
+    artifacts: "NONE"
+    expect: "NONE"
+  - description: "방문자가 배포 링크로 공개 폼에 들어오면 방문과 방문자 쿠키가 기록되고, 제출하면 신청이 CRM 명단에 채널 귀속과 함께 저장된다. 비활성 폼·없는 slug는 404, 필수값 누락 제출은 400이다"
+    verify: "pnpm --filter api test:e2e -- public"
+    artifacts: "NONE"
+    expect: "NONE"
+  - description: "공개 폼 응답은 sandbox iframe(allow-same-origin 없음)과 CSP 헤더를 포함하며, iframe 문서에서 관리자 API를 호출하면 401이 난다(쿠키 미전송)"
+    verify: "pnpm --filter api test:e2e -- isolation"
+    artifacts: "NONE"
+    expect: "NONE"
+  - description: "운영자가 캠페인별 방문·방문자·신청·전환율과 채널별 성과를 조회할 수 있으며, 전환율은 신청/방문자로 계산된다"
+    verify: "pnpm --filter api test -- analytics && pnpm --filter api test:e2e -- analytics"
+    artifacts: "NONE"
+    expect: "NONE"
+  - description: "관리자 화면에서 로그인 → HTML 등록 → 캠페인/폼 생성 → 배포 링크 복사 → 캠페인/채널 성과 확인 흐름이 가능하다"
+    verify: "pnpm --filter web build && pnpm --filter web test"
+    artifacts: ["apps/web/app"]
+    expect: "NONE"
+  - description: "인증, 폼 관리, 공개 폼 제출, 배포 링크, 성과 조회 API가 Swagger·OpenAPI JSON·Bruno 컬렉션으로 문서화되어 있다"
+    verify: "test -f docs/openapi.json && ls bruno/*/ | grep -c bru"
+    artifacts: ["docs/openapi.json", "bruno"]
+    expect: "NONE"
+  - description: "README에 실행·테스트 방법이 있고, ADR 디렉터리에 인터뷰에서 내린 결정(스택, 폼 계약, 격리, 인증, 방문자 정의, 전환율, 데이터 모델, 커밋 규칙)이 기록되어 있다"
+    verify: "test -f README.md && ls docs/adr | grep -c '^[0-9]\\{4\\}-'"
+    artifacts: ["README.md", "docs/adr"]
+    expect: "NONE"
+
+ontology_schema:
+  name: "LeadMagnetCRM"
+  description: "운영자가 HTML 템플릿으로 캠페인 폼을 만들어 채널별로 배포하고 방문·신청을 집계하는 리드마그넷 CRM 도메인"
+  fields:
+    - name: "operator"
+      field_type: "entity"
+      description: "운영자 계정(email, passwordHash). 시드로 1명 생성"
+    - name: "session"
+      field_type: "entity"
+      description: "운영자 로그인 세션(id, operatorId, expiresAt)"
+    - name: "htmlTemplate"
+      field_type: "entity"
+      description: "등록된 단일 .html 파일(name, originalFilename, html, sizeBytes)"
+    - name: "campaign"
+      field_type: "entity"
+      description: "캠페인(name, description, status)"
+    - name: "form"
+      field_type: "entity"
+      description: "커스텀 신청 폼(campaignId, templateId, name, slug, successMessage, isActive)"
+    - name: "distributionLink"
+      field_type: "entity"
+      description: "채널별 배포 링크(formId, channel[instagram|x|youtube|threads], code, url)"
+    - name: "visitor"
+      field_type: "entity"
+      description: "공개 오리진 쿠키로 식별되는 방문자(id, firstSeenAt, lastSeenAt)"
+    - name: "visit"
+      field_type: "entity"
+      description: "공개 폼 페이지 로드 1회(formId, visitorId, linkId nullable, channel, userAgent, createdAt)"
+    - name: "submission"
+      field_type: "entity"
+      description: "CRM 명단 항목(formId, visitId, visitorId, linkId nullable, channel, payload JSON, createdAt)"
+    - name: "campaignStats"
+      field_type: "object"
+      description: "집계 결과(visits, visitors, submissions, conversionRate) + 채널별 breakdown"
+
+evaluation_principles:
+  - name: "flow_completeness"
+    description: "로그인→HTML 등록→캠페인/폼 생성→배포 링크→공개 제출→성과 확인이 끊김 없이 동작한다"
+    weight: 1.0
+  - name: "isolation"
+    description: "등록된 HTML이 관리자 인증 정보와 관리자 API에 접근할 수 없음이 헤더·쿠키 설계와 e2e 테스트로 증명된다"
+    weight: 1.0
+  - name: "verifiability"
+    description: "핵심 성공/실패 흐름이 자동화 테스트로 검증되고 docker compose로 재현된다"
+    weight: 0.9
+  - name: "documentation_fit"
+    description: "README는 실행·테스트만, 결정은 ADR, API는 Swagger/Bruno로 역할 분리가 지켜진다"
+    weight: 0.7
+  - name: "yagni"
+    description: "범위 밖 기능을 만들지 않고 명세된 최소 계약만 구현한다"
+    weight: 0.6
+
+exit_conditions:
+  - name: "all_ac_pass"
+    description: "모든 acceptance_criteria의 verify가 통과한다"
+    criteria: "pnpm test 및 pnpm test:e2e 전부 통과, docker compose up 후 관리자 화면 흐름 수동 확인"
+  - name: "deliverables_present"
+    description: "제출물 목록이 모두 존재한다"
+    criteria: "소스, 마이그레이션, .env.example, 테스트, docs/openapi.json + bruno/, README, docs/adr"
+
+metadata:
+  seed_id: "glowuprizz_leadmagnet_crm_001"
+  ambiguity_score: 0.15
+  project_type: "greenfield"
+  created_at: "2026-09-09"
