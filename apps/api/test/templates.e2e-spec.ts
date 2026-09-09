@@ -9,6 +9,7 @@ import {
   createFixtureFlow,
   VALID_FORM_FIXTURE_PATH,
   NO_FORM_FIXTURE_PATH,
+  WARN_FORM_FIXTURE_PATH,
   TestContext,
 } from './utils';
 
@@ -59,6 +60,7 @@ describe('templates e2e (§4.2 /api/admin/templates)', () => {
     expect(res.body).toHaveProperty('sizeBytes');
     expect(typeof res.body.sizeBytes).toBe('number');
     expect(res.body).toHaveProperty('createdAt');
+    expect(res.body.warnings).toEqual([]);
   });
 
   it('.txt 확장자는 400이다', async () => {
@@ -161,6 +163,37 @@ describe('templates e2e (§4.2 /api/admin/templates)', () => {
       const oversized = `<form>${'a'.repeat(600 * 1024)}</form>`;
       const res = await agent.post('/api/admin/templates').field('html', oversized).field('name', '큰 템플릿');
       expect(res.status).toBe(400);
+    });
+  });
+
+  describe('POST / 등록 점검 경고 (ADR 0018, 차단하지 않는다)', () => {
+    it('name 없는 input과 외부 script가 있는 HTML도 201이고, warnings에 두 경고를 담는다', async () => {
+      const res = await agent
+        .post('/api/admin/templates')
+        .field('name', '경고 있는 템플릿')
+        .attach('file', WARN_FORM_FIXTURE_PATH);
+
+      expect(res.status).toBe(201);
+      expect(Array.isArray(res.body.warnings)).toBe(true);
+      expect(res.body.warnings).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('name 속성이 없는 입력 요소가'),
+          expect.stringContaining('외부 스크립트'),
+        ]),
+      );
+    });
+
+    it('목록·상세 응답에는 warnings가 없다(등록 시점 안내이므로 저장하지 않는다)', async () => {
+      const created = await agent
+        .post('/api/admin/templates')
+        .field('name', '경고 있는 템플릿')
+        .attach('file', WARN_FORM_FIXTURE_PATH);
+
+      const listRes = await agent.get('/api/admin/templates');
+      expect(listRes.body[0]).not.toHaveProperty('warnings');
+
+      const detailRes = await agent.get(`/api/admin/templates/${created.body.id}`);
+      expect(detailRes.body).not.toHaveProperty('warnings');
     });
   });
 

@@ -26,4 +26,5 @@ script:post-response {
 assert {
   res.status: eq 201
   res.body.originalFilename: eq valid-form.html
+  res.body.warnings: isArray
 }
