@@ -28,6 +28,8 @@ export function usePolling<T>(fetcher: () => Promise<T>, intervalMs = POLL_INTER
   const fetcherRef = useRef(fetcher);
   const mountedRef = useRef(true);
   const hasErroredRef = useRef(false);
+  // 마지막으로 시작한 요청의 순번. 오래된 요청이 늦게 끝나 최신 데이터를 덮지 않도록 막는다.
+  const seqRef = useRef(0);
 
   // 렌더 중 ref를 직접 대입하지 않고 effect에서 최신 fetcher로 갱신한다(react-hooks/refs).
   useEffect(() => {
@@ -35,23 +37,24 @@ export function usePolling<T>(fetcher: () => Promise<T>, intervalMs = POLL_INTER
   });
 
   const run = useCallback(async () => {
+    const requestId = ++seqRef.current;
     setIsRefreshing(true);
     try {
       const result = await fetcherRef.current();
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || requestId !== seqRef.current) return;
       setData(result);
       setError(null);
       setLastUpdatedAt(new Date());
       hasErroredRef.current = false;
     } catch (err) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || requestId !== seqRef.current) return;
       setError(err);
       if (!hasErroredRef.current) {
         hasErroredRef.current = true;
         toast.error(err instanceof ApiError ? err.message : '데이터를 불러오지 못했습니다');
       }
     } finally {
-      if (mountedRef.current) setIsRefreshing(false);
+      if (mountedRef.current && requestId === seqRef.current) setIsRefreshing(false);
     }
   }, []);
 
