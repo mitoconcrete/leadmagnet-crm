@@ -41,6 +41,7 @@ describe('templates e2e (§4.2 /api/admin/templates)', () => {
     expect(res.body).toHaveProperty('originalFilename', 'valid-form.html');
     expect(res.body).toHaveProperty('sizeBytes');
     expect(typeof res.body.sizeBytes).toBe('number');
+    expect(res.body).toHaveProperty('createdAt');
   });
 
   it('.txt 확장자는 400이다', async () => {
