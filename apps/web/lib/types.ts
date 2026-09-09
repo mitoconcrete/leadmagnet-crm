@@ -48,6 +48,10 @@ export interface CampaignRow {
   campaignId: string;
   name: string;
   status: CampaignStatus;
+  /** 소속 폼 전체 수(ADR 0019). 백엔드가 안 주면 0으로 취급한다. */
+  forms?: number;
+  /** 소속 폼 중 활성 상태인 수(ADR 0019). 백엔드가 안 주면 0으로 취급한다. */
+  activeForms?: number;
   visits: number;
   visitors: number;
   submissions: number;
