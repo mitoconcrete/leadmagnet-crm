@@ -76,4 +76,23 @@ describe('apiFetch', () => {
 
     await expect(apiFetch('/api/admin/auth/logout', { method: 'POST' })).resolves.toBeUndefined();
   });
+
+  it('이미 /login 경로에 있으면 401이어도 재이동하지 않고 ApiError만 던진다', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, assign: assignMock, pathname: '/login' },
+      writable: true,
+      configurable: true,
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ statusCode: 401, message: '인증이 필요합니다', error: 'Unauthorized' }), {
+          status: 401,
+        }),
+      ),
+    );
+
+    await expect(apiFetch('/api/admin/auth/login')).rejects.toMatchObject({ status: 401 });
+    expect(assignMock).not.toHaveBeenCalled();
+  });
 });
