@@ -96,6 +96,36 @@ describe('TemplatesService', () => {
     expect(repo.save).not.toHaveBeenCalled();
   });
 
+  it('저장 후 등록 점검 경고(ADR 0018)를 계산해 함께 반환하지만 저장 자체는 그대로 성공한다', async () => {
+    const withViolations = {
+      ...validFile,
+      buffer: Buffer.from('<form><input type="text"><button type="button">보내기</button></form>'),
+    };
+
+    const result = await service.create(withViolations);
+
+    expect(repo.save).toHaveBeenCalledTimes(1);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('name 속성이 없는 입력 요소가 1개'),
+        '제출 버튼(type="submit")이 없습니다',
+      ]),
+    );
+  });
+
+  it('점검 규칙을 모두 만족하는 html은 warnings가 빈 배열이다', async () => {
+    const clean = {
+      ...validFile,
+      buffer: Buffer.from(
+        '<form><input name="email"><input type="checkbox" name="consent"><button type="submit">보내기</button></form>',
+      ),
+    };
+
+    const result = await service.create(clean);
+
+    expect(result.warnings).toEqual([]);
+  });
+
   it('findAll은 저장소의 목록을 그대로 반환한다', async () => {
     const list: HtmlTemplate[] = [];
     repo.find.mockResolvedValue(list);

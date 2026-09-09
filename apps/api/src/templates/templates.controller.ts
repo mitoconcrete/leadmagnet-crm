@@ -17,14 +17,23 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiConsumes, ApiCookieAuth, ApiOkResponse, ApiProduces, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiCookieAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiProduces,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/auth.guard';
 import { TemplatesService } from './templates.service';
 import { MAX_HTML_BYTES } from './html-validation';
 import type { UploadedHtmlFile } from './html-validation';
-import { toDetail, toListItem } from './dto/template-response.dto';
+import { TemplateCreatedDto, toCreated, toDetail, toListItem } from './dto/template-response.dto';
 import { MulterExceptionFilter } from './multer-exception.filter';
 import { buildCsp, buildWrapperPage } from '../public/wrapper';
 import { PUBLIC_BASE_URL } from '../common/tokens';
@@ -57,6 +66,10 @@ export class TemplatesController {
       },
     },
   })
+  @ApiCreatedResponse({
+    type: TemplateCreatedDto,
+    description: '등록 성공. warnings는 등록 시점 점검 경고(ADR 0018)로, 있어도 등록은 그대로 성공한다.',
+  })
   async create(
     @UploadedFile() file: Express.Multer.File,
     @Body('name') name?: unknown,
@@ -86,7 +99,7 @@ export class TemplatesController {
     }
 
     const created = await this.templatesService.create(uploadFile, resolvedName);
-    return toListItem(created);
+    return toCreated(created, created.warnings);
   }
 
   @Get()

@@ -4,6 +4,10 @@ import { DataSource, IsNull, Repository } from 'typeorm';
 import { HtmlTemplate } from '../entities/html-template.entity';
 import { Form } from '../entities/form.entity';
 import { validateHtmlUpload, UploadedHtmlFile } from './html-validation';
+import { lintHtmlTemplate } from './html-lint';
+
+/** 저장된 템플릿 엔티티에 등록 시점 점검 경고(ADR 0018)를 얹은 결과. DB에는 저장하지 않는다. */
+export type CreatedHtmlTemplate = HtmlTemplate & { warnings: string[] };
 
 interface ReferenceCounts {
   forms: number;
@@ -18,17 +22,21 @@ export class TemplatesService {
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
-  async create(file: UploadedHtmlFile, name?: string): Promise<HtmlTemplate> {
+  async create(file: UploadedHtmlFile, name?: string): Promise<CreatedHtmlTemplate> {
     validateHtmlUpload(file);
     const resolvedName = name && name.trim().length > 0 ? name : file.originalname.replace(/\.html$/i, '');
-    return this.repo.save(
+    const html = file.buffer.toString('utf-8');
+    const saved = await this.repo.save(
       this.repo.create({
         name: resolvedName,
         originalFilename: file.originalname,
-        html: file.buffer.toString('utf-8'),
+        html,
         sizeBytes: file.size,
       }),
     );
+    // 등록은 그대로 성공한다(ADR 0018 "점검은 안내, 격리는 방어"). warnings는 DB에 저장하지 않고
+    // 이 응답에만 실어 보낸다.
+    return Object.assign(saved, { warnings: lintHtmlTemplate(html) });
   }
 
   findAll(): Promise<HtmlTemplate[]> {

@@ -237,6 +237,25 @@ describe('public e2e (§4.7 /p/:slug, /api/public/forms/:slug/submissions)', () 
     expect(res.status).toBe(404);
   });
 
+  it('템플릿이 소프트 삭제된 폼은 is_active를 DB에서 직접 true로 바꿔도 방문·제출 모두 404다(심층 방어)', async () => {
+    const page = await ctx.http().get(`/p/${flow.form.slug}?src=${flow.links.instagram.code}`);
+    const visitToken = extractVisitToken(page.text);
+
+    const deleteRes = await agent.delete(`/api/admin/templates/${flow.templateId}?force=true`);
+    expect(deleteRes.status).toBe(204);
+
+    await ctx.ds.query(`UPDATE forms SET is_active = true WHERE id = $1`, [flow.form.id]);
+
+    const visitAfter = await ctx.http().get(`/p/${flow.form.slug}`);
+    expect(visitAfter.status).toBe(404);
+
+    const submitAfter = await ctx
+      .http()
+      .post(`/api/public/forms/${flow.form.slug}/submissions`)
+      .send({ visitToken, fields: { name: '테스트' } });
+    expect(submitAfter.status).toBe(404);
+  });
+
   it('제출 응답 헤더에 access-control-allow-origin: *가 있다', async () => {
     const page = await ctx.http().get(`/p/${flow.form.slug}?src=${flow.links.instagram.code}`);
     const visitToken = extractVisitToken(page.text);
