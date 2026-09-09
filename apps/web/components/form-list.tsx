@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ApiError, apiFetch } from '@/lib/api';
@@ -103,22 +104,31 @@ function FormRow({
   onCopy: () => void;
 }) {
   const [linksOpen, setLinksOpen] = useState(false);
+  const templateDeleted = form.templateDeleted ?? false;
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border p-4">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="font-medium">{form.name}</p>
-          <p className="text-xs text-muted-foreground">{form.slug}</p>
+        <div className="flex items-center gap-2">
+          <div>
+            <p className="font-medium">{form.name}</p>
+            <p className="text-xs text-muted-foreground">{form.slug}</p>
+          </div>
+          {templateDeleted && <Badge variant="destructive">템플릿 삭제됨</Badge>}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">활성</span>
-          <Switch checked={form.isActive} onCheckedChange={onToggle} />
+          <Switch
+            checked={form.isActive}
+            disabled={templateDeleted}
+            aria-label={templateDeleted ? '템플릿이 삭제되어 활성화할 수 없습니다' : undefined}
+            onCheckedChange={onToggle}
+          />
         </div>
       </div>
       <div className="flex items-center gap-2 text-sm">
         <span className="truncate text-muted-foreground">{form.publicUrl}</span>
-        <Button variant="outline" size="sm" onClick={onCopy}>
+        <Button variant="outline" size="sm" disabled={templateDeleted} onClick={onCopy}>
           복사
         </Button>
       </div>
@@ -132,7 +142,7 @@ function FormRow({
       >
         배포 링크
       </Button>
-      {linksOpen && <LinkPanel formId={form.id} disabled={linksDisabled} />}
+      {linksOpen && <LinkPanel formId={form.id} disabled={linksDisabled || templateDeleted} />}
     </div>
   );
 }

@@ -66,6 +66,8 @@ export interface Form {
   createdAt: string;
   updatedAt: string;
   links?: Link[];
+  /** 폼이 참조하는 템플릿이 소프트 삭제됐는지(백엔드 필드 없으면 false로 취급). */
+  templateDeleted?: boolean;
 }
 
 export interface Link {
