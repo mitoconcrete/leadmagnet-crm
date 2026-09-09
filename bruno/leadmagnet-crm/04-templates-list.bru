@@ -1,11 +1,11 @@
 meta {
-  name: auth-me
+  name: templates-list
   type: http
-  seq: 15
+  seq: 4
 }
 
 get {
-  url: {{baseUrl}}/api/admin/auth/me
+  url: {{baseUrl}}/api/admin/templates
   body: none
   auth: none
 }
@@ -16,5 +16,4 @@ headers {
 
 assert {
   res.status: eq 200
-  res.body.email: eq admin@example.com
 }

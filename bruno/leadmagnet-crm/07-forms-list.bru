@@ -1,11 +1,11 @@
 meta {
-  name: templates-list
+  name: forms-list
   type: http
-  seq: 3
+  seq: 7
 }
 
 get {
-  url: {{baseUrl}}/api/admin/templates
+  url: {{baseUrl}}/api/admin/forms?campaignId={{campaignId}}
   body: none
   auth: none
 }

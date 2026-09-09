@@ -1,0 +1,20 @@
+meta {
+  name: submissions-list
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/admin/submissions?campaignId={{campaignId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.total: gte 1
+}

@@ -1,11 +1,11 @@
 meta {
-  name: analytics-channels
+  name: auth-me
   type: http
-  seq: 12
+  seq: 16
 }
 
 get {
-  url: {{baseUrl}}/api/admin/analytics/channels
+  url: {{baseUrl}}/api/admin/auth/me
   body: none
   auth: none
 }
@@ -16,4 +16,5 @@ headers {
 
 assert {
   res.status: eq 200
+  res.body.email: eq admin@example.com
 }

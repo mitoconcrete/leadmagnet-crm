@@ -1,11 +1,11 @@
 meta {
-  name: submissions-list
+  name: analytics-campaigns
   type: http
   seq: 14
 }
 
 get {
-  url: {{baseUrl}}/api/admin/submissions?campaignId={{campaignId}}
+  url: {{baseUrl}}/api/admin/analytics/campaigns
   body: none
   auth: none
 }
@@ -16,5 +16,4 @@ headers {
 
 assert {
   res.status: eq 200
-  res.body.total: gte 1
 }

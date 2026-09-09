@@ -1,0 +1,21 @@
+meta {
+  name: templates-preview
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/admin/templates/{{templateId}}/preview
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+assert {
+  res.status: eq 200
+  res.headers['content-security-policy']: contains default-src 'none'
+  res.body: contains sandbox="allow-scripts allow-forms"
+}
