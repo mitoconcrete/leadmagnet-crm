@@ -84,7 +84,7 @@
 | DELETE | /:id?force= | – | 참조 폼 없음: 204(hard). 참조 폼 있음 + force 없음: 409 `사용 중인 템플릿입니다(폼 N개, 방문 X건, 신청 Y건)` + `details:{forms,visits,submissions}`. `force=true`: 204(소프트 삭제 + 참조 폼 비활성, 트랜잭션). 소프트 삭제된 템플릿은 목록 제외·상세/미리보기 404. 404 |
 | GET | /:id/preview | – | 200 `text/html` 래퍼(공개 페이지와 같은 sandbox 속성·CSP·`X-Frame-Options: SAMEORIGIN`·`Cache-Control: no-store`). 원본 HTML을 srcdoc에 넣되 제출 스크립트를 주입하지 않고 방문을 기록하지 않는다 / 401 / 404 |
 
-### 4.1.1 운영자 관리 `/api/admin/operators` (admin 전용, ADR 0020)
+### 4.1.1 운영자 관리 `/api/admin/operators` (다음 단계, ADR 0020 — 이번 제출에는 구조만: `role`·`is_active` 컬럼, `RolesGuard`, `me.role`)
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
 | GET | / | – | 200 `[{id,email,role,isActive,createdAt}]`. operator 역할이면 403 |
@@ -146,7 +146,6 @@
 | /login | 이메일/비밀번호 → POST /api/admin/auth/login. 성공 시 `/` |
 | / | 대시보드: 캠페인별 성과 표(GET /api/admin/analytics/campaigns) + 채널별 성과 표(GET /api/admin/analytics/channels) + 캠페인 생성 다이얼로그. 30초 자동 갱신, 마지막 갱신 시각, 지금 갱신 버튼(ADR 0016) |
 | /templates | AI 생성 안내 박스 + 등록 폼(탭: 파일 업로드 / HTML 붙여넣기, 이름) + 목록(행마다 "미리보기" → Dialog 안 `<iframe sandbox="allow-scripts allow-forms" src="/api/admin/templates/{id}/preview">`, "코드" → Dialog 안 `<pre>` 텍스트 + 복사 버튼(렌더 금지), "삭제" → DELETE; 409(details)면 폼·방문·신청 수를 보여 주는 확인 대화상자 → `?force=true`로 재요청). 수정 UI 없음(ADR 0014) |
-| /operators | (admin만) 운영자 목록, 생성 폼, 정지/복구 토글, 비밀번호 재설정 (ADR 0020) |
 | /campaigns/[id] | "캠페인 종료"/"다시 진행" 버튼(확인 대화상자, ADR 0019), 30초 자동 갱신 + 마지막 갱신 시각 + 지금 갱신(ADR 0016), 캠페인 정보·stats 카드·채널 breakdown, 폼 목록 + 폼 생성 다이얼로그(템플릿 선택·이름·성공 메시지), 폼마다 배포 링크 4채널 생성/복사 버튼과 공개 URL, 신청 명단 표(GET /api/admin/submissions?campaignId=) |
 
 - 데이터 접근: 클라이언트 컴포넌트에서 `fetch('/api/admin/…', {credentials:'include'})`. `next.config.ts` rewrites `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`.

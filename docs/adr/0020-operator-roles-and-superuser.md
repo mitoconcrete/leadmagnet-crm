@@ -1,11 +1,15 @@
 # ADR 0020. 운영자 역할: 슈퍼유저(admin)가 운영자 계정을 관리한다
 
-- 상태: 채택 (2026-09-10)
+- 상태: 부분 채택 (2026-09-10) — 구조(역할·활성 컬럼, 가드, me.role)만 이번 제출에 포함. 운영자 관리 API·화면은 다음 단계
 
 ## 맥락
 요구는 "인증한 운영자만 관리자 기능과 신청자 데이터를 볼 수 있어야 합니다"이다. 현재는 시드 계정 하나뿐이고(ADR 0004), 계정을 추가·정지할 방법이 없다. 운영자가 늘거나 퇴사하면 비밀번호를 공유하거나 시드 값을 바꿔 재배포해야 한다. 미인증 접근은 401로 이미 막혀 있지만 "인증을 관리하는" 주체가 없다.
 
 ## 결정
+
+**이번 제출 범위(구조만)**: `operators.role`(enum `admin|operator`, 기본 operator)과 `operators.is_active`(기본 true) 컬럼, 시드 계정은 admin. `AuthGuard`가 `is_active=false`면 401. `GET /api/admin/auth/me`가 `role`을 포함. `RolesGuard`와 `@Roles('admin')` 데코레이터를 준비하되 아직 적용된 엔드포인트는 없다. 아래 API·화면은 **다음 단계**로 남긴다(과제 요구 "인증한 운영자만"은 현재 401 처리로 충족되며, 계정 관리는 과제 범위를 넘는다고 판단).
+
+**다음 단계 설계(기록만)**:
 - 역할 두 가지: **admin**(슈퍼유저)과 **operator**. 시드 계정은 admin이다.
 - `operators` 테이블에 `role`(enum, 기본 operator)과 `is_active`(기본 true)를 추가한다.
 - admin 전용 API `/api/admin/operators`: `GET`(목록: id, email, role, isActive, createdAt), `POST {email, password, role?}`(생성, role 기본 operator, 중복 이메일 409), `PATCH /:id {isActive}`(정지·복구. 정지 시 그 운영자의 세션 전부 삭제를 한 트랜잭션으로), `PATCH /:id/password {password}`(재설정, 세션 삭제). 자기 자신은 정지할 수 없다(409). admin이 아니면 403.
