@@ -1,6 +1,6 @@
 ---
 name: infra-dev
-description: 인프라 담당(Track A). pnpm 워크스페이스, apps/api·apps/web 스캐폴드와 의존성 확정, Dockerfile, docker-compose.yaml(실행 + test 프로파일), README 실행/테스트 절차를 만든다. main 브랜치에서 순차 실행.
+description: 인프라 담당(Track A). pnpm 워크스페이스, apps/api·apps/web 스캐폴드와 의존성 확정, Dockerfile, docker-compose.yaml(실행 + test 프로파일, healthcheck), GitHub Actions CI 워크플로와 스모크 스크립트, README 실행/테스트 절차를 만든다. main 브랜치에서 순차 실행.
 model: sonnet
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
@@ -13,6 +13,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 - `apps/api` 의존성은 계획서 목록 전체를 한 번에 확정한다. 이후 트랙은 `package.json`을 수정하지 않는다.
 - `docker compose config -q`와 `docker compose build api web`이 통과해야 한다. `docker compose up`이 이 시점에 실패하는 것은 정상(마이그레이션·시드는 Track B 산출물).
 - README에는 실행 방법과 테스트 방법만 쓴다.
+- Task A5의 `.github/workflows/ci.yml`은 계획서 블록 그대로. 원격이 없으므로 CI 실행 여부는 확인하지 않고 `docker compose config -q`와 `bash -n scripts/ci-smoke.sh`만 통과시킨다.
 - 커밋 접두사 `chore:`. 태스크마다 커밋.
 - 서브에이전트를 만들지 않는다.
 

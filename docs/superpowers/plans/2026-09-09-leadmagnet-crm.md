@@ -6,7 +6,7 @@
 
 **Architecture:** pnpm 모노레포. `apps/api`(NestJS 11 + TypeORM 0.3 + PostgreSQL 16)가 관리자 API(`/api/admin/*`, 세션 쿠키), 공개 API(`/api/public/*`), 공개 폼 래퍼(`/p/:slug`)를 제공한다. `apps/web`(Next.js 16)은 rewrite로 관리자 API를 호출한다. 등록 HTML은 sandbox iframe + CSP로 격리된다.
 
-**Tech Stack:** Node 22, pnpm 10, NestJS 11, TypeORM 0.3, pg, bcryptjs, class-validator, @nestjs/swagger + Scalar, Jest + supertest, Next.js 16 + React 19 + Tailwind + shadcn/ui + vitest, Bruno CLI, Docker Compose.
+**Tech Stack:** Node 22, pnpm 10, NestJS 11, TypeORM 0.3, pg, bcryptjs, class-validator, @nestjs/swagger + Scalar, Jest + supertest, Next.js 16 + React 19 + Tailwind + shadcn/ui + vitest, Bruno CLI, Docker Compose, GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-09-09-leadmagnet-crm-design.md` (근거 명세 `docs/ouroboros/seed.yaml`, 결정 `docs/adr/`). 계약(경로·필드명·상태 코드)은 스펙 §3·§4가 최종 권위다. 이 계획과 충돌하면 스펙을 따른다.
 
@@ -23,6 +23,7 @@
 - 커밋: 기능 단위. 테스트 먼저 `test: …` 커밋, 구현 `feat: …` 커밋으로 분리. 스캐폴드/도커는 `chore:`, 문서는 `docs:`.
 - 문서·주석·커밋 본문은 한국어. 코드 식별자는 영어.
 - 워크스페이스 패키지 이름: `api`, `web`. 루트 스크립트는 `pnpm --filter api …`, `pnpm --filter web …` 형태.
+- CI(`.github/workflows/ci.yml`)는 검증 인프라이며 Seed 범위 밖의 기능이 아니다(ADR 0010). guardian은 이를 범위 이탈로 판정하지 않는다.
 - 서브에이전트는 자기 트랙의 파일만 만진다. 공유 파일(`pnpm-lock.yaml`, `apps/api/package.json`)은 Track A가 확정하며, 의존성 추가가 꼭 필요하면 보고서에 적고 통합 단계에서 반영한다.
 
 ---
@@ -429,6 +430,11 @@ services:
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3001}
       PORT: "3001"
     ports: ["3001:3001"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
     depends_on:
       db: { condition: service_healthy }
 
@@ -440,7 +446,13 @@ services:
     environment:
       API_INTERNAL_URL: http://api:3001
     ports: ["3000:3000"]
-    depends_on: [api]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/login || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      api: { condition: service_healthy }
 
   db-test:
     profiles: [test]
@@ -487,6 +499,7 @@ volumes:
 - 로컬: `pnpm install` → `docker compose up -d db db-test` → `pnpm test` → `pnpm test:e2e`
 - 관리자 화면 단위 테스트: `pnpm --filter web test`
 - Bruno 컬렉션: API 실행 후 `pnpm bruno:run`
+- CI: `.github/workflows/ci.yml`이 push/PR마다 위 절차(단위·e2e, 웹 빌드, compose 스택 통합 스모크)를 자동 실행
 
 ## 로컬 개발
 `docker compose up -d db` → `pnpm --filter api migration:run:dev && pnpm --filter api seed:dev` → `pnpm dev:api`, `pnpm dev:web`
@@ -499,6 +512,111 @@ git add apps/api/Dockerfile apps/api/docker-entrypoint.sh apps/web/Dockerfile do
 git commit -m "chore: docker compose 실행/테스트 환경과 README"
 ```
 `migration:run`과 `seed`는 Track B 산출물이므로 이 시점의 `docker compose up`은 실패해도 된다. `build`만 통과하면 된다.
+
+### Task A5: GitHub Actions CI (ADR 0010)
+
+**Files:**
+- Create: `.github/workflows/ci.yml`, `scripts/ci-smoke.sh`
+
+- [ ] **Step 1: 워크플로**
+```yaml
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: app, POSTGRES_PASSWORD: app, POSTGRES_DB: leadmagnet_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U app -d leadmagnet_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://app:app@localhost:5432/leadmagnet_test
+      DATABASE_URL: postgres://app:app@localhost:5432/leadmagnet_test
+      PUBLIC_BASE_URL: http://localhost:3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter api test
+      - run: pnpm --filter api test:e2e
+      - run: pnpm --filter api openapi:export
+      - uses: actions/upload-artifact@v4
+        with: { name: openapi, path: docs/openapi.json }
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      API_INTERNAL_URL: http://localhost:3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web test
+      - run: pnpm --filter web build
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: docker compose up --build -d --wait
+      - run: docker compose --profile test run --rm api-test
+      - run: pnpm bruno:run
+      - run: bash scripts/ci-smoke.sh
+      - if: always()
+        run: docker compose logs --no-color > compose.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: compose-logs, path: compose.log }
+      - if: always()
+        run: docker compose down -v
+```
+
+- [ ] **Step 2: 스모크 스크립트**
+```bash
+#!/usr/bin/env bash
+# 웹 오리진(3000)만 확인한다. API 계약은 Bruno가 담당.
+set -euo pipefail
+WEB=${WEB_BASE_URL:-http://localhost:3000}
+
+body=$(curl -fsS "$WEB/login")
+echo "$body" | grep -qi '<form' || { echo "login page has no <form>"; exit 1; }
+
+code=$(curl -s -o /dev/null -w '%{http_code}' "$WEB/api/admin/auth/me")
+[ "$code" = "401" ] || { echo "expected 401 from web->api rewrite, got $code"; exit 1; }
+
+echo "smoke ok"
+```
+`chmod +x scripts/ci-smoke.sh`.
+
+- [ ] **Step 3: 검증·커밋**
+```bash
+docker compose config -q
+bash -n scripts/ci-smoke.sh
+git add .github/workflows/ci.yml scripts/ci-smoke.sh
+git commit -m "chore: GitHub Actions CI (api, web, compose 통합 스모크)"
+```
+이 시점에 CI는 원격이 없어 실행되지 않는다. 녹색 확인은 Track E5-1.
 
 ---
 
@@ -875,6 +993,8 @@ export async function createFixtureFlow(agent): Promise<{ templateId; campaignId
 
 - `login.bru`의 `script:post-response`에서 `res.headers['set-cookie']`의 `sid`를 `bru.setVar('sid', …)`, 이후 요청은 `headers { Cookie: sid={{sid}} }`. `create` 요청은 `bru.setVar('campaignId'|'formId'|'slug'|'code', res.body.…)`. `page.bru`는 `res.body`에서 `VISIT_TOKEN` 추출해 `visitToken` 변수 저장.
 - 각 요청에 `assert { res.status: eq 201 }` 등 최소 어설션. `seq`로 실행 순서 고정.
+- `page.bru`는 추가로 `res.headers['content-security-policy']`에 `frame-src 'self'` 포함, `res.body`에 `sandbox="allow-scripts allow-forms"` 포함을 단언한다(CI 통합 잡의 격리 검증, ADR 0010).
+- 컬렉션은 `bru run bruno/leadmagnet-crm --env local`로 사람 개입 없이 처음부터 끝까지 통과해야 한다(CI에서 그대로 실행).
 - [ ] 커밋 `test: Bruno API 컬렉션`
 
 ---
@@ -892,7 +1012,7 @@ export async function createFixtureFlow(agent): Promise<{ templateId; campaignId
 
 ### Task E3: 수동 흐름 확인
 - [ ] `docker compose up --build` → 3000 로그인 → 템플릿 업로드(`apps/api/test/fixtures/valid-form.html`) → 캠페인·폼 생성 → 인스타그램 링크 복사 → 시크릿 창에서 링크 열기·제출 → 대시보드에서 방문 1/방문자 1/신청 1/전환율 100% 확인.
-- [ ] `pnpm bruno:run` 통과.
+- [ ] `pnpm bruno:run` 통과. `bash scripts/ci-smoke.sh` 통과.
 
 ### Task E4: 문서 마무리
 - [ ] `pnpm openapi:export` 결과 커밋. README 실행/테스트 절차가 실제와 일치하는지 재확인(README에는 실행·테스트만).
@@ -903,10 +1023,15 @@ export async function createFixtureFlow(agent): Promise<{ templateId; campaignId
 - [ ] superpowers:requesting-code-review로 브랜치 전체 리뷰 1회. 발견 사항은 한 번의 수정 디스패치로 처리.
 - [ ] `git log --oneline`에서 test:/feat: 분리와 기능 단위 커밋 확인.
 
+### Task E5-1: 원격 push와 CI 녹색 확인 (ADR 0010)
+- [ ] **제출용 개인 GitHub 계정으로만 push한다.** `gh auth status`로 활성 계정이 개인 계정인지 확인하고, 아니면 사용자에게 `gh auth switch`를 요청한다. 저장소 이름·공개 여부를 확인한 뒤 `gh repo create` → `git push -u origin main`.
+- [ ] `gh run watch`로 `api`, `web`, `integration` 세 잡이 녹색인지 확인. 실패하면 `compose-logs` 아티팩트로 원인 파악 후 `fix:` 커밋. 로컬에서 재현되지 않는 CI 전용 실패(포트, 헬스체크 타이밍)는 워크플로 수정(`chore:`)으로 처리.
+- [ ] 제출 메일 초안에 최신 CI 실행 링크를 적는다.
+
 ---
 
 ## Self-Review 기록
 
-- **Spec coverage:** §2 격리(B6, D7), §3 모델·집계(B1, B7, D8), §4.1~4.7(B2~B7, D2~D8), §5 화면(C2~C5), §6.5 문서(B8, D9), §7 환경(A4), §9 테스트(B*, D*), §10 커밋 규칙(Global). Seed AC 11개 모두 대응 태스크 존재.
+- **Spec coverage:** §2 격리(B6, D7), §3 모델·집계(B1, B7, D8), §4.1~4.7(B2~B7, D2~D8), §5 화면(C2~C5), §6.5 문서(B8, D9), §7 환경(A4), §9 테스트(B*, D*), §9.1 CI(A5, E5-1), §10 커밋 규칙(Global). Seed AC 11개 모두 대응 태스크 존재.
 - **Placeholder scan:** 없음. 엔티티 축약 표기는 형태 안내이며 구현 시 완전한 데코레이터를 쓴다고 명시.
 - **Type consistency:** `configureApp`(B2/D1), `buildInjectedHtml`(B6/D6), `STAT_CHANNELS` 순서(B1/B7/D8/C1), 쿠키 이름·Path(B2/B6/D2/D6/D7), `publicUrl`/`url` 조합(B4/B5/D4/D5) 일치 확인.
