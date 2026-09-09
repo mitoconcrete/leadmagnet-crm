@@ -1,13 +1,10 @@
 import {
-  ArgumentsHost,
   BadRequestException,
   Body,
-  Catch,
   Controller,
-  ExceptionFilter,
   Get,
-  HttpException,
   Param,
+  ParseUUIDPipe,
   Post,
   UploadedFile,
   UseFilters,
@@ -16,29 +13,12 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
-import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/auth.guard';
 import { TemplatesService } from './templates.service';
 import { MAX_HTML_BYTES } from './html-validation';
 import { toDetail, toListItem } from './dto/template-response.dto';
-
-@Catch()
-class MulterExceptionFilter implements ExceptionFilter {
-  catch(exception: unknown, host: ArgumentsHost) {
-    if (exception instanceof HttpException) {
-      const response = host.switchToHttp().getResponse<Response>();
-      response.status(exception.getStatus()).json(exception.getResponse());
-      return;
-    }
-    const response = host.switchToHttp().getResponse<Response>();
-    response.status(400).json({
-      statusCode: 400,
-      message: '파일 크기는 512KB 이하여야 합니다',
-      error: 'Bad Request',
-    });
-  }
-}
+import { MulterExceptionFilter } from './multer-exception.filter';
 
 @ApiTags('templates')
 @ApiCookieAuth('sid')
@@ -67,7 +47,7 @@ export class TemplatesController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     const template = await this.templatesService.findOne(id);
     return toDetail(template);
   }
