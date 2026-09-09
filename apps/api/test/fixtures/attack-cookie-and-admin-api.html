@@ -15,7 +15,14 @@
     (function () {
       var out = {};
 
-      out.cookie = document.cookie;
+      // sandbox 문서(opaque origin, 동일 출처 허용 없음)에서는 document.cookie 접근 자체가
+      // SecurityError로 예외를 던질 수 있다(빈 문자열을 반환하는 대신). 두 경우 모두 격리가
+      // 성립함을 보여주므로 둘 다 기록한다.
+      try {
+        out.cookie = { threw: false, value: document.cookie };
+      } catch (err) {
+        out.cookie = { threw: true, error: err.name, message: err.message };
+      }
 
       function describe(res) {
         return { status: res.status };
