@@ -4,7 +4,6 @@ export class Init1757400000000 implements MigrationInterface {
   name = 'Init1757400000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto`);
     await queryRunner.query(`CREATE TYPE campaign_status AS ENUM ('active','archived')`);
     await queryRunner.query(`CREATE TYPE channel AS ENUM ('instagram','x','youtube','threads')`);
     await queryRunner.query(`CREATE TABLE operators (
