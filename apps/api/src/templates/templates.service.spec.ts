@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { IsNull } from 'typeorm';
 import { TemplatesService } from './templates.service';
 import { validateHtmlUpload, MAX_HTML_BYTES } from './html-validation';
 import { HtmlTemplate } from '../entities/html-template.entity';
@@ -116,14 +117,14 @@ describe('TemplatesService', () => {
     repo.find.mockResolvedValue([]);
     await service.findAll();
     const args = repo.find.mock.calls[0][0];
-    expect(args.where.deletedAt).toEqual({ type: 'isNull' });
+    expect(args.where.deletedAt).toEqual(IsNull());
   });
 
   it('findOne은 소프트 삭제된 템플릿이면 404를 던진다(deletedAt 조건으로 조회해 못 찾음)', async () => {
     repo.findOne.mockResolvedValue(null);
     await expect(service.findOne('deleted-id')).rejects.toThrow(NotFoundException);
     const args = repo.findOne.mock.calls[0][0];
-    expect(args.where.deletedAt).toEqual({ type: 'isNull' });
+    expect(args.where.deletedAt).toEqual(IsNull());
   });
 });
 

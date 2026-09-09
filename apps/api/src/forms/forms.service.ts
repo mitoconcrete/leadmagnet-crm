@@ -1,6 +1,6 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Form } from '../entities/form.entity';
 import { Campaign } from '../entities/campaign.entity';
 import { HtmlTemplate } from '../entities/html-template.entity';
@@ -49,7 +49,7 @@ export class FormsService {
   async create(dto: CreateFormDto): Promise<Form> {
     const campaign = await this.campaignRepo.findOne({ where: { id: dto.campaignId } });
     if (!campaign) throw new NotFoundException('캠페인을 찾을 수 없습니다');
-    const template = await this.templateRepo.findOne({ where: { id: dto.templateId } });
+    const template = await this.templateRepo.findOne({ where: { id: dto.templateId, deletedAt: IsNull() } });
     if (!template) throw new NotFoundException('템플릿을 찾을 수 없습니다');
 
     let slug = dto.slug;
@@ -93,7 +93,7 @@ export class FormsService {
   async update(id: string, dto: UpdateFormDto): Promise<Form> {
     const form = await this.findOne(id);
     if (dto.templateId) {
-      const template = await this.templateRepo.findOne({ where: { id: dto.templateId } });
+      const template = await this.templateRepo.findOne({ where: { id: dto.templateId, deletedAt: IsNull() } });
       if (!template) throw new NotFoundException('템플릿을 찾을 수 없습니다');
       form.templateId = dto.templateId;
     }

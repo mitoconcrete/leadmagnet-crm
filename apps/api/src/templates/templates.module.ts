@@ -4,7 +4,7 @@ import { HtmlTemplate } from '../entities/html-template.entity';
 import { TemplatesService } from './templates.service';
 import { TemplatesController } from './templates.controller';
 import { AuthModule } from '../auth/auth.module';
-import { isDocsOnly, stubRepositoryProviders } from '../common/docs-only';
+import { isDocsOnly, stubDataSourceProvider, stubRepositoryProviders } from '../common/docs-only';
 import { PUBLIC_BASE_URL } from '../common/tokens';
 import { loadEnv } from '../config/env';
 
@@ -13,7 +13,7 @@ import { loadEnv } from '../config/env';
   providers: [
     TemplatesService,
     { provide: PUBLIC_BASE_URL, useFactory: () => loadEnv().publicBaseUrl },
-    ...(isDocsOnly() ? stubRepositoryProviders([HtmlTemplate]) : []),
+    ...(isDocsOnly() ? [...stubRepositoryProviders([HtmlTemplate]), stubDataSourceProvider()] : []),
   ],
   controllers: [TemplatesController],
   exports: [TemplatesService],

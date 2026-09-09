@@ -2,11 +2,14 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Inject,
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Res,
   UploadedFile,
   UseFilters,
@@ -14,7 +17,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiConsumes, ApiCookieAuth, ApiOkResponse, ApiProduces, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiCookieAuth, ApiOkResponse, ApiProduces, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/auth.guard';
@@ -96,6 +99,17 @@ export class TemplatesController {
   async findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     const template = await this.templatesService.findOne(id);
     return toDetail(template);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @ApiQuery({
+    name: 'force',
+    required: false,
+    description: "'true'일 때만 강제 삭제(소프트 삭제 + 참조 폼 비활성화)로 동작한다",
+  })
+  async remove(@Param('id', new ParseUUIDPipe()) id: string, @Query('force') force?: string): Promise<void> {
+    await this.templatesService.remove(id, force === 'true');
   }
 
   @Get(':id/preview')

@@ -164,6 +164,41 @@
         "tags": [
           "templates"
         ]
+      },
+      "delete": {
+        "operationId": "TemplatesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "force",
+            "required": false,
+            "in": "query",
+            "description": "'true'일 때만 강제 삭제(소프트 삭제 + 참조 폼 비활성화)로 동작한다",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "sid": []
+          }
+        ],
+        "tags": [
+          "templates"
+        ]
       }
     },
     "/api/admin/templates/{id}/preview": {
