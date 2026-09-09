@@ -5,6 +5,12 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Campaign } from '@/lib/types';
 
+const replaceMock = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: replaceMock, push: vi.fn() }),
+}));
+
 vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
   return { ...actual, apiFetch: vi.fn() };
@@ -36,6 +42,104 @@ async function flush() {
 describe('CampaignStatusBar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('삭제 버튼을 클릭하면 확인 대화상자를 보여준다', () => {
+    render(<CampaignStatusBar campaignId="c1" campaign={campaign} onCampaignUpdated={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+
+    expect(
+      screen.getByText(
+        '캠페인과 소속 폼·배포 링크가 삭제됩니다. 방문·신청 기록이 있으면 삭제할 수 없습니다. 정말 삭제할까요?',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('삭제를 확인하면 DELETE 요청 후 204면 캠페인을 삭제했습니다 토스트와 함께 대시보드로 이동한다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(undefined);
+
+    render(<CampaignStatusBar campaignId="c1" campaign={campaign} onCampaignUpdated={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '삭제 확정' }));
+    await flush();
+
+    expect(apiFetch).toHaveBeenCalledWith('/api/admin/campaigns/c1', { method: 'DELETE' });
+    expect(toast.success).toHaveBeenCalledWith('캠페인을 삭제했습니다');
+    expect(replaceMock).toHaveBeenCalledWith('/');
+  });
+
+  it('삭제가 409면 서버 메시지와 details(폼·방문·신청 수)를 대화상자 안에 보여주고 종료(보관)하기 버튼을 노출한다', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(
+      new ApiError(409, '이벤트가 있는 캠페인은 삭제할 수 없습니다. 종료(보관)하세요', {
+        forms: 2,
+        visits: 10,
+        submissions: 3,
+      }),
+    );
+
+    render(<CampaignStatusBar campaignId="c1" campaign={campaign} onCampaignUpdated={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '삭제 확정' }));
+    await flush();
+
+    expect(screen.getByText('이벤트가 있는 캠페인은 삭제할 수 없습니다. 종료(보관)하세요')).toBeInTheDocument();
+    expect(screen.getByText('폼 2개, 방문 10건, 신청 3건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '종료(보관)하기' })).toBeInTheDocument();
+    // 409면 대화상자를 닫지 않는다.
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('삭제 중 409 외의 오류는 오류 토스트만 띄운다', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new ApiError(500, '서버 오류'));
+
+    render(<CampaignStatusBar campaignId="c1" campaign={campaign} onCampaignUpdated={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '삭제 확정' }));
+    await flush();
+
+    expect(toast.error).toHaveBeenCalledWith('서버 오류');
+    expect(
+      screen.getByText(
+        '캠페인과 소속 폼·배포 링크가 삭제됩니다. 방문·신청 기록이 있으면 삭제할 수 없습니다. 정말 삭제할까요?',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('409 대화상자에서 종료(보관)하기를 누르면 삭제 대화상자를 닫고 종료 확인 흐름을 연다', async () => {
+    vi.mocked(apiFetch).mockImplementation((path: string, init?: { method?: string }) => {
+      if (init?.method === 'DELETE') {
+        return Promise.reject(
+          new ApiError(409, '이벤트가 있는 캠페인은 삭제할 수 없습니다. 종료(보관)하세요', {
+            forms: 1,
+            visits: 5,
+            submissions: 1,
+          }),
+        );
+      }
+      if (path.includes('/forms?campaignId=')) return Promise.resolve([{}]);
+      return Promise.reject(new Error('unexpected call'));
+    });
+
+    render(<CampaignStatusBar campaignId="c1" campaign={campaign} onCampaignUpdated={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '삭제 확정' }));
+    await flush();
+
+    fireEvent.click(screen.getByRole('button', { name: '종료(보관)하기' }));
+    await flush();
+
+    expect(
+      screen.queryByText('이벤트가 있는 캠페인은 삭제할 수 없습니다. 종료(보관)하세요'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('소속 폼 1개가 닫히고 공개 링크가 404가 됩니다. 집계와 명단은 유지됩니다. 종료할까요?'),
+    ).toBeInTheDocument();
   });
 
   it('이름·설명·상태 배지를 보여준다', () => {

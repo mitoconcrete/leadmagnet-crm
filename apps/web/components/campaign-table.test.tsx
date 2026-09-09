@@ -55,6 +55,44 @@ describe('CampaignTable', () => {
     expect(thead).toHaveClass('sticky');
   });
 
+  it('진행중인데 활성 폼이 0개면 활성 폼 없음 배지를 보여준다(ADR 0019)', () => {
+    render(<CampaignTable rows={[{ ...rows[0], status: 'active', forms: 3, activeForms: 0 }]} loading={false} />);
+
+    const badge = screen.getByText('활성 폼 없음');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveAttribute('title', '템플릿 삭제 등으로 폼이 모두 비활성 상태입니다');
+  });
+
+  it('종료된 캠페인은 활성 폼이 0개여도 배지를 보여주지 않는다', () => {
+    render(<CampaignTable rows={[{ ...rows[0], status: 'archived', forms: 3, activeForms: 0 }]} loading={false} />);
+
+    expect(screen.queryByText('활성 폼 없음')).not.toBeInTheDocument();
+  });
+
+  it('진행중이고 활성 폼이 1개 이상이면 배지를 보여주지 않는다', () => {
+    render(<CampaignTable rows={[{ ...rows[0], status: 'active', forms: 3, activeForms: 1 }]} loading={false} />);
+
+    expect(screen.queryByText('활성 폼 없음')).not.toBeInTheDocument();
+  });
+
+  it('폼(활성/전체) 열을 우측 정렬 고정폭 숫자로 보여준다', () => {
+    render(<CampaignTable rows={[{ ...rows[0], forms: 3, activeForms: 2 }]} loading={false} />);
+
+    const header = screen.getByRole('columnheader', { name: '폼(활성/전체)' });
+    expect(header.className).toContain('text-right');
+    expect(header.className).toContain('tabular-nums');
+
+    const cell = screen.getByText('2/3');
+    expect(cell.className).toContain('text-right');
+    expect(cell.className).toContain('tabular-nums');
+  });
+
+  it('forms·activeForms가 없으면 0/0으로 표시한다', () => {
+    render(<CampaignTable rows={rows} loading={false} />);
+
+    expect(screen.getByText('0/0')).toBeInTheDocument();
+  });
+
   it('밀도(ADR 0021): 방문·방문자·신청·전환율 열은 헤더·셀 모두 우측 정렬 고정폭 숫자다', () => {
     render(<CampaignTable rows={rows} loading={false} />);
 

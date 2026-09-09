@@ -1,14 +1,36 @@
 'use client';
 
+import { useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AuthGate } from '@/components/auth-gate';
 import { CampaignTable } from '@/components/campaign-table';
 import { ChannelTable } from '@/components/channel-table';
 import { CreateCampaignDialog } from '@/components/create-campaign-dialog';
 import { LastUpdated } from '@/components/last-updated';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { usePolling } from '@/hooks/use-polling';
 import { apiFetch } from '@/lib/api';
 import type { CampaignRow, ChannelStat } from '@/lib/types';
+
+const HIDE_ARCHIVED_STORAGE_KEY = 'dashboard.hideArchived';
+
+/** localStorage 접근이 실패해도(비공개 모드 등) 기본값(꺼짐)으로 동작한다. */
+function readHideArchived(): boolean {
+  try {
+    return window.localStorage.getItem(HIDE_ARCHIVED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeHideArchived(value: boolean): void {
+  try {
+    window.localStorage.setItem(HIDE_ARCHIVED_STORAGE_KEY, String(value));
+  } catch {
+    // 저장에 실패해도 화면 동작에는 영향이 없다.
+  }
+}
 
 interface DashboardData {
   campaigns: CampaignRow[];
@@ -27,6 +49,16 @@ async function fetchDashboardData(): Promise<DashboardData> {
 export default function DashboardPage() {
   const { data, error, lastUpdatedAt, isRefreshing, refresh } = usePolling(fetchDashboardData);
   const loading = !data && !error;
+  const [hideArchived, setHideArchived] = useState(readHideArchived);
+
+  const campaigns = data?.campaigns ?? [];
+  const visibleCampaigns = hideArchived ? campaigns.filter((row) => row.status !== 'archived') : campaigns;
+  const hiddenCount = campaigns.length - visibleCampaigns.length;
+
+  function handleHideArchivedChange(checked: boolean) {
+    setHideArchived(checked);
+    writeHideArchived(checked);
+  }
 
   return (
     <AuthGate>
@@ -43,8 +75,24 @@ export default function DashboardPage() {
 
           <div data-testid="dashboard-columns" className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
             <section className="flex min-h-0 flex-col gap-3">
-              <h2 className="text-lg font-semibold">캠페인 성과</h2>
-              <CampaignTable rows={data?.campaigns ?? []} loading={loading} />
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">캠페인 성과</h2>
+                <div className="flex items-center gap-2">
+                  {hiddenCount > 0 && (
+                    <span className="text-xs text-muted-foreground">{`종료 ${hiddenCount}개 숨김`}</span>
+                  )}
+                  <Label htmlFor="hide-archived-switch" className="text-sm font-normal text-muted-foreground">
+                    종료 캠페인 숨기기
+                  </Label>
+                  <Switch
+                    id="hide-archived-switch"
+                    aria-label="종료 캠페인 숨기기"
+                    checked={hideArchived}
+                    onCheckedChange={handleHideArchivedChange}
+                  />
+                </div>
+              </div>
+              <CampaignTable rows={visibleCampaigns} loading={loading} />
             </section>
 
             <section className="flex min-h-0 flex-col gap-3">

@@ -27,6 +27,7 @@ export function CampaignTable({ rows, loading }: { rows: CampaignRow[]; loading:
           <TableRow>
             <TableHead>이름</TableHead>
             <TableHead>상태</TableHead>
+            <TableHead className="text-right tabular-nums">폼(활성/전체)</TableHead>
             <TableHead className="text-right tabular-nums">방문</TableHead>
             <TableHead className="text-right tabular-nums">방문자</TableHead>
             <TableHead className="text-right tabular-nums">신청</TableHead>
@@ -34,24 +35,37 @@ export function CampaignTable({ rows, loading }: { rows: CampaignRow[]; loading:
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.campaignId}>
-              <TableCell>
-                <Link href={`/campaigns/${row.campaignId}`} className="font-medium text-primary hover:underline">
-                  {row.name}
-                </Link>
-              </TableCell>
-              <TableCell>
-                <Badge variant={row.status === 'active' ? 'default' : 'secondary'}>
-                  {row.status === 'active' ? '진행중' : '보관됨'}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right tabular-nums">{row.visits}</TableCell>
-              <TableCell className="text-right tabular-nums">{row.visitors}</TableCell>
-              <TableCell className="text-right tabular-nums">{row.submissions}</TableCell>
-              <TableCell className="text-right tabular-nums">{formatRate(row.conversionRate)}</TableCell>
-            </TableRow>
-          ))}
+          {rows.map((row) => {
+            const forms = row.forms ?? 0;
+            const activeForms = row.activeForms ?? 0;
+            const noActiveForm = row.status === 'active' && activeForms === 0;
+            return (
+              <TableRow key={row.campaignId}>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/campaigns/${row.campaignId}`} className="font-medium text-primary hover:underline">
+                      {row.name}
+                    </Link>
+                    {noActiveForm && (
+                      <Badge variant="outline" title="템플릿 삭제 등으로 폼이 모두 비활성 상태입니다">
+                        활성 폼 없음
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={row.status === 'active' ? 'default' : 'secondary'}>
+                    {row.status === 'active' ? '진행중' : '보관됨'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{`${activeForms}/${forms}`}</TableCell>
+                <TableCell className="text-right tabular-nums">{row.visits}</TableCell>
+                <TableCell className="text-right tabular-nums">{row.visitors}</TableCell>
+                <TableCell className="text-right tabular-nums">{row.submissions}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatRate(row.conversionRate)}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
