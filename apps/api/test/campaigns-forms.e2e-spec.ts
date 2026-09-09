@@ -276,6 +276,11 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
       expect(reactivateRes.status).toBe(409);
       expect(reactivateRes.body.message).toBe('템플릿이 삭제된 폼은 다시 활성화할 수 없습니다');
 
+      const renameRes = await agent.patch(`/api/admin/forms/${form.body.id}`).send({ name: '변경' });
+      expect(renameRes.status).toBe(200);
+      expect(renameRes.body.name).toBe('변경');
+      expect(renameRes.body.templateDeleted).toBe(true);
+
       await ctx.ds.query(`UPDATE forms SET is_active = true WHERE id = $1`, [form.body.id]);
       const publicAfterDbHack = await ctx.http().get(`/p/${form.body.slug}`);
       expect(publicAfterDbHack.status).toBe(404);
@@ -287,6 +292,7 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
       expect(replaceRes.status).toBe(200);
       expect(replaceRes.body.isActive).toBe(true);
       expect(replaceRes.body.templateId).toBe(otherTemplateId);
+      expect(replaceRes.body.templateDeleted).toBe(false);
 
       const publicAfterReplace = await ctx.http().get(`/p/${form.body.slug}`);
       expect(publicAfterReplace.status).toBe(200);

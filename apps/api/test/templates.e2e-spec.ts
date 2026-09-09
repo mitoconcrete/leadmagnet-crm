@@ -167,20 +167,18 @@ describe('templates e2e (§4.2 /api/admin/templates)', () => {
   });
 
   describe('POST / 등록 점검 경고 (ADR 0018, 차단하지 않는다)', () => {
-    it('name 없는 input과 외부 script가 있는 HTML도 201이고, warnings에 두 경고를 담는다', async () => {
+    it('name 없는 input과 외부 script가 있는 HTML도 201이고, warnings 배열 전체(순서 포함)를 정확히 담는다', async () => {
       const res = await agent
         .post('/api/admin/templates')
         .field('name', '경고 있는 템플릿')
         .attach('file', WARN_FORM_FIXTURE_PATH);
 
       expect(res.status).toBe(201);
-      expect(Array.isArray(res.body.warnings)).toBe(true);
-      expect(res.body.warnings).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('name 속성이 없는 입력 요소가'),
-          expect.stringContaining('외부 스크립트'),
-        ]),
-      );
+      expect(res.body.warnings).toEqual([
+        'name 속성이 없는 입력 요소가 1개 있습니다. 이 값은 신청 데이터에 저장되지 않습니다',
+        '외부 스크립트 1개는 격리 정책(CSP)으로 실행되지 않습니다',
+        '개인정보 수집 동의 체크박스(name="consent")가 없습니다',
+      ]);
     });
 
     it('목록·상세 응답에는 warnings가 없다(등록 시점 안내이므로 저장하지 않는다)', async () => {

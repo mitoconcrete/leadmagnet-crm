@@ -204,6 +204,21 @@ describe('lintHtmlTemplate (ADR 0018 등록 점검 경고)', () => {
       expect(lintHtmlTemplate(html)).toContain(NAVIGATION_ESCAPE_MSG);
     });
 
+    it('<form target="_parent">도 잡는다', () => {
+      const html = BASE.replace('<form>', '<form target="_parent">');
+      expect(lintHtmlTemplate(html)).toContain(NAVIGATION_ESCAPE_MSG);
+    });
+
+    it('<base target="_top">도 잡는다', () => {
+      const html = BASE.replace('<form>', '<base target="_top"><form>');
+      expect(lintHtmlTemplate(html)).toContain(NAVIGATION_ESCAPE_MSG);
+    });
+
+    it('본문 텍스트에 target="_top" 문구가 있어도(태그 속성이 아니면) 경고하지 않는다(오탐 방지)', () => {
+      const html = BASE.replace('</form>', '</form><p>이 옵션은 target="_top" 옵션과 비슷합니다</p>');
+      expect(lintHtmlTemplate(html)).not.toContain(NAVIGATION_ESCAPE_MSG);
+    });
+
     it('BASE(음성)에는 이 경고가 없다', () => {
       expect(lintHtmlTemplate(BASE)).not.toContain(NAVIGATION_ESCAPE_MSG);
     });

@@ -279,5 +279,40 @@ describe('FormsService', () => {
       expect(result.name).toBe('이름 변경');
       expect(templateRepo.findOne).not.toHaveBeenCalled();
     });
+
+    it('template 관계를 포함해 조회해 PATCH 응답의 templateDeleted를 정확히 계산할 수 있게 한다', async () => {
+      const deletedTemplate = { id: 'tpl-1', deletedAt: new Date() };
+      formRepo.findOne.mockResolvedValue({
+        id: 'f1',
+        name: 'old',
+        successMessage: 'old-msg',
+        isActive: false,
+        templateId: 'tpl-1',
+        template: deletedTemplate,
+      } as unknown as Form);
+
+      const result = await service.update('f1', { name: '변경' });
+
+      expect(formRepo.findOne).toHaveBeenCalledWith(expect.objectContaining({ relations: ['template'] }));
+      expect(result.template).toEqual(deletedTemplate);
+    });
+
+    it('살아 있는 templateId로 교체하면 반환된 폼의 template 관계도 그 템플릿으로 갱신된다', async () => {
+      const oldDeletedTemplate = { id: 'deleted-tpl', deletedAt: new Date() };
+      const newLiveTemplate = { id: 'tpl-1', deletedAt: null };
+      formRepo.findOne.mockResolvedValue({
+        id: 'f1',
+        name: 'old',
+        successMessage: 'old-msg',
+        isActive: false,
+        templateId: 'deleted-tpl',
+        template: oldDeletedTemplate,
+      } as unknown as Form);
+      templateRepo.findOne.mockResolvedValue(newLiveTemplate);
+
+      const result = await service.update('f1', { templateId: 'tpl-1', isActive: true });
+
+      expect((result as unknown as { template: unknown }).template).toEqual(newLiveTemplate);
+    });
   });
 });
