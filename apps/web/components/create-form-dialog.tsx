@@ -21,7 +21,15 @@ import type { Form, Template } from '@/lib/types';
 /**
  * 캠페인에 새 신청 폼을 만드는 다이얼로그. 템플릿을 선택하고 이름·성공 메시지를 입력한다.
  */
-export function CreateFormDialog({ campaignId, onCreated }: { campaignId: string; onCreated: () => void }) {
+export function CreateFormDialog({
+  campaignId,
+  onCreated,
+  disabled = false,
+}: {
+  campaignId: string;
+  onCreated: () => void;
+  disabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateId, setTemplateId] = useState('');
@@ -68,7 +76,7 @@ export function CreateFormDialog({ campaignId, onCreated }: { campaignId: string
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button>폼 만들기</Button>} />
+      <DialogTrigger render={<Button disabled={disabled}>폼 만들기</Button>} />
       <DialogContent>
         <DialogHeader>
           <DialogTitle>새 폼</DialogTitle>

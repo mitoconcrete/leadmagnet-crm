@@ -9,8 +9,9 @@ import { CHANNELS, CHANNEL_LABELS, type Channel, type Link } from '@/lib/types';
 /**
  * 폼 하나의 배포 링크 4채널을 보여준다. 없으면 "링크 만들기", 있으면 URL과 복사 버튼.
  * 같은 채널로 동시에 생성해 409가 나면 목록을 다시 조회한다.
+ * disabled가 true면(캠페인 종료) "링크 만들기" 버튼을 비활성화한다(ADR 0019).
  */
-export function LinkPanel({ formId }: { formId: string }) {
+export function LinkPanel({ formId, disabled = false }: { formId: string; disabled?: boolean }) {
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState<Channel | null>(null);
@@ -83,7 +84,7 @@ export function LinkPanel({ formId }: { formId: string }) {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={creating === channel}
+                disabled={disabled || creating === channel}
                 onClick={() => handleCreate(channel)}
               >
                 링크 만들기

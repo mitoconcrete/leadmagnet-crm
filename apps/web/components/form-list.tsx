@@ -10,8 +10,17 @@ import { LinkPanel } from '@/components/link-panel';
 
 /**
  * 캠페인에 속한 폼 목록. 폼마다 활성 토글, 공개 URL 복사, 배포 링크 패널을 보여준다.
+ * linksDisabled가 true면(캠페인 종료) 배포 링크 생성 버튼을 비활성화한다(ADR 0019).
  */
-export function FormList({ campaignId, refreshKey = 0 }: { campaignId: string; refreshKey?: number }) {
+export function FormList({
+  campaignId,
+  refreshKey = 0,
+  linksDisabled = false,
+}: {
+  campaignId: string;
+  refreshKey?: number;
+  linksDisabled?: boolean;
+}) {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,7 +86,7 @@ export function FormList({ campaignId, refreshKey = 0 }: { campaignId: string; r
               복사
             </Button>
           </div>
-          <LinkPanel formId={form.id} />
+          <LinkPanel formId={form.id} disabled={linksDisabled} />
         </div>
       ))}
     </div>
