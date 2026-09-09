@@ -1,7 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { TemplatesService } from './templates.service';
 import { validateHtmlUpload, MAX_HTML_BYTES } from './html-validation';
 import { HtmlTemplate } from '../entities/html-template.entity';
+import { Form } from '../entities/form.entity';
 
 function repoMock() {
   return {
@@ -9,6 +10,14 @@ function repoMock() {
     findOne: jest.fn(),
     save: jest.fn((v: unknown) => Promise.resolve({ id: 'tpl-1', createdAt: new Date(), ...(v as object) })),
     create: jest.fn((v: unknown) => v),
+    delete: jest.fn(),
+  };
+}
+
+function dataSourceMock() {
+  return {
+    query: jest.fn(),
+    transaction: jest.fn(),
   };
 }
 
@@ -55,11 +64,13 @@ describe('validateHtmlUpload', () => {
 
 describe('TemplatesService', () => {
   let repo: ReturnType<typeof repoMock>;
+  let dataSource: ReturnType<typeof dataSourceMock>;
   let service: TemplatesService;
 
   beforeEach(() => {
     repo = repoMock();
-    service = new TemplatesService(repo as never);
+    dataSource = dataSourceMock();
+    service = new TemplatesService(repo as never, dataSource as never);
   });
 
   it('name 미지정 시 originalname에서 .html을 제거해 name으로 사용한다', async () => {
@@ -99,5 +110,93 @@ describe('TemplatesService', () => {
     const tpl = { id: 't1' } as HtmlTemplate;
     repo.findOne.mockResolvedValue(tpl);
     expect(await service.findOne('t1')).toBe(tpl);
+  });
+
+  it('findAll은 소프트 삭제된(deletedAt 있는) 템플릿을 제외하는 조건으로 조회한다', async () => {
+    repo.find.mockResolvedValue([]);
+    await service.findAll();
+    const args = repo.find.mock.calls[0][0];
+    expect(args.where.deletedAt).toEqual({ type: 'isNull' });
+  });
+
+  it('findOne은 소프트 삭제된 템플릿이면 404를 던진다(deletedAt 조건으로 조회해 못 찾음)', async () => {
+    repo.findOne.mockResolvedValue(null);
+    await expect(service.findOne('deleted-id')).rejects.toThrow(NotFoundException);
+    const args = repo.findOne.mock.calls[0][0];
+    expect(args.where.deletedAt).toEqual({ type: 'isNull' });
+  });
+});
+
+describe('TemplatesService.remove (ADR 0014 삭제 규칙)', () => {
+  let repo: ReturnType<typeof repoMock>;
+  let dataSource: ReturnType<typeof dataSourceMock>;
+  let service: TemplatesService;
+
+  beforeEach(() => {
+    repo = repoMock();
+    dataSource = dataSourceMock();
+    service = new TemplatesService(repo as never, dataSource as never);
+  });
+
+  it('없는(또는 이미 소프트 삭제된) id면 404를 던지고 참조를 조회하지 않는다', async () => {
+    repo.findOne.mockResolvedValue(null);
+
+    await expect(service.remove('missing', false)).rejects.toThrow(NotFoundException);
+    expect(dataSource.query).not.toHaveBeenCalled();
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it('참조하는 폼이 0개면 hard delete하고 204(반환값 없음)로 끝낸다', async () => {
+    repo.findOne.mockResolvedValue({ id: 't1' });
+    dataSource.query.mockResolvedValue([{ forms: 0, visits: 0, submissions: 0 }]);
+
+    await service.remove('t1', false);
+
+    expect(repo.delete).toHaveBeenCalledWith('t1');
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it('참조하는 폼이 있고 force가 아니면 409와 details를 던지고 아무것도 쓰지 않는다', async () => {
+    repo.findOne.mockResolvedValue({ id: 't1' });
+    dataSource.query.mockResolvedValue([{ forms: 2, visits: 5, submissions: 3 }]);
+
+    try {
+      await service.remove('t1', false);
+      throw new Error('예외가 발생해야 한다');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      const conflict = error as ConflictException;
+      expect(conflict.getStatus()).toBe(409);
+      expect(conflict.getResponse()).toEqual({
+        statusCode: 409,
+        message: '사용 중인 템플릿입니다(폼 2개, 방문 5건, 신청 3건)',
+        error: 'Conflict',
+        details: { forms: 2, visits: 5, submissions: 3 },
+      });
+    }
+    expect(repo.delete).not.toHaveBeenCalled();
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it('참조하는 폼이 있고 force면 같은 트랜잭션 manager로 템플릿 소프트 삭제와 폼 비활성화를 함께 수행한다', async () => {
+    repo.findOne.mockResolvedValue({ id: 't1' });
+    dataSource.query.mockResolvedValue([{ forms: 2, visits: 5, submissions: 3 }]);
+
+    const manager = { update: jest.fn().mockResolvedValue(undefined) };
+    dataSource.transaction.mockImplementation((cb: (m: unknown) => Promise<void>) => cb(manager));
+
+    await service.remove('t1', true);
+
+    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+    expect(manager.update).toHaveBeenCalledTimes(2);
+    expect(manager.update.mock.calls[0][0]).toBe(HtmlTemplate);
+    expect(manager.update.mock.calls[0][1]).toBe('t1');
+    expect(manager.update.mock.calls[0][2]).toMatchObject({ deletedAt: expect.any(Date) });
+    expect(manager.update.mock.calls[1][0]).toBe(Form);
+    expect(manager.update.mock.calls[1][1]).toEqual({ templateId: 't1' });
+    expect(manager.update.mock.calls[1][2]).toEqual({ isActive: false });
+    // 두 update 호출이 트랜잭션 콜백에 전달된 같은 manager 인스턴스에서 일어났는지 확인
+    expect(manager.update.mock.instances[0]).toBe(manager);
+    expect(manager.update.mock.instances[1]).toBe(manager);
   });
 });

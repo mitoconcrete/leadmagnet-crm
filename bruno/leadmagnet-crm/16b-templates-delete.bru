@@ -1,0 +1,19 @@
+meta {
+  name: templates-delete
+  type: http
+  seq: 16.5
+}
+
+delete {
+  url: {{baseUrl}}/api/admin/templates/{{pasteTemplateId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+assert {
+  res.status: eq 204
+}

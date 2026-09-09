@@ -6,10 +6,27 @@ import {
   truncateAll,
   seedOperator,
   loginAgent,
+  createFixtureFlow,
   VALID_FORM_FIXTURE_PATH,
   NO_FORM_FIXTURE_PATH,
   TestContext,
 } from './utils';
+
+const VISIT_TOKEN_RE = /VISIT_TOKEN=(?:"|&quot;)([0-9a-f-]{36})/;
+
+/** 폼의 공개 페이지를 방문하고 그대로 제출해 visit 1건 + submission 1건을 만든다. */
+async function visitAndSubmit(ctx: TestContext, slug: string): Promise<void> {
+  const pageRes = await ctx.http().get(`/p/${slug}`);
+  const match = VISIT_TOKEN_RE.exec(pageRes.text);
+  if (!match) throw new Error('VISIT_TOKEN을 응답 본문에서 찾지 못했다');
+  const visitToken = match[1];
+
+  const submitRes = await ctx
+    .http()
+    .post(`/api/public/forms/${slug}/submissions`)
+    .send({ visitToken, fields: { name: '테스트 사용자' } });
+  if (submitRes.status !== 201) throw new Error(`제출 실패: ${submitRes.status}`);
+}
 
 describe('templates e2e (§4.2 /api/admin/templates)', () => {
   let ctx: TestContext;
@@ -144,6 +161,74 @@ describe('templates e2e (§4.2 /api/admin/templates)', () => {
       const oversized = `<form>${'a'.repeat(600 * 1024)}</form>`;
       const res = await agent.post('/api/admin/templates').field('html', oversized).field('name', '큰 템플릿');
       expect(res.status).toBe(400);
+    });
+  });
+
+  describe('DELETE /:id (ADR 0014 삭제 규칙)', () => {
+    it('참조하는 폼이 없으면 204이고, 이후 GET은 404다', async () => {
+      const created = await agent
+        .post('/api/admin/templates')
+        .field('name', '미참조 템플릿')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+
+      const res = await agent.delete(`/api/admin/templates/${created.body.id}`);
+      expect(res.status).toBe(204);
+
+      const getRes = await agent.get(`/api/admin/templates/${created.body.id}`);
+      expect(getRes.status).toBe(404);
+    });
+
+    it('참조하는 폼이 있으면 409이고 details에 폼 1개·방문 1건·신청 1건을 담는다', async () => {
+      const flow = await createFixtureFlow(agent);
+      await visitAndSubmit(ctx, flow.form.slug);
+
+      const res = await agent.delete(`/api/admin/templates/${flow.templateId}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error).toBe('Conflict');
+      expect(res.body.message).toBe('사용 중인 템플릿입니다(폼 1개, 방문 1건, 신청 1건)');
+      expect(res.body.details).toEqual({ forms: 1, visits: 1, submissions: 1 });
+    });
+
+    it('force=true면 204이고, 목록 제외·GET 404·폼 비활성화·공개 페이지 404·캠페인 stats는 그대로 유지된다', async () => {
+      const flow = await createFixtureFlow(agent);
+      await visitAndSubmit(ctx, flow.form.slug);
+
+      const statsBefore = await agent.get(`/api/admin/campaigns/${flow.campaignId}/stats`);
+      expect(statsBefore.status).toBe(200);
+
+      const res = await agent.delete(`/api/admin/templates/${flow.templateId}?force=true`);
+      expect(res.status).toBe(204);
+
+      const listRes = await agent.get('/api/admin/templates');
+      expect(listRes.body.find((t: { id: string }) => t.id === flow.templateId)).toBeUndefined();
+
+      const getRes = await agent.get(`/api/admin/templates/${flow.templateId}`);
+      expect(getRes.status).toBe(404);
+
+      const formRes = await agent.get(`/api/admin/forms/${flow.form.id}`);
+      expect(formRes.body.isActive).toBe(false);
+
+      const publicRes = await ctx.http().get(`/p/${flow.form.slug}`);
+      expect(publicRes.status).toBe(404);
+
+      const statsAfter = await agent.get(`/api/admin/campaigns/${flow.campaignId}/stats`);
+      expect(statsAfter.body).toEqual(statsBefore.body);
+    });
+
+    it('없는(형식은 유효한) uuid는 404다', async () => {
+      const res = await agent.delete(`/api/admin/templates/${randomUUID()}`);
+      expect(res.status).toBe(404);
+    });
+
+    it('미인증 요청은 401이다', async () => {
+      const created = await agent
+        .post('/api/admin/templates')
+        .field('name', '미인증 삭제 템플릿')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+
+      const res = await ctx.http().delete(`/api/admin/templates/${created.body.id}`);
+      expect(res.status).toBe(401);
     });
   });
 

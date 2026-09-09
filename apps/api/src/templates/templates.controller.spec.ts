@@ -177,6 +177,73 @@ describe('TemplatesController (POST / 붙여넣기 등록 html 필드)', () => {
   });
 });
 
+describe('TemplatesController (DELETE /:id)', () => {
+  let app: INestApplication;
+  const templatesService = {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+  const templateId = '22222222-2222-2222-2222-222222222222';
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: [TemplatesController],
+      providers: [
+        { provide: TemplatesService, useValue: templatesService },
+        { provide: PUBLIC_BASE_URL, useValue: 'http://localhost:3001' },
+      ],
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('force 쿼리가 없으면 force=false로 서비스를 호출하고 204를 반환한다', async () => {
+    templatesService.remove.mockResolvedValue(undefined);
+
+    const res = await request(app.getHttpServer()).delete(`/api/admin/templates/${templateId}`);
+
+    expect(res.status).toBe(204);
+    expect(templatesService.remove).toHaveBeenCalledWith(templateId, false);
+  });
+
+  it('force=true일 때만 force를 참으로 전달한다', async () => {
+    templatesService.remove.mockResolvedValue(undefined);
+
+    await request(app.getHttpServer()).delete(`/api/admin/templates/${templateId}?force=true`);
+    expect(templatesService.remove).toHaveBeenLastCalledWith(templateId, true);
+
+    await request(app.getHttpServer()).delete(`/api/admin/templates/${templateId}?force=1`);
+    expect(templatesService.remove).toHaveBeenLastCalledWith(templateId, false);
+  });
+
+  it('서비스가 던진 예외 상태 코드를 그대로 응답한다', async () => {
+    templatesService.remove.mockRejectedValue(new NotFoundException('템플릿을 찾을 수 없습니다'));
+
+    const res = await request(app.getHttpServer()).delete(`/api/admin/templates/${templateId}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it('uuid 형식이 아닌 id는 400이다', async () => {
+    const res = await request(app.getHttpServer()).delete('/api/admin/templates/not-a-uuid');
+    expect(res.status).toBe(400);
+    expect(templatesService.remove).not.toHaveBeenCalled();
+  });
+});
+
 describe('TemplatesController (GET /:id/preview)', () => {
   let app: INestApplication;
   const templatesService = {
