@@ -1,0 +1,29 @@
+meta {
+  name: templates-upload
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/admin/templates
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+body:multipart-form {
+  name: Bruno 템플릿
+  file: @file(../../apps/api/test/fixtures/valid-form.html)
+}
+
+script:post-response {
+  bru.setVar('templateId', res.body.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.originalFilename: eq valid-form.html
+}

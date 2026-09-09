@@ -1,0 +1,19 @@
+meta {
+  name: templates-list
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/admin/templates
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+assert {
+  res.status: eq 200
+}

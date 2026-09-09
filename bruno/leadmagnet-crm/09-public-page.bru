@@ -1,0 +1,30 @@
+meta {
+  name: public-page
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/p/{{slug}}?src={{code}}
+  body: none
+  auth: none
+}
+
+script:post-response {
+  const match = /VISIT_TOKEN=(?:"|&quot;)([0-9a-f-]{36})/.exec(res.body);
+  if (match) {
+    bru.setVar('visitToken', match[1]);
+  }
+  const setCookie = res.headers['set-cookie'];
+  const cookies = Array.isArray(setCookie) ? setCookie : (setCookie ? [setCookie] : []);
+  const vidHeader = cookies.find((c) => c.startsWith('vid='));
+  if (vidHeader) {
+    bru.setVar('vid', vidHeader.split(';')[0].split('=')[1]);
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.headers['content-security-policy']: contains frame-src 'self'
+  res.body: contains sandbox="allow-scripts allow-forms"
+}

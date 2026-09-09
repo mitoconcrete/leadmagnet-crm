@@ -1,0 +1,33 @@
+meta {
+  name: forms-create
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/admin/forms
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+body:json {
+  {
+    "campaignId": "{{campaignId}}",
+    "templateId": "{{templateId}}",
+    "name": "Bruno 폼"
+  }
+}
+
+script:post-response {
+  bru.setVar('formId', res.body.id);
+  bru.setVar('slug', res.body.slug);
+}
+
+assert {
+  res.status: eq 201
+  res.body.isActive: eq true
+}

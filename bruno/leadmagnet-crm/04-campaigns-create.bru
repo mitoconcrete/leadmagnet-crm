@@ -1,0 +1,31 @@
+meta {
+  name: campaigns-create
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/admin/campaigns
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: sid={{sid}}
+}
+
+body:json {
+  {
+    "name": "Bruno 캠페인",
+    "description": "Bruno 컬렉션 자동 실행"
+  }
+}
+
+script:post-response {
+  bru.setVar('campaignId', res.body.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.status: eq active
+}

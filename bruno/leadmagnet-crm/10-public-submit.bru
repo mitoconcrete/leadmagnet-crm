@@ -1,0 +1,23 @@
+meta {
+  name: public-submit
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/public/forms/{{slug}}/submissions
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "visitToken": "{{visitToken}}",
+    "fields": { "name": "Bruno 테스트" }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.headers['access-control-allow-origin']: eq *
+}
