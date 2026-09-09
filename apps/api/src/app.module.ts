@@ -3,9 +3,17 @@ import { HealthController } from './health.controller';
 import { DatabaseModule } from './database.module';
 import { AuthModule } from './auth/auth.module';
 import { TemplatesModule } from './templates/templates.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
+import { FormsModule } from './forms/forms.module';
 
 @Module({
-  imports: [...(process.env.DOCS_ONLY === '1' ? [] : [DatabaseModule]), AuthModule, TemplatesModule],
+  imports: [
+    ...(process.env.DOCS_ONLY === '1' ? [] : [DatabaseModule]),
+    AuthModule,
+    TemplatesModule,
+    CampaignsModule,
+    FormsModule,
+  ],
   controllers: [HealthController],
 })
 export class AppModule {}
