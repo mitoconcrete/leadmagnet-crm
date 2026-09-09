@@ -7,6 +7,8 @@ import { CampaignsModule } from './campaigns/campaigns.module';
 import { FormsModule } from './forms/forms.module';
 import { LinksModule } from './links/links.module';
 import { PublicModule } from './public/public.module';
+import { SubmissionsModule } from './submissions/submissions.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { PublicModule } from './public/public.module';
     FormsModule,
     LinksModule,
     PublicModule,
+    SubmissionsModule,
+    AnalyticsModule,
   ],
   controllers: [HealthController],
 })

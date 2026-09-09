@@ -4,13 +4,17 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CampaignsService } from './campaigns.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 @ApiTags('campaigns')
 @ApiCookieAuth('sid')
 @UseGuards(AuthGuard)
 @Controller('api/admin/campaigns')
 export class CampaignsController {
-  constructor(private readonly campaignsService: CampaignsService) {}
+  constructor(
+    private readonly campaignsService: CampaignsService,
+    private readonly analyticsService: AnalyticsService,
+  ) {}
 
   @Post()
   create(@Body() dto: CreateCampaignDto) {
@@ -30,5 +34,11 @@ export class CampaignsController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateCampaignDto) {
     return this.campaignsService.update(id, dto);
+  }
+
+  @Get(':id/stats')
+  async stats(@Param('id') id: string) {
+    await this.campaignsService.findOneWithForms(id);
+    return this.analyticsService.campaignStats(id);
   }
 }
