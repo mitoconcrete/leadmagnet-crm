@@ -11,6 +11,7 @@
 - 등록 HTML을 고치거나 태그를 제거하지 않는다. AI가 만든 HTML은 `<script>`·인라인 이벤트·`<style>`을 자유롭게 쓰며, 살균하면 폼이 깨지고 운영자가 이유를 알 수 없다.
 - 대신 등록 HTML을 **신뢰하지 않는 코드**로 다룬다. 어떤 스크립트가 들어 있어도 닿을 수 있는 것이 없도록 만든다. 관리자 화면은 등록 HTML을 절대 렌더하지 않고(코드 보기는 텍스트), 렌더는 공개 페이지와 미리보기의 sandbox iframe 안에서만 일어난다.
 - 검증(`<form` 필수, 512KB, `.html`)은 동작 요건이지 보안 필터가 아니다.
+- **점검은 안내, 격리는 방어.** 등록 시 프롬프트 템플릿 규칙을 벗어난 요소를 찾아 차단하지 않는 경고 목록(`warnings`)으로 돌려준다: `name` 없는 입력, 외부 `<script src>`(CSP로 차단됨), `action`/`method`/`onsubmit`(무시됨), 제출 버튼 없음, `<meta http-equiv=refresh>`·`target="_top"`(sandbox로 차단됨). 등록은 그대로 성공하고 화면이 경고를 보여 준다. 운영자가 "왜 동작하지 않는지"를 알게 하는 층이며, 보안은 여전히 격리가 담당한다.
 
 ### 격리가 실제로 성립함을 두 층에서 검증한다
 1. **서버 e2e (구조 불변식)**: 공격 픽스처 `apps/api/test/fixtures/attack-*.html` — 쿠키 읽기, `fetch('/api/admin/...')`, `top.location`/`window.parent` 접근, `<form action=https://evil>`, `<meta http-equiv=refresh>`, srcdoc 탈출 시도(`</script>`, `"`, `&`), `<a target=_top>`. 각 픽스처를 등록·미리보기·공개 페이지로 렌더한 응답에 대해 sandbox 속성, `allow-same-origin` 부재, CSP 지시어, srcdoc 이스케이프(원문의 `"`가 `&quot;`로만 나타남), 관리자 API에 `Origin: null`/무쿠키 요청 401, `sid`가 `/p`로 전송되지 않음을 단언한다.

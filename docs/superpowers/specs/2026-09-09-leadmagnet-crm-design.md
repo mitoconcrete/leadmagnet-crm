@@ -78,7 +78,7 @@
 ### 4.2 HTML 템플릿 `/api/admin/templates`
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
-| POST | / | multipart `file`(.html) + `name?` **또는** `html`(텍스트) + `name`(필수) | 201 `{id,name,originalFilename,sizeBytes,createdAt}`. 400: (file) 확장자≠.html / (공통) >512KB, `<form` 없음 / `file`·`html` 둘 다 없거나 둘 다 있음 / `html`인데 `name` 없음. `html`일 때 `originalFilename = {name}.html` |
+| POST | / | multipart `file`(.html) + `name?` **또는** `html`(텍스트) + `name`(필수) | 201 `{id,name,originalFilename,sizeBytes,createdAt, warnings: string[]}`(ADR 0018 점검 경고, 차단 아님). 400: (file) 확장자≠.html / (공통) >512KB, `<form` 없음 / `file`·`html` 둘 다 없거나 둘 다 있음 / `html`인데 `name` 없음. `html`일 때 `originalFilename = {name}.html` |
 | GET | / | – | 200 `[{id,name,originalFilename,sizeBytes,createdAt}]` |
 | GET | /:id | – | 200 `{…, html}` / 404 |
 | DELETE | /:id?force= | – | 참조 폼 없음: 204(hard). 참조 폼 있음 + force 없음: 409 `사용 중인 템플릿입니다(폼 N개, 방문 X건, 신청 Y건)` + `details:{forms,visits,submissions}`. `force=true`: 204(소프트 삭제 + 참조 폼 비활성, 트랜잭션). 소프트 삭제된 템플릿은 목록 제외·상세/미리보기 404. 404 |
