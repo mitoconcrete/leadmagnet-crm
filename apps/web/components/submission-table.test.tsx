@@ -108,4 +108,14 @@ describe('SubmissionTable', () => {
     rerender(<SubmissionTable data={makePage(2)} loading={false} page={2} onPageChange={vi.fn()} />);
     expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
   });
+
+  it('행이 많아져도 페이지가 길어지지 않도록 고정 높이 스크롤 영역과 sticky thead를 가진다', () => {
+    render(<SubmissionTable data={makePage(1)} loading={false} page={1} onPageChange={vi.fn()} />);
+
+    const region = screen.getByRole('region', { name: '신청 명단' });
+    expect(region).toHaveClass('overflow-y-auto');
+
+    const thead = region.querySelector('thead');
+    expect(thead).toHaveClass('sticky');
+  });
 });

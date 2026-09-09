@@ -112,6 +112,17 @@ describe('FormList', () => {
     expect(screen.getByText('등록된 폼이 없습니다.')).toBeInTheDocument();
   });
 
+  it('행이 많아져도 페이지가 길어지지 않도록 고정 높이 스크롤 영역을 가진다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([form]);
+
+    render(<FormList campaignId="c1" />);
+
+    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
+
+    const region = screen.getByRole('region', { name: '폼 목록' });
+    expect(region).toHaveClass('overflow-y-auto');
+  });
+
   it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {
     let resolveFn: (value: Form[]) => void = () => {};
     vi.mocked(apiFetch).mockReturnValue(

@@ -40,4 +40,14 @@ describe('CampaignTable', () => {
 
     expect(screen.getByText('보관됨')).toBeInTheDocument();
   });
+
+  it('행이 많아져도 페이지가 길어지지 않도록 고정 높이 스크롤 영역과 sticky thead를 가진다', () => {
+    render(<CampaignTable rows={rows} loading={false} />);
+
+    const region = screen.getByRole('region', { name: '캠페인 성과 목록' });
+    expect(region).toHaveClass('overflow-y-auto');
+
+    const thead = region.querySelector('thead');
+    expect(thead).toHaveClass('sticky');
+  });
 });
