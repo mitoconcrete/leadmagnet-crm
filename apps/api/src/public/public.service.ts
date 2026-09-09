@@ -1,0 +1,101 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Form } from '../entities/form.entity';
+import { Visitor } from '../entities/visitor.entity';
+import { Visit } from '../entities/visit.entity';
+import { Submission } from '../entities/submission.entity';
+import { DistributionLink } from '../entities/distribution-link.entity';
+
+export interface RecordVisitOptions {
+  slug: string;
+  src?: string;
+  visitorId?: string;
+  userAgent?: string;
+}
+
+export interface SubmitDto {
+  visitToken: string;
+  fields: Record<string, unknown>;
+}
+
+@Injectable()
+export class PublicService {
+  constructor(
+    @InjectRepository(Form) private readonly formRepo: Repository<Form>,
+    @InjectRepository(Visitor) private readonly visitorRepo: Repository<Visitor>,
+    @InjectRepository(Visit) private readonly visitRepo: Repository<Visit>,
+    @InjectRepository(Submission) private readonly submissionRepo: Repository<Submission>,
+    @InjectRepository(DistributionLink) private readonly linkRepo: Repository<DistributionLink>,
+  ) {}
+
+  private async findActiveForm(slug: string): Promise<Form> {
+    const form = await this.formRepo.findOne({ where: { slug }, relations: ['template'] });
+    if (!form || !form.isActive) throw new NotFoundException('폼을 찾을 수 없습니다');
+    return form;
+  }
+
+  async recordVisit(opts: RecordVisitOptions): Promise<{ form: Form; visit: Visit; visitor: Visitor }> {
+    const form = await this.findActiveForm(opts.slug);
+
+    let visitor: Visitor | null = null;
+    if (opts.visitorId) {
+      visitor = await this.visitorRepo.findOne({ where: { id: opts.visitorId } });
+    }
+    const now = new Date();
+    if (visitor) {
+      visitor.lastSeenAt = now;
+      visitor = await this.visitorRepo.save(visitor);
+    } else {
+      visitor = await this.visitorRepo.save(this.visitorRepo.create({ lastSeenAt: now }));
+    }
+
+    let linkId: string | null = null;
+    let channel = 'direct';
+    if (opts.src) {
+      const link = await this.linkRepo.findOne({ where: { code: opts.src } });
+      if (link && link.formId === form.id) {
+        linkId = link.id;
+        channel = link.channel;
+      }
+    }
+
+    const visit = await this.visitRepo.save(
+      this.visitRepo.create({
+        formId: form.id,
+        visitorId: visitor.id,
+        linkId,
+        channel,
+        userAgent: opts.userAgent ?? null,
+      }),
+    );
+
+    return { form, visit, visitor };
+  }
+
+  async submit(slug: string, dto: SubmitDto): Promise<{ id: string; message: string }> {
+    const form = await this.findActiveForm(slug);
+
+    if (!dto.fields || typeof dto.fields !== 'object' || Array.isArray(dto.fields) || Object.keys(dto.fields).length === 0) {
+      throw new BadRequestException('제출 내용이 비어 있습니다');
+    }
+
+    const visit = await this.visitRepo.findOne({ where: { id: dto.visitToken } });
+    if (!visit || visit.formId !== form.id) {
+      throw new BadRequestException('유효하지 않은 방문 정보입니다');
+    }
+
+    const submission = await this.submissionRepo.save(
+      this.submissionRepo.create({
+        formId: form.id,
+        visitId: visit.id,
+        visitorId: visit.visitorId,
+        linkId: visit.linkId,
+        channel: visit.channel,
+        payload: dto.fields,
+      }),
+    );
+
+    return { id: submission.id, message: form.successMessage };
+  }
+}
