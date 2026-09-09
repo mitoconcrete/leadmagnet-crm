@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AiPromptBox } from '@/components/ai-prompt-box';
 import { AppShell } from '@/components/app-shell';
 import { AuthGate } from '@/components/auth-gate';
 import { TemplateTable } from '@/components/template-table';
@@ -14,6 +15,7 @@ export default function TemplatesPage() {
       <AppShell>
         <div className="flex flex-col gap-6">
           <h1 className="text-xl font-semibold">HTML 템플릿</h1>
+          <AiPromptBox />
           <TemplateUploadForm onUploaded={() => setRefreshKey((key) => key + 1)} />
           <TemplateTable refreshKey={refreshKey} />
         </div>
