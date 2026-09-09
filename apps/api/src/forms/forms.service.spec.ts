@@ -83,4 +83,97 @@ describe('FormsService', () => {
       expect(response.publicUrl).toBe('http://localhost:3001/p/x-slug');
     });
   });
+
+  describe('findAll', () => {
+    it('campaignId 없이 호출하면 전체 목록을 반환한다', async () => {
+      const list: Form[] = [];
+      formRepo.find.mockResolvedValue(list);
+      expect(await service.findAll()).toBe(list);
+    });
+
+    it('campaignId로 필터링해 조회한다', async () => {
+      const list: Form[] = [];
+      formRepo.find.mockResolvedValue(list);
+      await service.findAll('camp-1');
+      expect(formRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { campaignId: 'camp-1' } }),
+      );
+    });
+  });
+
+  describe('findOne', () => {
+    it('없으면 404', async () => {
+      formRepo.findOne.mockResolvedValue(null);
+      await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('있으면 반환한다', async () => {
+      const form = { id: 'f1' } as Form;
+      formRepo.findOne.mockResolvedValue(form);
+      expect(await service.findOne('f1')).toBe(form);
+    });
+  });
+
+  describe('findOneWithLinks', () => {
+    it('없으면 404', async () => {
+      formRepo.findOne.mockResolvedValue(null);
+      await expect(service.findOneWithLinks('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('links 관계를 포함해 조회한다', async () => {
+      const form = { id: 'f1', links: [] } as unknown as Form;
+      formRepo.findOne.mockResolvedValue(form);
+      const result = await service.findOneWithLinks('f1');
+      expect(result).toBe(form);
+      expect(formRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ relations: ['links'] }),
+      );
+    });
+  });
+
+  describe('update', () => {
+    it('없으면 404', async () => {
+      formRepo.findOne.mockResolvedValue(null);
+      await expect(service.update('missing', { name: 'X' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('templateId가 유효하지 않으면 404', async () => {
+      formRepo.findOne.mockResolvedValue({ id: 'f1', templateId: 'old-tpl' } as Form);
+      templateRepo.findOne.mockResolvedValue(null);
+      await expect(service.update('f1', { templateId: 'missing-tpl' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('필드를 부분 업데이트한다', async () => {
+      formRepo.findOne.mockResolvedValue({
+        id: 'f1',
+        name: 'old',
+        successMessage: 'old-msg',
+        isActive: true,
+        templateId: 'old-tpl',
+      } as Form);
+      const result = await service.update('f1', {
+        name: 'new',
+        successMessage: 'new-msg',
+        isActive: false,
+        templateId: 'tpl-1',
+      });
+      expect(result.name).toBe('new');
+      expect(result.successMessage).toBe('new-msg');
+      expect(result.isActive).toBe(false);
+      expect(result.templateId).toBe('tpl-1');
+    });
+
+    it('필드를 지정하지 않으면 기존 값을 유지한다', async () => {
+      formRepo.findOne.mockResolvedValue({
+        id: 'f1',
+        name: 'old',
+        successMessage: 'old-msg',
+        isActive: true,
+        templateId: 'old-tpl',
+      } as Form);
+      const result = await service.update('f1', {});
+      expect(result.name).toBe('old');
+      expect(result.templateId).toBe('old-tpl');
+    });
+  });
 });
