@@ -116,4 +116,12 @@ describe('DashboardPage', () => {
 
     expect(refresh).toHaveBeenCalledTimes(1);
   });
+
+  it('데스크톱 우선 레이아웃(ADR 0021): 2열(2:1) 그리드로 캠페인·채널 표를 나눠 갖는다', () => {
+    render(<DashboardPage />);
+
+    const columns = screen.getByTestId('dashboard-columns');
+    expect(columns.className).toContain('min-h-0');
+    expect(columns.className).toContain('lg:grid-cols-[2fr_1fr]');
+  });
 });

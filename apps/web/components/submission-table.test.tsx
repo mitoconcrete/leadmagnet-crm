@@ -109,11 +109,14 @@ describe('SubmissionTable', () => {
     expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
   });
 
-  it('행이 많아져도 페이지가 길어지지 않도록 고정 높이 스크롤 영역과 sticky thead를 가진다', () => {
+  it('행이 많아져도 페이지가 길어지지 않도록 자기 영역 안에서만 스크롤하고, 페이지네이션은 열 하단에 고정된다(ADR 0021)', () => {
     render(<SubmissionTable data={makePage(1)} loading={false} page={1} onPageChange={vi.fn()} />);
 
     const region = screen.getByRole('region', { name: '신청 명단' });
     expect(region).toHaveClass('overflow-y-auto');
+    expect(region.className).toContain('min-h-0');
+    expect(region.className).toContain('flex-1');
+    expect(region.className).not.toContain('max-h-[60vh]');
 
     const thead = region.querySelector('thead');
     expect(thead).toHaveClass('sticky');

@@ -39,7 +39,7 @@ describe('FormList', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
   });
 
-  it('폼 목록을 조회해 이름·slug·공개 URL·LinkPanel을 보여준다', async () => {
+  it('폼 목록을 조회해 이름·slug·공개 URL을 보여주고, 배포 링크 패널은 기본 접혀 있다가 펼치면 LinkPanel을 보여준다', async () => {
     vi.mocked(apiFetch).mockResolvedValue([form]);
 
     render(<FormList campaignId="c1" />);
@@ -48,6 +48,14 @@ describe('FormList', () => {
     await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
     expect(screen.getByText('lead-abcd')).toBeInTheDocument();
     expect(screen.getByText(form.publicUrl)).toBeInTheDocument();
+
+    const toggle = screen.getByRole('button', { name: '배포 링크' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('link-panel-f1')).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('link-panel-f1')).toBeInTheDocument();
   });
 
@@ -112,7 +120,7 @@ describe('FormList', () => {
     expect(screen.getByText('등록된 폼이 없습니다.')).toBeInTheDocument();
   });
 
-  it('행이 많아져도 페이지가 길어지지 않도록 고정 높이 스크롤 영역을 가진다', async () => {
+  it('폼이 많아져도 페이지가 길어지지 않도록 자기 영역 안에서만 스크롤한다(ADR 0021)', async () => {
     vi.mocked(apiFetch).mockResolvedValue([form]);
 
     render(<FormList campaignId="c1" />);
@@ -121,6 +129,9 @@ describe('FormList', () => {
 
     const region = screen.getByRole('region', { name: '폼 목록' });
     expect(region).toHaveClass('overflow-y-auto');
+    expect(region.className).toContain('min-h-0');
+    expect(region.className).toContain('flex-1');
+    expect(region.className).not.toContain('max-h-[60vh]');
   });
 
   it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {
