@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>공격: srcdoc 속성·스크립트 탈출 시도</title>
+</head>
+<body>
+  <h1>무료 체험 신청</h1>
+  <form>
+    <label>이름 <input name="name" required /></label>
+    <button type="submit">신청</button>
+  </form>
+  <div id="payload">"></iframe><script>parent.document.body.innerHTML='pwned'</script></div>
+  <p id="entity-payload">
+    엔티티 리터럴 시도: &quot; 그리고 &amp; 그리고 이미 이스케이프된 것처럼 보이는 &amp;quot; 도 포함.
+    닫는 스크립트 태그 리터럴: </script> 여기까지.
+  </p>
+  <pre id="attack-result">대기 중</pre>
+  <script>
+    (function () {
+      var out = {};
+      try {
+        out.pwnedInOwnBody = document.body.innerHTML.indexOf('pwned') !== -1;
+      } catch (err) {
+        out.error = { name: err.name, message: err.message };
+      }
+      document.getElementById('attack-result').textContent = JSON.stringify(out);
+    })();
+  </script>
+</body>
+</html>

