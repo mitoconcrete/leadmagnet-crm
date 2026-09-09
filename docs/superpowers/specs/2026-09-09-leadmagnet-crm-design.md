@@ -112,11 +112,11 @@
 | POST | / | `{campaignId, templateId, name, slug?, successMessage?}` (종료된 캠페인 409, 소프트 삭제된 템플릿 404) | 201 Form. slug 미지정 시 name 기반 slugify + 4자 난수. 중복 slug 409 |
 | GET | /?campaignId= | – | 200 `Form[]` |
 | GET | /:id | – | 200 Form(+`links: Link[]`) / 404 |
-| PATCH | /:id | `{name?, successMessage?, isActive?, templateId?}` | 200 Form |
+| PATCH | /:id | `{name?, successMessage?, isActive?, templateId?}` (`templateDeleted`인 폼에 `isActive:true` → 409 `템플릿이 삭제된 폼은 다시 활성화할 수 없습니다`; `templateId`를 살아 있는 템플릿으로 바꾸면 그 뒤 활성화 가능) | 200 Form |
 | POST | /:id/links | `{channel}` | 201 Link. 같은 채널 중복 409 |
 | GET | /:id/links | – | 200 `Link[]` |
 
-`Form = {id,campaignId,templateId,name,slug,successMessage,isActive,publicUrl,createdAt,updatedAt}` (`publicUrl = ${PUBLIC_BASE_URL}/p/${slug}`)
+`Form = {id,campaignId,templateId,name,slug,successMessage,isActive,templateDeleted,publicUrl,createdAt,updatedAt}` (`templateDeleted`: 참조 템플릿이 소프트 삭제됨) (`publicUrl = ${PUBLIC_BASE_URL}/p/${slug}`)
 `Link = {id,formId,channel,code,url,createdAt}` (`url = ${PUBLIC_BASE_URL}/p/${slug}?src=${code}`, code = 8자 base62)
 
 ### 4.5 CRM 명단 `/api/admin/submissions`
@@ -129,8 +129,8 @@
 ### 4.7 공개
 | 메서드 | 경로 | 동작 |
 |---|---|---|
-| GET | /p/:slug?src=CODE | 폼 없음/비활성 404. `vid` 쿠키 없으면 visitors 생성 후 `Set-Cookie: vid=<uuid>; Path=/p; HttpOnly; SameSite=Lax; Max-Age=31536000`. visits 1행 생성(src가 유효한 링크 코드면 link_id/channel, 아니면 direct). 위 CSP 헤더와 함께 래퍼 HTML 반환. 래퍼는 `<iframe sandbox="allow-scripts allow-forms" srcdoc="…등록 HTML + 주입 스크립트…">`를 전체 화면으로 렌더한다. |
-| POST | /api/public/forms/:slug/submissions | 본문 `{visitToken: <visit id>, fields: {name: string \| string[]}}`. 폼 없음/비활성 404, visitToken이 그 폼의 visit가 아니면 400, fields가 빈 객체면 400. 201 `{id, message: form.successMessage}`. `Access-Control-Allow-Origin: *`. |
+| GET | /p/:slug?src=CODE | 폼 없음/비활성/템플릿 삭제됨 404(`is_active`와 무관하게 참조 템플릿의 `deleted_at`이 있으면 404). `vid` 쿠키 없으면 visitors 생성 후 `Set-Cookie: vid=<uuid>; Path=/p; HttpOnly; SameSite=Lax; Max-Age=31536000`. visits 1행 생성(src가 유효한 링크 코드면 link_id/channel, 아니면 direct). 위 CSP 헤더와 함께 래퍼 HTML 반환. 래퍼는 `<iframe sandbox="allow-scripts allow-forms" srcdoc="…등록 HTML + 주입 스크립트…">`를 전체 화면으로 렌더한다. |
+| POST | /api/public/forms/:slug/submissions | 본문 `{visitToken: <visit id>, fields: {name: string \| string[]}}`. 폼 없음/비활성/템플릿 삭제됨 404, visitToken이 그 폼의 visit가 아니면 400, fields가 빈 객체면 400. 201 `{id, message: form.successMessage}`. `Access-Control-Allow-Origin: *`. |
 
 주입 스크립트(`apps/api/src/public/inject.ts`가 문자열 생성) 동작:
 1. `document.querySelectorAll('form')` 각각에 submit 리스너 등록, `preventDefault()`.
