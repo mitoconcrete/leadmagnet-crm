@@ -12,6 +12,23 @@ export interface CampaignWithForms extends Omit<Campaign, 'forms'> {
   forms: FormResponse[];
 }
 
+/** ADR 0019 개정: 캠페인 목록 행. forms(전체 폼 수)·activeForms(활성 폼 수)를 포함한다. */
+export interface CampaignListItem extends Omit<Campaign, 'forms'> {
+  forms: number;
+  activeForms: number;
+}
+
+interface CampaignListRawRow {
+  id: string;
+  name: string;
+  description: string | null;
+  status: Campaign['status'];
+  createdAt: Date;
+  updatedAt: Date;
+  forms: string | number;
+  activeForms: string | number;
+}
+
 /** ADR 0019 개정: 캠페인 소속 폼·방문·신청 수. 삭제 가능 여부 판단과 409 details에 쓰인다. */
 export interface CampaignEventCounts {
   forms: number;
@@ -34,8 +51,39 @@ export class CampaignsService {
     );
   }
 
-  findAll(): Promise<Campaign[]> {
-    return this.campaignRepo.find({ order: { createdAt: 'DESC' } });
+  /**
+   * ADR 0019 개정: 캠페인 목록에 forms(전체)·activeForms(활성) 폼 수를 함께 준다.
+   * ADR 0017 N+1 상한(캠페인 목록 1쿼리)을 유지하기 위해 forms를 LEFT JOIN해
+   * COUNT DISTINCT / FILTER로 단일 QueryBuilder 쿼리에서 집계한다.
+   */
+  async findAll(): Promise<CampaignListItem[]> {
+    const rows = await this.campaignRepo
+      .createQueryBuilder('c')
+      .leftJoin('forms', 'f', 'f.campaign_id = c.id')
+      .select([
+        'c.id AS id',
+        'c.name AS name',
+        'c.description AS description',
+        'c.status AS status',
+        'c.created_at AS "createdAt"',
+        'c.updated_at AS "updatedAt"',
+        'COUNT(DISTINCT f.id)::int AS forms',
+        'COUNT(DISTINCT f.id) FILTER (WHERE f.is_active)::int AS "activeForms"',
+      ])
+      .groupBy('c.id')
+      .orderBy('c.created_at', 'DESC')
+      .getRawMany<CampaignListRawRow>();
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      status: row.status,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      forms: Number(row.forms),
+      activeForms: Number(row.activeForms),
+    }));
   }
 
   /** ADR 0017: stats 조회용 존재 확인. 폼까지 조회하는 findOneWithForms보다 가볍다(쿼리 1개). */
