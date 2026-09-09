@@ -9,7 +9,7 @@
 - 단위: Jest. 전환율 계산, HTML 검증 규칙, slug/코드 생성, 스크립트 주입.
 - 통합/e2e: supertest + 실제 PostgreSQL 테스트 DB. 인증, 템플릿, 캠페인·폼, 링크, 공개 방문·제출, 격리, 집계의 성공·실패 흐름.
 - API 문서: ADR 0009 참조(OpenAPI 생성 + Scalar UI + Bruno).
-- Playwright는 채택하지 않는다.
+- Playwright는 채택하지 않는다. → 개정(ADR 0018): 격리 공격 시나리오 1건에 한해 채택한다.
 - CI(GitHub Actions)에서의 통합 검증은 ADR 0010 참조. TDD 규율과 커버리지 임계값은 ADR 0011 참조.
 - `docker-compose.yaml` 하나에 실행 서비스(db, api, web)와 `test` 프로파일(db-test tmpfs, api-test 러너)을 둔다. `docker compose up`은 실행, `docker compose --profile test run --rm --build api-test`는 테스트.
 

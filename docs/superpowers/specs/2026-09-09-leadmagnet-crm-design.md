@@ -81,8 +81,18 @@
 | POST | / | multipart `file`(.html) + `name?` **또는** `html`(텍스트) + `name`(필수) | 201 `{id,name,originalFilename,sizeBytes,createdAt}`. 400: (file) 확장자≠.html / (공통) >512KB, `<form` 없음 / `file`·`html` 둘 다 없거나 둘 다 있음 / `html`인데 `name` 없음. `html`일 때 `originalFilename = {name}.html` |
 | GET | / | – | 200 `[{id,name,originalFilename,sizeBytes,createdAt}]` |
 | GET | /:id | – | 200 `{…, html}` / 404 |
-| DELETE | /:id | – | 204. 409 `사용 중인 템플릿입니다(폼 N개)`(폼이 참조 중). 404 |
+| DELETE | /:id?force= | – | 참조 폼 없음: 204(hard). 참조 폼 있음 + force 없음: 409 `사용 중인 템플릿입니다(폼 N개, 방문 X건, 신청 Y건)` + `details:{forms,visits,submissions}`. `force=true`: 204(소프트 삭제 + 참조 폼 비활성, 트랜잭션). 소프트 삭제된 템플릿은 목록 제외·상세/미리보기 404. 404 |
 | GET | /:id/preview | – | 200 `text/html` 래퍼(공개 페이지와 같은 sandbox 속성·CSP·`X-Frame-Options: SAMEORIGIN`·`Cache-Control: no-store`). 원본 HTML을 srcdoc에 넣되 제출 스크립트를 주입하지 않고 방문을 기록하지 않는다 / 401 / 404 |
+
+### 4.1.1 운영자 관리 `/api/admin/operators` (admin 전용, ADR 0020)
+| 메서드 | 경로 | 요청 | 응답 |
+|---|---|---|---|
+| GET | / | – | 200 `[{id,email,role,isActive,createdAt}]`. operator 역할이면 403 |
+| POST | / | `{email, password, role?}` | 201 Operator. 중복 이메일 409, 검증 400 |
+| PATCH | /:id | `{isActive}` | 200 Operator. 정지 시 세션 삭제. 자기 자신 409 |
+| PATCH | /:id/password | `{password}` | 204. 세션 삭제 |
+
+`GET /api/admin/auth/me`는 `{id,email,role}`. `is_active=false`인 운영자는 로그인·세션 검증 모두 401.
 
 ### 4.3 캠페인 `/api/admin/campaigns`
 | 메서드 | 경로 | 요청 | 응답 |
@@ -90,7 +100,7 @@
 | POST | / | `{name, description?}` | 201 Campaign |
 | GET | / | – | 200 `Campaign[]` |
 | GET | /:id | – | 200 Campaign(+`forms: FormSummary[]`) / 404 |
-| PATCH | /:id | `{name?, description?, status?}` | 200 Campaign |
+| PATCH | /:id | `{name?, description?, status?}` (`status:'archived'` → 소속 폼 전부 `isActive=false`, 트랜잭션. `'active'` → 캠페인만 재개, 폼은 그대로. ADR 0019) | 200 Campaign |
 | GET | /:id/stats | – | 200 `CampaignStats` |
 
 `Campaign = {id,name,description,status,createdAt,updatedAt}`
@@ -99,7 +109,7 @@
 ### 4.4 폼 `/api/admin/forms`
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
-| POST | / | `{campaignId, templateId, name, slug?, successMessage?}` | 201 Form. slug 미지정 시 name 기반 slugify + 4자 난수. 중복 slug 409 |
+| POST | / | `{campaignId, templateId, name, slug?, successMessage?}` (종료된 캠페인 409, 소프트 삭제된 템플릿 404) | 201 Form. slug 미지정 시 name 기반 slugify + 4자 난수. 중복 slug 409 |
 | GET | /?campaignId= | – | 200 `Form[]` |
 | GET | /:id | – | 200 Form(+`links: Link[]`) / 404 |
 | PATCH | /:id | `{name?, successMessage?, isActive?, templateId?}` | 200 Form |
@@ -134,9 +144,10 @@
 | 경로 | 내용 |
 |---|---|
 | /login | 이메일/비밀번호 → POST /api/admin/auth/login. 성공 시 `/` |
-| / | 대시보드: 캠페인별 성과 표(GET /api/admin/analytics/campaigns) + 채널별 성과 표(GET /api/admin/analytics/channels) + 캠페인 생성 다이얼로그 |
-| /templates | AI 생성 안내 박스 + 등록 폼(탭: 파일 업로드 / HTML 붙여넣기, 이름) + 목록(행마다 "미리보기" → Dialog 안 `<iframe sandbox="allow-scripts allow-forms" src="/api/admin/templates/{id}/preview">`, "코드" → Dialog 안 `<pre>` 텍스트 + 복사 버튼(렌더 금지), "삭제" → 확인 후 DELETE, 409면 메시지 toast). 수정 UI 없음(ADR 0014) |
-| /campaigns/[id] | 캠페인 정보·stats 카드·채널 breakdown, 폼 목록 + 폼 생성 다이얼로그(템플릿 선택·이름·성공 메시지), 폼마다 배포 링크 4채널 생성/복사 버튼과 공개 URL, 신청 명단 표(GET /api/admin/submissions?campaignId=) |
+| / | 대시보드: 캠페인별 성과 표(GET /api/admin/analytics/campaigns) + 채널별 성과 표(GET /api/admin/analytics/channels) + 캠페인 생성 다이얼로그. 30초 자동 갱신, 마지막 갱신 시각, 지금 갱신 버튼(ADR 0016) |
+| /templates | AI 생성 안내 박스 + 등록 폼(탭: 파일 업로드 / HTML 붙여넣기, 이름) + 목록(행마다 "미리보기" → Dialog 안 `<iframe sandbox="allow-scripts allow-forms" src="/api/admin/templates/{id}/preview">`, "코드" → Dialog 안 `<pre>` 텍스트 + 복사 버튼(렌더 금지), "삭제" → DELETE; 409(details)면 폼·방문·신청 수를 보여 주는 확인 대화상자 → `?force=true`로 재요청). 수정 UI 없음(ADR 0014) |
+| /operators | (admin만) 운영자 목록, 생성 폼, 정지/복구 토글, 비밀번호 재설정 (ADR 0020) |
+| /campaigns/[id] | "캠페인 종료"/"다시 진행" 버튼(확인 대화상자, ADR 0019), 30초 자동 갱신 + 마지막 갱신 시각 + 지금 갱신(ADR 0016), 캠페인 정보·stats 카드·채널 breakdown, 폼 목록 + 폼 생성 다이얼로그(템플릿 선택·이름·성공 메시지), 폼마다 배포 링크 4채널 생성/복사 버튼과 공개 URL, 신청 명단 표(GET /api/admin/submissions?campaignId=) |
 
 - 데이터 접근: 클라이언트 컴포넌트에서 `fetch('/api/admin/…', {credentials:'include'})`. `next.config.ts` rewrites `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`.
 - 401이면 `/login`으로 이동(`lib/api.ts`의 공통 fetch 래퍼).

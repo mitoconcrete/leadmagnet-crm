@@ -15,6 +15,12 @@
 | [0011](0011-tdd-and-coverage-gate.md) | TDD 규율과 테스트 커버리지 90% 게이트 |
 | [0012](0012-ai-generation-boundary.md) | AI 생성은 시스템 경계 밖, 입력 계약과 샘플로 증명 |
 | [0013](0013-implementation-rulings.md) | 구현 중 확정한 세부 규칙(uuid 400/404, 헬스 경로, Bruno 구조 등) |
-| [0014](0014-template-lifecycle.md) | 템플릿 생애주기: 불변, 참조 없을 때만 삭제, 미리보기·코드 보기, 붙여넣기 등록 |
+| [0014](0014-template-lifecycle.md) | 템플릿 생애주기: 불변, 확인 후 소프트 삭제, 미리보기·코드 보기, 붙여넣기 등록 |
+| [0015](0015-postgresql-over-mysql.md) | PostgreSQL을 MySQL 대신 선택한 근거 |
+| [0016](0016-dashboard-auto-refresh.md) | 대시보드 주기 갱신과 마지막 갱신 시각 표시 |
+| [0017](0017-transactions-and-n-plus-one.md) | 트랜잭션 경계와 N+1 방지 규칙 |
+| [0018](0018-isolation-verification-and-no-sanitizing.md) | 등록 HTML은 살균하지 않고 격리한다 — 공격 시나리오 테스트로 검증 |
+| [0019](0019-campaign-lifecycle.md) | 캠페인 생애주기: 종료(보관) 시 폼 자동 비활성 |
+| [0020](0020-operator-roles-and-superuser.md) | 운영자 역할: 슈퍼유저가 운영자 계정을 관리 |
 
 다이어그램(ER·흐름·격리·집계·파이프라인, Mermaid): [../diagrams.md](../diagrams.md)
