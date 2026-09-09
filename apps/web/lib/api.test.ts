@@ -77,6 +77,40 @@ describe('apiFetch', () => {
     await expect(apiFetch('/api/admin/auth/logout', { method: 'POST' })).resolves.toBeUndefined();
   });
 
+  it('409 응답의 details를 ApiError에 보존한다', async () => {
+    const details = { forms: 1, visits: 1, submissions: 1 };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            statusCode: 409,
+            message: '사용 중인 템플릿입니다(폼 1개, 방문 1건, 신청 1건)',
+            error: 'Conflict',
+            details,
+          }),
+          { status: 409 },
+        ),
+      ),
+    );
+
+    await expect(apiFetch('/api/admin/templates/t1')).rejects.toMatchObject({
+      status: 409,
+      details,
+    });
+  });
+
+  it('details가 없는 오류 응답은 ApiError.details가 undefined다', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ statusCode: 400, message: '오류', error: 'Bad Request' }), { status: 400 }),
+      ),
+    );
+
+    await expect(apiFetch('/api/admin/templates')).rejects.toMatchObject({ details: undefined });
+  });
+
   it('이미 /login 경로에 있으면 401이어도 재이동하지 않고 ApiError만 던진다', async () => {
     Object.defineProperty(window, 'location', {
       value: { ...window.location, assign: assignMock, pathname: '/login' },
