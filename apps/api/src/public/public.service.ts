@@ -6,6 +6,7 @@ import { Visitor } from '../entities/visitor.entity';
 import { Visit } from '../entities/visit.entity';
 import { Submission } from '../entities/submission.entity';
 import { DistributionLink } from '../entities/distribution-link.entity';
+import { isUuid } from '../common/uuid';
 
 export interface RecordVisitOptions {
   slug: string;
@@ -39,7 +40,7 @@ export class PublicService {
     const form = await this.findActiveForm(opts.slug);
 
     let visitor: Visitor | null = null;
-    if (opts.visitorId) {
+    if (opts.visitorId && isUuid(opts.visitorId)) {
       visitor = await this.visitorRepo.findOne({ where: { id: opts.visitorId } });
     }
     const now = new Date();

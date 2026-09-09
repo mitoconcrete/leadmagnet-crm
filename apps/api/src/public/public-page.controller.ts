@@ -6,6 +6,7 @@ import { buildInjectedHtml } from './inject';
 import { buildCsp, buildWrapperPage } from './wrapper';
 import { VISITOR_COOKIE, visitorCookieOptions } from '../common/cookies';
 import { PUBLIC_BASE_URL } from '../common/tokens';
+import { isUuid } from '../common/uuid';
 
 @ApiTags('public')
 @Controller('p')
@@ -22,7 +23,8 @@ export class PublicPageController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const existingVisitorId = req.cookies?.[VISITOR_COOKIE];
+    const rawVisitorId = req.cookies?.[VISITOR_COOKIE];
+    const existingVisitorId = isUuid(rawVisitorId) ? rawVisitorId : undefined;
     const { form, visit, visitor } = await this.publicService.recordVisit({
       slug,
       src,
