@@ -84,6 +84,8 @@ export interface Template {
   sizeBytes: number;
   createdAt: string;
   html?: string;
+  /** 등록 점검 경고(ADR 0018). 백엔드가 안 주면 빈 배열로 취급한다. */
+  warnings?: string[];
 }
 
 export interface Submission {
