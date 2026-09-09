@@ -55,4 +55,30 @@ describe('SubmissionsController (uuid 쿼리 검증)', () => {
     expect(res.status).toBe(200);
     expect(submissionsService.list).toHaveBeenCalledWith(expect.objectContaining({ campaignId: id }));
   });
+
+  it('limit이 숫자가 아니면 400이다', async () => {
+    const res = await request(app.getHttpServer()).get('/api/admin/submissions?limit=abc');
+    expect(res.status).toBe(400);
+    expect(submissionsService.list).not.toHaveBeenCalled();
+  });
+
+  it('page가 숫자가 아니면 400이다', async () => {
+    const res = await request(app.getHttpServer()).get('/api/admin/submissions?page=abc');
+    expect(res.status).toBe(400);
+    expect(submissionsService.list).not.toHaveBeenCalled();
+  });
+
+  it('page/limit을 지정하지 않으면 undefined가 전달된다', async () => {
+    const res = await request(app.getHttpServer()).get('/api/admin/submissions');
+    expect(res.status).toBe(200);
+    expect(submissionsService.list).toHaveBeenCalledWith(
+      expect.objectContaining({ page: undefined, limit: undefined }),
+    );
+  });
+
+  it('정상 숫자 문자열은 숫자로 전달된다', async () => {
+    const res = await request(app.getHttpServer()).get('/api/admin/submissions?page=2&limit=10');
+    expect(res.status).toBe(200);
+    expect(submissionsService.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2, limit: 10 }));
+  });
 });
