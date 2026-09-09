@@ -164,4 +164,58 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
     expect(res.status).toBe(200);
     expect(res.body.isActive).toBe(false);
   });
+
+  it('GET /api/admin/forms/:id는 200과 Form(+links 배열)을 반환한다', async () => {
+    const campaign = await agent.post('/api/admin/campaigns').send({ name: '캠페인L' });
+    const templateId = await uploadTemplate(agent);
+    const form = await agent
+      .post('/api/admin/forms')
+      .send({ campaignId: campaign.body.id, templateId, name: '폼L' });
+    const link = await agent.post(`/api/admin/forms/${form.body.id}/links`).send({ channel: 'instagram' });
+
+    const res = await agent.get(`/api/admin/forms/${form.body.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      id: form.body.id,
+      campaignId: campaign.body.id,
+      templateId,
+      name: '폼L',
+      slug: form.body.slug,
+    });
+    expect(Array.isArray(res.body.links)).toBe(true);
+    expect(res.body.links.map((l: { id: string }) => l.id)).toContain(link.body.id);
+  });
+
+  it('존재하지 않는(형식은 유효한) 폼 id 조회는 404이다', async () => {
+    const res = await agent.get(`/api/admin/forms/${randomUUID()}`);
+    expect(res.status).toBe(404);
+  });
+
+  it('uuid 형식이 아닌 폼 id 조회는 400이다', async () => {
+    const res = await agent.get('/api/admin/forms/not-a-uuid');
+    expect(res.status).toBe(400);
+  });
+
+  it('successMessage를 지정해 폼을 생성하면 201 응답에 그대로 반영된다', async () => {
+    const campaign = await agent.post('/api/admin/campaigns').send({ name: '캠페인M' });
+    const templateId = await uploadTemplate(agent);
+    const res = await agent
+      .post('/api/admin/forms')
+      .send({ campaignId: campaign.body.id, templateId, name: '폼M', successMessage: '신청 감사합니다!' });
+    expect(res.status).toBe(201);
+    expect(res.body.successMessage).toBe('신청 감사합니다!');
+  });
+
+  it('PATCH로 successMessage를 변경할 수 있다', async () => {
+    const campaign = await agent.post('/api/admin/campaigns').send({ name: '캠페인N' });
+    const templateId = await uploadTemplate(agent);
+    const form = await agent
+      .post('/api/admin/forms')
+      .send({ campaignId: campaign.body.id, templateId, name: '폼N' });
+    const res = await agent
+      .patch(`/api/admin/forms/${form.body.id}`)
+      .send({ successMessage: '수정된 성공 메시지' });
+    expect(res.status).toBe(200);
+    expect(res.body.successMessage).toBe('수정된 성공 메시지');
+  });
 });
