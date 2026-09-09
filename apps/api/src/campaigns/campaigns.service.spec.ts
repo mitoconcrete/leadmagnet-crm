@@ -11,7 +11,27 @@ function repoMock() {
     create: jest.fn((v: unknown) => v),
     update: jest.fn(),
     delete: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
+}
+
+/**
+ * ADR 0019 개정: findAll은 forms/activeForms 집계를 위해 QueryBuilder.getRawMany()를
+ * 쓴다. leftJoin/select/groupBy/orderBy는 체이닝만 검증하면 되므로 this를 반환한다.
+ */
+function queryBuilderMock(rawRows: unknown[]) {
+  const qb = {
+    leftJoin: jest.fn(),
+    select: jest.fn(),
+    groupBy: jest.fn(),
+    orderBy: jest.fn(),
+    getRawMany: jest.fn().mockResolvedValue(rawRows),
+  };
+  qb.leftJoin.mockReturnValue(qb);
+  qb.select.mockReturnValue(qb);
+  qb.groupBy.mockReturnValue(qb);
+  qb.orderBy.mockReturnValue(qb);
+  return qb;
 }
 
 /**
@@ -64,10 +84,50 @@ describe('CampaignsService', () => {
     expect(campaign.status).toBe('active');
   });
 
-  it('findAll은 저장소 목록을 반환한다', async () => {
-    const list: Campaign[] = [];
-    campaignRepo.find.mockResolvedValue(list);
-    expect(await service.findAll()).toBe(list);
+  describe('findAll (ADR 0019 개정: forms/activeForms 수)', () => {
+    it('단일 QueryBuilder 쿼리로 각 캠페인 행에 forms(전체)·activeForms(활성) 수를 포함한다', async () => {
+      const qb = queryBuilderMock([
+        {
+          id: 'camp-1',
+          name: '캠페인A',
+          description: null,
+          status: 'active',
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          updatedAt: new Date('2026-01-01T00:00:00Z'),
+          forms: '2',
+          activeForms: '1',
+        },
+      ]);
+      campaignRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findAll();
+
+      expect(campaignRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(qb.getRawMany).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([
+        expect.objectContaining({ id: 'camp-1', name: '캠페인A', status: 'active', forms: 2, activeForms: 1 }),
+      ]);
+    });
+
+    it('폼이 없으면 forms/activeForms 모두 0이다', async () => {
+      const qb = queryBuilderMock([
+        {
+          id: 'camp-2',
+          name: '캠페인B',
+          description: null,
+          status: 'active',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          forms: '0',
+          activeForms: '0',
+        },
+      ]);
+      campaignRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findAll();
+      expect(result[0].forms).toBe(0);
+      expect(result[0].activeForms).toBe(0);
+    });
   });
 
   describe('findOneWithForms', () => {

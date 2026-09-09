@@ -387,4 +387,36 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
       expect(res.status).toBe(401);
     });
   });
+
+  describe('캠페인 목록의 forms/activeForms 수(ADR 0019 개정)', () => {
+    it('GET /api/admin/campaigns 각 행에 전체 폼 수와 활성 폼 수를 포함한다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '폼 수 테스트' });
+      const templateId = await uploadTemplate(agent);
+      const form1 = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '폼1' });
+      await agent.post('/api/admin/forms').send({ campaignId: campaign.body.id, templateId, name: '폼2' });
+      await agent.patch(`/api/admin/forms/${form1.body.id}`).send({ isActive: false });
+
+      const res = await agent.get('/api/admin/campaigns');
+      expect(res.status).toBe(200);
+      const row = (res.body as Array<{ id: string; forms: number; activeForms: number }>).find(
+        (c) => c.id === campaign.body.id,
+      );
+      expect(row).toBeDefined();
+      expect(row!.forms).toBe(2);
+      expect(row!.activeForms).toBe(1);
+    });
+
+    it('폼이 없는 캠페인은 forms/activeForms 모두 0이다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '폼 없음' });
+      const res = await agent.get('/api/admin/campaigns');
+      const row = (res.body as Array<{ id: string; forms: number; activeForms: number }>).find(
+        (c) => c.id === campaign.body.id,
+      );
+      expect(row).toBeDefined();
+      expect(row!.forms).toBe(0);
+      expect(row!.activeForms).toBe(0);
+    });
+  });
 });

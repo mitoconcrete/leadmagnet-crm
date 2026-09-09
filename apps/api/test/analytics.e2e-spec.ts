@@ -140,6 +140,23 @@ describe('analytics e2e (§4.3 stats, §4.5 submissions, §4.6 analytics)', () =
     expect(row!.conversionRate).toBeCloseTo(0.6667, 4);
   });
 
+  it('GET /api/admin/analytics/campaigns 행에 forms/activeForms 수를 포함한다(ADR 0019 개정)', async () => {
+    const form2 = await agent
+      .post('/api/admin/forms')
+      .send({ campaignId: flow.campaignId, templateId: flow.templateId, name: '폼2' });
+    await agent.patch(`/api/admin/forms/${form2.body.id}`).send({ isActive: false });
+
+    const res = await agent.get('/api/admin/analytics/campaigns');
+    expect(res.status).toBe(200);
+    const row = (res.body as Array<{ campaignId: string; forms: number; activeForms: number }>).find(
+      (c) => c.campaignId === flow.campaignId,
+    );
+    expect(row).toBeDefined();
+    // flow가 만든 폼 1개(활성) + 방금 만든 비활성 폼 1개 = 전체 2, 활성 1
+    expect(row!.forms).toBe(2);
+    expect(row!.activeForms).toBe(1);
+  });
+
   it('GET /api/admin/submissions?campaignId=는 total=2, formName을 포함한다', async () => {
     await buildAnalyticsScenario();
     const res = await agent.get(`/api/admin/submissions?campaignId=${flow.campaignId}`);

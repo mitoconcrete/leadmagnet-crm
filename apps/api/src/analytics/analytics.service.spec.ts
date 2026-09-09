@@ -81,15 +81,55 @@ describe('AnalyticsService', () => {
     expect(result.conversionRate).toBe(0);
   });
 
-  it('campaignList는 캠페인별 성과 배열을 반환한다', async () => {
+  it('campaignList는 캠페인별 성과 배열을 반환한다(ADR 0019 개정: forms/activeForms 포함)', async () => {
     const dataSource = dataSourceMock();
     dataSource.query.mockResolvedValueOnce([
-      { campaignId: 'camp-1', name: '캠페인A', status: 'active', visits: 10, visitors: 5, submissions: 2 },
+      {
+        campaignId: 'camp-1',
+        name: '캠페인A',
+        status: 'active',
+        forms: 2,
+        activeForms: 1,
+        visits: 10,
+        visitors: 5,
+        submissions: 2,
+      },
     ]);
     const service = new AnalyticsService(dataSource as never);
     const result = await service.campaignList();
+    expect(dataSource.query).toHaveBeenCalledTimes(1);
     expect(result).toEqual([
-      { campaignId: 'camp-1', name: '캠페인A', status: 'active', visits: 10, visitors: 5, submissions: 2, conversionRate: 0.4 },
+      {
+        campaignId: 'camp-1',
+        name: '캠페인A',
+        status: 'active',
+        forms: 2,
+        activeForms: 1,
+        visits: 10,
+        visitors: 5,
+        submissions: 2,
+        conversionRate: 0.4,
+      },
     ]);
+  });
+
+  it('campaignList: 폼이 없는 캠페인은 forms/activeForms가 0이다', async () => {
+    const dataSource = dataSourceMock();
+    dataSource.query.mockResolvedValueOnce([
+      {
+        campaignId: 'camp-2',
+        name: '캠페인B',
+        status: 'active',
+        forms: 0,
+        activeForms: 0,
+        visits: 0,
+        visitors: 0,
+        submissions: 0,
+      },
+    ]);
+    const service = new AnalyticsService(dataSource as never);
+    const result = await service.campaignList();
+    expect(result[0].forms).toBe(0);
+    expect(result[0].activeForms).toBe(0);
   });
 });
