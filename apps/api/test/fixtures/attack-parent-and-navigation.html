@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>공격: 부모 접근·내비게이션·저장소</title>
+</head>
+<body>
+  <h1>무료 체험 신청</h1>
+  <form>
+    <label>이름 <input name="name" required /></label>
+    <button type="submit">신청</button>
+  </form>
+  <pre id="attack-result">대기 중</pre>
+  <script>
+    (function () {
+      var out = {};
+
+      try {
+        out.parentTitle = { ok: true, value: parent.document.title };
+      } catch (err) {
+        out.parentTitle = { error: err.name, message: err.message };
+      }
+
+      try {
+        top.location.href = 'https://evil.example/';
+        out.topNavigation = { attempted: true, threw: false };
+      } catch (err) {
+        out.topNavigation = { attempted: true, threw: true, error: err.name, message: err.message };
+      }
+
+      try {
+        var w = window.open('https://evil.example/', '_blank');
+        out.windowOpen = { attempted: true, threw: false, result: w === null ? 'null' : 'window' };
+      } catch (err) {
+        out.windowOpen = { attempted: true, threw: true, error: err.name, message: err.message };
+      }
+
+      try {
+        localStorage.setItem('attack', 'value');
+        out.localStorage = { ok: true, threw: false };
+      } catch (err) {
+        out.localStorage = { threw: true, error: err.name, message: err.message };
+      }
+
+      document.getElementById('attack-result').textContent = JSON.stringify(out);
+    })();
+  </script>
+</body>
+</html>
