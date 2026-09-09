@@ -102,4 +102,48 @@ describe('templates e2e (§4.2 /api/admin/templates)', () => {
     const res = await ctx.http().get('/api/admin/templates');
     expect(res.status).toBe(401);
   });
+
+  describe('GET /:id/preview (§4.2 미리보기)', () => {
+    it('200 text/html, CSP·X-Frame-Options 헤더, sandbox 본문을 반환하고 방문·쿠키를 남기지 않는다', async () => {
+      const created = await agent
+        .post('/api/admin/templates')
+        .field('name', '미리보기 템플릿')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+
+      const res = await agent.get(`/api/admin/templates/${created.body.id}/preview`);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('text/html');
+      expect(res.headers['content-security-policy']).toContain("default-src 'none'");
+      expect(res.headers['x-frame-options']).toBe('SAMEORIGIN');
+      expect(res.headers['cache-control']).toBe('no-store');
+      expect(res.text).toContain('sandbox="allow-scripts allow-forms"');
+      expect(res.text).not.toContain('allow-same-origin');
+      expect(res.text).not.toContain('VISIT_TOKEN');
+      expect(res.headers['set-cookie']).toBeUndefined();
+
+      const [{ count }] = await ctx.ds.query(`SELECT count(*) FROM visits`);
+      expect(Number(count)).toBe(0);
+    });
+
+    it('미인증 요청은 401이다', async () => {
+      const created = await agent
+        .post('/api/admin/templates')
+        .field('name', '미리보기 템플릿')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+
+      const res = await ctx.http().get(`/api/admin/templates/${created.body.id}/preview`);
+      expect(res.status).toBe(401);
+    });
+
+    it('존재하지 않는(형식은 유효한) id는 404이다', async () => {
+      const res = await agent.get(`/api/admin/templates/${randomUUID()}/preview`);
+      expect(res.status).toBe(404);
+    });
+
+    it('uuid 형식이 아닌 id는 400이다', async () => {
+      const res = await agent.get('/api/admin/templates/not-a-uuid/preview');
+      expect(res.status).toBe(400);
+    });
+  });
 });
