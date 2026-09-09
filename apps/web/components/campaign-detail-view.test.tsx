@@ -65,9 +65,19 @@ vi.mock('@/components/submission-table', () => ({
   },
 }));
 
-const formListProps: { campaignId: string; refreshKey?: number; linksDisabled?: boolean }[] = [];
+const formListProps: {
+  campaignId: string;
+  refreshKey?: number;
+  linksDisabled?: boolean;
+  campaignArchived?: boolean;
+}[] = [];
 vi.mock('@/components/form-list', () => ({
-  FormList: (props: { campaignId: string; refreshKey?: number; linksDisabled?: boolean }) => {
+  FormList: (props: {
+    campaignId: string;
+    refreshKey?: number;
+    linksDisabled?: boolean;
+    campaignArchived?: boolean;
+  }) => {
     formListProps.push(props);
     return <div data-testid="form-list" />;
   },
@@ -248,6 +258,7 @@ describe('CampaignDetailView', () => {
     expect(screen.getByRole('button', { name: '폼 만들기' })).toBeDisabled();
     expect(screen.getByText('종료된 캠페인에는 새 폼을 만들 수 없습니다')).toBeInTheDocument();
     expect(formListProps.at(-1)?.linksDisabled).toBe(true);
+    expect(formListProps.at(-1)?.campaignArchived).toBe(true);
     expect(formListProps.at(-1)?.refreshKey).not.toBe(formListKeyBefore);
   });
 

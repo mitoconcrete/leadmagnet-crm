@@ -365,6 +365,35 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
       expect(formAfter.body.isActive).toBe(false);
     });
 
+    it('종료된 캠페인의 폼을 PATCH {isActive:true}로 켜려 하면 409이고, DB로 직접 켜도 공개 페이지·제출 모두 404다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '종료 재활성 차단' });
+      const templateId = await uploadTemplate(agent);
+      const form = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '폼' });
+
+      await agent.patch(`/api/admin/campaigns/${campaign.body.id}`).send({ status: 'archived' });
+
+      const reactivateRes = await agent.patch(`/api/admin/forms/${form.body.id}`).send({ isActive: true });
+      expect(reactivateRes.status).toBe(409);
+      expect(reactivateRes.body.message).toBe('종료된 캠페인입니다');
+
+      const renameRes = await agent.patch(`/api/admin/forms/${form.body.id}`).send({ name: '변경됨' });
+      expect(renameRes.status).toBe(200);
+      expect(renameRes.body.name).toBe('변경됨');
+
+      await ctx.ds.query(`UPDATE forms SET is_active = true WHERE id = $1`, [form.body.id]);
+
+      const visitRes = await ctx.http().get(`/p/${form.body.slug}`);
+      expect(visitRes.status).toBe(404);
+
+      const submitRes = await ctx
+        .http()
+        .post(`/api/public/forms/${form.body.slug}/submissions`)
+        .send({ visitToken: randomUUID(), fields: { name: '홍길동' } });
+      expect(submitRes.status).toBe(404);
+    });
+
     it('같은 status로 PATCH하면 변경 없이 200이다', async () => {
       const campaign = await agent.post('/api/admin/campaigns').send({ name: '변화없음' });
       const res = await agent.patch(`/api/admin/campaigns/${campaign.body.id}`).send({ status: 'active' });

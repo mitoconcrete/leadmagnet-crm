@@ -280,7 +280,7 @@ describe('FormsService', () => {
       expect(templateRepo.findOne).not.toHaveBeenCalled();
     });
 
-    it('template 관계를 포함해 조회해 PATCH 응답의 templateDeleted를 정확히 계산할 수 있게 한다', async () => {
+    it('template·campaign 관계를 포함해 조회해 PATCH 응답의 templateDeleted를 정확히 계산할 수 있게 한다', async () => {
       const deletedTemplate = { id: 'tpl-1', deletedAt: new Date() };
       formRepo.findOne.mockResolvedValue({
         id: 'f1',
@@ -293,8 +293,39 @@ describe('FormsService', () => {
 
       const result = await service.update('f1', { name: '변경' });
 
-      expect(formRepo.findOne).toHaveBeenCalledWith(expect.objectContaining({ relations: ['template'] }));
+      expect(formRepo.findOne).toHaveBeenCalledWith(expect.objectContaining({ relations: ['template', 'campaign'] }));
       expect(result.template).toEqual(deletedTemplate);
+    });
+
+    it('ADR 0019 보완: 폼의 캠페인이 종료(archived)면 isActive:true로 바꾸려 할 때 409', async () => {
+      formRepo.findOne.mockResolvedValue({
+        id: 'f1',
+        name: 'old',
+        successMessage: 'old-msg',
+        isActive: false,
+        templateId: 'tpl-1',
+        campaign: { id: 'camp-1', status: 'archived' },
+      } as unknown as Form);
+
+      await expect(service.update('f1', { isActive: true })).rejects.toThrow(ConflictException);
+      await expect(service.update('f1', { isActive: true })).rejects.toThrow('종료된 캠페인입니다');
+      expect(formRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('ADR 0019 보완: 캠페인이 종료(archived)여도 isActive:false나 이름 변경은 허용한다', async () => {
+      formRepo.findOne.mockResolvedValue({
+        id: 'f1',
+        name: 'old',
+        successMessage: 'old-msg',
+        isActive: true,
+        templateId: 'tpl-1',
+        campaign: { id: 'camp-1', status: 'archived' },
+      } as unknown as Form);
+
+      const result = await service.update('f1', { isActive: false, name: '이름 변경' });
+
+      expect(result.isActive).toBe(false);
+      expect(result.name).toBe('이름 변경');
     });
 
     it('살아 있는 templateId로 교체하면 반환된 폼의 template 관계도 그 템플릿으로 갱신된다', async () => {

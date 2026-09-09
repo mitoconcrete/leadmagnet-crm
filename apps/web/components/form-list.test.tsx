@@ -164,6 +164,19 @@ describe('FormList', () => {
     expect(screen.getByRole('button', { name: '복사' })).not.toBeDisabled();
   });
 
+  it('campaignArchived면 활성 스위치가 비활성화되고 클릭해도 PATCH를 호출하지 않는다(ADR 0019 보완)', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([form]);
+
+    render(<FormList campaignId="c1" campaignArchived />);
+
+    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
+
+    const toggle = screen.getByRole('switch', { name: '종료된 캠페인의 폼은 활성화할 수 없습니다' });
+    expect(toggle).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(toggle);
+    expect(apiFetch).not.toHaveBeenCalledWith('/api/admin/forms/f1', expect.anything());
+  });
+
   it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {
     let resolveFn: (value: Form[]) => void = () => {};
     vi.mocked(apiFetch).mockReturnValue(

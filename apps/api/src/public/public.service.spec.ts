@@ -94,6 +94,15 @@ describe('PublicService', () => {
       await expect(service.recordVisit({ slug: 'my-form' })).rejects.toThrow(NotFoundException);
     });
 
+    it('ADR 0019 보완: 캠페인이 종료(archived)면 is_active와 무관하게 404다(심층 방어)', async () => {
+      formRepo.findOne.mockResolvedValue({
+        ...activeForm,
+        isActive: true,
+        campaign: { id: 'camp-1', status: 'archived' },
+      });
+      await expect(service.recordVisit({ slug: 'my-form' })).rejects.toThrow(NotFoundException);
+    });
+
     it('src 없으면 direct로 귀속된다', async () => {
       formRepo.findOne.mockResolvedValue(activeForm);
       const result = await service.recordVisit({ slug: 'my-form' });
@@ -167,6 +176,17 @@ describe('PublicService', () => {
         ...activeForm,
         isActive: true,
         template: { id: 'tpl-1', deletedAt: new Date() },
+      });
+      await expect(
+        service.submit('my-form', { visitToken: 'v1', fields: { name: 'a' } }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('ADR 0019 보완: 캠페인이 종료(archived)면 is_active와 무관하게 404다(심층 방어)', async () => {
+      formRepo.findOne.mockResolvedValue({
+        ...activeForm,
+        isActive: true,
+        campaign: { id: 'camp-1', status: 'archived' },
       });
       await expect(
         service.submit('my-form', { visitToken: 'v1', fields: { name: 'a' } }),
