@@ -945,6 +945,14 @@ API 계약은 스펙 §4. 백엔드가 없는 동안은 `pnpm dev:web`으로 화
 - 목록: 이름, 파일명, 크기(KB), 등록일(KST).
 - [ ] 커밋 `feat: HTML 템플릿 등록 화면`
 
+### Task C7: AI 생성 안내 박스 (ADR 0012)
+
+**Files:** `components/ai-prompt-box.tsx`, `components/ai-prompt-box.test.tsx`, `app/templates/page.tsx`(배치)
+
+- 템플릿 페이지 상단(업로드 폼 위)에 Card: 제목 "AI로 만들기", 한 줄 설명("아래 프롬프트를 ChatGPT·Claude 등에 붙여넣어 HTML 파일을 만든 뒤 여기에 등록하세요"), `docs/ai-generation-guide.md` §2 프롬프트 템플릿 전문을 `<pre>`로, "프롬프트 복사" 버튼(`navigator.clipboard.writeText` + toast "프롬프트를 복사했습니다"), 조건 요약 3줄(`.html` 하나, `<form>`과 `name` 필수, 외부 스크립트 없음).
+- 프롬프트 문자열은 `lib/ai-prompt.ts`의 상수 `AI_PROMPT_TEMPLATE`로 두고 가이드 문서와 같은 내용을 유지한다.
+- [ ] `test:` 커밋(렌더·복사 버튼 → clipboard 호출·toast) → `feat: 템플릿 페이지 AI 생성 안내` 커밋
+
 ### Task C6: 커버리지 설정 (ADR 0011)
 
 **Files:** `apps/web/package.json`(devDependency `@vitest/coverage-v8`, script `test:cov`), `apps/web/vitest.config.ts`, `apps/web/vitest.setup.ts`

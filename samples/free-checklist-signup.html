@@ -1,0 +1,69 @@
+<!doctype html>
+<!--
+  생성 도구: Claude (Anthropic)
+  프롬프트: docs/ai-generation-guide.md §2 템플릿에 아래 값을 넣어 생성
+    [캠페인] 인스타그램 성장 7일 체크리스트 — 팔로워 1천 명까지 매일 할 일
+    [제공물] 무료 PDF 체크리스트
+    [수집 항목] 이름(name, 필수), 이메일(email, 필수), 관심 분야(interest, select)
+  수정 없이 그대로 등록해도 동작한다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>인스타그램 성장 7일 체크리스트</title>
+<style>
+  :root { --bg:#0f172a; --card:#111827; --accent:#f472b6; --text:#e5e7eb; --muted:#9ca3af; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:linear-gradient(160deg,#0f172a,#1e1b4b); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card { width:100%; max-width:440px; background:var(--card); border-radius:16px; padding:32px 28px; box-shadow:0 20px 60px rgba(0,0,0,.4); }
+  .eyebrow { color:var(--accent); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin:0 0 8px; }
+  h1 { font-size:24px; line-height:1.3; margin:0 0 12px; }
+  p.lead { color:var(--muted); font-size:15px; line-height:1.6; margin:0 0 24px; }
+  ul.benefits { list-style:none; padding:0; margin:0 0 24px; font-size:14px; color:var(--muted); }
+  ul.benefits li { padding-left:22px; position:relative; margin-bottom:8px; }
+  ul.benefits li::before { content:"✓"; color:var(--accent); position:absolute; left:0; }
+  label { display:block; font-size:13px; margin-bottom:6px; color:var(--muted); }
+  input, select { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #374151; background:#0b1220; color:var(--text); font-size:15px; margin-bottom:16px; }
+  input:focus, select:focus { outline:2px solid var(--accent); border-color:transparent; }
+  .consent { display:flex; gap:10px; align-items:flex-start; font-size:13px; color:var(--muted); margin-bottom:20px; }
+  .consent input { width:auto; margin:3px 0 0; }
+  button { width:100%; padding:14px; border:0; border-radius:10px; background:var(--accent); color:#111827; font-weight:700; font-size:16px; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  [data-lead-success] { background:#052e16; color:#bbf7d0; padding:18px; border-radius:10px; text-align:center; font-weight:600; }
+  [data-lead-error] { background:#450a0a; color:#fecaca; padding:12px; border-radius:10px; font-size:14px; margin-bottom:12px; }
+  .fine { color:#6b7280; font-size:12px; text-align:center; margin-top:16px; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <p class="eyebrow">무료 PDF</p>
+    <h1>인스타그램 성장 7일 체크리스트</h1>
+    <p class="lead">팔로워 1천 명까지, 매일 15분이면 되는 할 일을 하루 단위로 정리했습니다. 이메일로 바로 보내 드립니다.</p>
+    <ul class="benefits">
+      <li>릴스·피드·스토리 하루 업로드 루틴</li>
+      <li>해시태그 30개 선정 워크시트</li>
+      <li>프로필 문구 점검표</li>
+    </ul>
+    <form>
+      <label for="name">이름</label>
+      <input id="name" name="name" type="text" required placeholder="홍길동">
+      <label for="email">이메일</label>
+      <input id="email" name="email" type="email" required placeholder="you@example.com">
+      <label for="interest">가장 키우고 싶은 채널</label>
+      <select id="interest" name="interest">
+        <option value="instagram">인스타그램</option>
+        <option value="threads">스레드</option>
+        <option value="youtube">유튜브</option>
+        <option value="x">X</option>
+      </select>
+      <label class="consent">
+        <input name="consent" type="checkbox" value="yes" required>
+        <span>체크리스트 발송과 관련 소식 안내를 위해 이름·이메일을 수집하는 데 동의합니다.</span>
+      </label>
+      <button type="submit">무료로 받기</button>
+    </form>
+    <p class="fine">스팸 없음 · 언제든 수신 거부 가능</p>
+  </main>
+</body>
+</html>

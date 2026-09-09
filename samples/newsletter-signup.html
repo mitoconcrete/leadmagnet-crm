@@ -1,0 +1,64 @@
+<!doctype html>
+<!--
+  생성 도구: Claude (Anthropic)
+  프롬프트: docs/ai-generation-guide.md §2 템플릿에 아래 값을 넣어 생성
+    [캠페인] 크리에이터 수익화 주간 뉴스레터 — 매주 월요일 한 통
+    [제공물] 뉴스레터 구독 + 첫 호 "협찬 단가표" 특별판
+    [수집 항목] 이름(name, 필수), 이메일(email, 필수), 팔로워 규모(followers, select), 하고 싶은 말(message, textarea)
+  수정 없이 그대로 등록해도 동작한다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>크리에이터 수익화 주간 뉴스레터</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:#fffbeb; color:#1f2937; padding:24px; }
+  .wrap { max-width:520px; margin:0 auto; }
+  .hero { background:#fff; border:2px solid #111827; border-radius:14px; padding:28px; box-shadow:6px 6px 0 #111827; margin-bottom:20px; }
+  h1 { font-size:26px; margin:0 0 10px; }
+  .hero p { margin:0; color:#4b5563; line-height:1.6; }
+  .badge { display:inline-block; background:#fde68a; border:1px solid #111827; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; margin-bottom:12px; }
+  form { background:#fff; border:2px solid #111827; border-radius:14px; padding:24px; box-shadow:6px 6px 0 #111827; }
+  label { display:block; font-weight:600; font-size:14px; margin-bottom:6px; }
+  input, select, textarea { width:100%; padding:11px 12px; border:1.5px solid #111827; border-radius:8px; font-size:15px; margin-bottom:14px; background:#fff; }
+  textarea { min-height:80px; resize:vertical; }
+  .consent { display:flex; gap:8px; align-items:flex-start; font-size:13px; font-weight:400; color:#4b5563; margin-bottom:18px; }
+  .consent input { width:auto; margin:3px 0 0; }
+  button { width:100%; padding:14px; border:2px solid #111827; border-radius:8px; background:#111827; color:#fff; font-weight:700; font-size:16px; cursor:pointer; }
+  button:disabled { opacity:.6; }
+  [data-lead-success] { background:#dcfce7; border:2px solid #111827; border-radius:14px; padding:18px; text-align:center; font-weight:700; }
+  [data-lead-error] { background:#fee2e2; border:1.5px solid #b91c1c; border-radius:8px; padding:10px; font-size:14px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <span class="badge">매주 월요일 · 무료</span>
+      <h1>크리에이터 수익화 주간 뉴스레터</h1>
+      <p>협찬 단가, 플랫폼 수익 정책 변화, 실제 계약 사례를 한 통에 정리합니다. 구독하면 첫 호로 <strong>협찬 단가표 특별판</strong>을 보내 드립니다.</p>
+    </section>
+    <form>
+      <label for="name">이름</label>
+      <input id="name" name="name" type="text" required>
+      <label for="email">이메일</label>
+      <input id="email" name="email" type="email" required placeholder="you@example.com">
+      <label for="followers">현재 팔로워 규모</label>
+      <select id="followers" name="followers">
+        <option value="lt1k">1천 미만</option>
+        <option value="1k-10k">1천 ~ 1만</option>
+        <option value="10k-100k">1만 ~ 10만</option>
+        <option value="gt100k">10만 이상</option>
+      </select>
+      <label for="message">가장 궁금한 주제 (선택)</label>
+      <textarea id="message" name="message" placeholder="예: 첫 협찬 제안은 어떻게 받나요?"></textarea>
+      <label class="consent">
+        <input name="consent" type="checkbox" value="yes" required>
+        <span>뉴스레터 발송을 위해 이름·이메일을 수집하는 데 동의합니다. 언제든 수신 거부할 수 있습니다.</span>
+      </label>
+      <button type="submit">구독하고 특별판 받기</button>
+    </form>
+  </div>
+</body>
+</html>

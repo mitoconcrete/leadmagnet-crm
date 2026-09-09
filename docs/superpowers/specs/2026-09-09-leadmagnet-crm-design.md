@@ -160,7 +160,9 @@
 │   ├── Dockerfile  package.json  next.config.ts
 │   ├── app/(login, page, templates, campaigns/[id])  components/  lib/
 ├── bruno/leadmagnet-crm/      # 컬렉션 + environments/local.bru
+├── samples/                   # AI 생성 리드마그넷 폼 샘플 (ADR 0012, 시연용)
 ├── docs/adr/  docs/openapi.json  docs/ouroboros/  docs/superpowers/
+│   docs/ai-generation-guide.md  docs/diagrams.md
 └── README.md
 ```
 
