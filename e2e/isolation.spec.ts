@@ -57,6 +57,73 @@ async function readAttackResult(page: Page): Promise<Record<string, unknown>> {
   return JSON.parse(text ?? '{}');
 }
 
+interface ObservedAdminRequest {
+  url: string;
+  cookie: string;
+}
+
+/**
+ * 관리자 리뷰 지적 대응: CORS로 응답을 못 읽는 것(TypeError)과 CSP·쿠키 Path로 격리되는 것은
+ * 다른 사건이다. `/api/admin/**`로 나가는 실제 네트워크 요청을 가로채 쿠키 헤더를 직접
+ * 확인하고, 응답 상태도 별도로 수집한다. 제외 대상: (1) `/preview` 자체(관리자가 iframe을
+ * 열기 위한 최초 내비게이션), (2) page의 메인 프레임이 보내는 요청(예: /templates 자체의
+ * AuthGate `/auth/me`, 템플릿 목록 조회 — 공격 iframe이 아니라 정상 관리자 화면이 보낸
+ * 합법적 요청이다). 공격 iframe(및 그 안에 중첩된 미리보기 iframe)에서 나간 요청만 남긴다.
+ * 반드시 `page.goto()` 이전에 등록해야 한다.
+ */
+function observeAdminApiRequests(page: Page): {
+  requests: ObservedAdminRequest[];
+  responseStatuses: number[];
+} {
+  const requests: ObservedAdminRequest[] = [];
+  const responseStatuses: number[] = [];
+
+  void page.route('**/api/admin/**', async (route) => {
+    const req = route.request();
+    const fromAttackFrame = req.frame() !== page.mainFrame();
+    if (fromAttackFrame && !req.url().includes('/preview')) {
+      const headers = await req.allHeaders();
+      requests.push({ url: req.url(), cookie: headers['cookie'] ?? '' });
+    }
+    await route.continue();
+  });
+
+  page.on('response', (res) => {
+    const fromAttackFrame = res.request().frame() !== page.mainFrame();
+    if (fromAttackFrame && res.url().includes('/api/admin/') && !res.url().includes('/preview')) {
+      responseStatuses.push(res.status());
+    }
+  });
+
+  return { requests, responseStatuses };
+}
+
+/** 기록된 요청이 0건(CSP가 막음)이거나, 있다면 전부 sid 쿠키 없이 나갔고 401이어야 한다. */
+function assertNoAuthenticatedAdminRequest(observed: {
+  requests: ObservedAdminRequest[];
+  responseStatuses: number[];
+}): void {
+  if (observed.requests.length === 0) {
+    return;
+  }
+  for (const req of observed.requests) {
+    expect(req.cookie).not.toContain('sid=');
+  }
+  for (const status of observed.responseStatuses) {
+    expect(status).toBe(401);
+  }
+}
+
+const MARKER_CAMPAIGN_NAME = 'ATTACK-H3-MARKER';
+
+/** 로그인된 context.request(쿠키 공유)로 마커 캠페인 개수를 센다 — CORS로 가려지지 않는 서버 측 진실. */
+async function countMarkerCampaigns(): Promise<number> {
+  const res = await context.request.get(`${PUBLIC_BASE_URL}/api/admin/campaigns`);
+  if (!res.ok()) throw new Error(`캠페인 목록 조회 실패: ${res.status()}`);
+  const campaigns = (await res.json()) as Array<{ name: string }>;
+  return campaigns.filter((c) => c.name === MARKER_CAMPAIGN_NAME).length;
+}
+
 test.beforeAll(async ({ browser }) => {
   context = await browser.newContext({ baseURL: WEB_BASE_URL });
   const loginPage = await context.newPage();
@@ -111,34 +178,30 @@ function publicUrl(flow: AttackFlow): string {
   return new URL(`${PUBLIC_BASE_URL}/p/${flow.slug}?src=${flow.code}`).toString();
 }
 
-test('공개 페이지: 등록 HTML은 관리자 쿠키를 읽지 못하고 관리자 API 호출이 200으로 성공하지 않는다', async () => {
+test('공개 페이지: 등록 HTML은 관리자 쿠키를 읽지 못하고 관리자 API에 인증된 요청/부작용을 남기지 못한다', async () => {
   const flow = flows.cookieAndAdminApi!;
   const page = await context.newPage();
-  await page.goto(publicUrl(flow));
+  const observed = observeAdminApiRequests(page);
 
+  const markerCountBefore = await countMarkerCampaigns();
+
+  await page.goto(publicUrl(flow));
   const result = await readAttackResult(page);
 
-  // opaque origin sandbox에서 document.cookie는 빈 문자열이거나 접근 자체가 예외로 막힌다 — 둘 다 격리 성립.
+  // Chromium: opaque origin sandbox에서 document.cookie 접근 자체가 SecurityError를 던진다
+  // (getter가 빈 문자열을 반환하는 게 아니다). 다른 값이 나오면 sandbox가 약화된 것이다.
   const cookieEntry = result.cookie as { threw: boolean; value?: string; error?: string };
-  if (cookieEntry.threw) {
-    expect(cookieEntry.error).toBeTruthy();
-  } else {
-    expect(cookieEntry.value).toBe('');
-  }
+  expect(cookieEntry.threw).toBe(true);
+  expect(cookieEntry.error).toBe('SecurityError');
 
-  for (const key of ['relativeAdminCampaigns', 'absolute3001AdminCampaigns'] as const) {
-    const entry = result[key] as { status?: number; error?: string };
-    if (typeof entry.status === 'number') {
-      expect(entry.status).not.toBe(200);
-    } else {
-      expect(entry.error).toBeTruthy();
-    }
-  }
+  // "응답을 못 읽는다(TypeError)"는 CORS로도 설명되므로 증거가 되지 않는다. 실제 네트워크
+  // 요청이 쿠키 없이 나갔거나(또는 아예 안 나갔거나) 401이었는지를 직접 확인한다.
+  assertNoAuthenticatedAdminRequest(observed);
 
-  // 3000(관리자 오리진)은 connect-src 허용 목록 밖이라 요청 자체가 열리지 않아야 한다(TypeError).
-  const adminOriginEntry = result.absolute3000AdminMe as { status?: number; error?: string };
-  expect(adminOriginEntry.status).toBeUndefined();
-  expect(adminOriginEntry.error).toBeTruthy();
+  // CORS로 응답을 못 읽어도 요청이 서버에 도달해 상태를 바꿨을 수 있다 — 이건 가려지지 않는다.
+  const markerCountAfter = await countMarkerCampaigns();
+  expect(markerCountBefore).toBe(0);
+  expect(markerCountAfter).toBe(0);
 
   await page.close();
 });
@@ -156,6 +219,13 @@ test('공개 페이지: 부모 창 접근·최상위 내비게이션·팝업·�
   expect((result.windowOpen as { result?: string }).result).toBe('null');
 
   // top.location 대입은 예외 없이 조용히 막힐 수 있다 — 실제 내비게이션이 일어나지 않았음을 URL로 확인한다.
+  expect(page.url()).toBe(url);
+
+  // <a target="_top"> 클릭도 sandbox(allow-top-navigation-by-user-activation 없음)에서
+  // 막혀야 한다 — evil.example로 실제 이동이 일어나지 않았음을 URL로 확인한다.
+  const frame = await findAttackFrame(page);
+  await frame.locator('#top-nav-link').click();
+  await page.waitForTimeout(500);
   expect(page.url()).toBe(url);
 
   await page.close();
@@ -239,6 +309,10 @@ test('공개 페이지: 이미지 비콘 유출은 실제로 시도된다(ADR 00
 test('관리자 화면 미리보기 Dialog 안(오리진 3000)에서도 쿠키·관리자 API 접근이 동일하게 차단된다', async () => {
   const flow = flows.cookieAndAdminApi!;
   const page = await context.newPage();
+  const observed = observeAdminApiRequests(page);
+
+  const markerCountBefore = await countMarkerCampaigns();
+
   await page.goto('/templates');
 
   // 실행마다 고유한 템플릿 이름(RUN_ID 접미사)으로 정확히 한 행만 매치한다(반복 로컬 실행 누적 방지).
@@ -248,20 +322,15 @@ test('관리자 화면 미리보기 Dialog 안(오리진 3000)에서도 쿠키·
   const result = await readAttackResult(page);
 
   const cookieEntry = result.cookie as { threw: boolean; value?: string; error?: string };
-  if (cookieEntry.threw) {
-    expect(cookieEntry.error).toBeTruthy();
-  } else {
-    expect(cookieEntry.value).toBe('');
-  }
+  expect(cookieEntry.threw).toBe(true);
+  expect(cookieEntry.error).toBe('SecurityError');
 
-  for (const key of ['relativeAdminCampaigns', 'absolute3001AdminCampaigns'] as const) {
-    const entry = result[key] as { status?: number; error?: string };
-    if (typeof entry.status === 'number') {
-      expect(entry.status).not.toBe(200);
-    } else {
-      expect(entry.error).toBeTruthy();
-    }
-  }
+  // 미리보기 Dialog 안(3000 오리진 문서 안에 중첩된 iframe)에서도 실제 네트워크 관찰로 판단한다.
+  assertNoAuthenticatedAdminRequest(observed);
+
+  const markerCountAfter = await countMarkerCampaigns();
+  expect(markerCountBefore).toBe(0);
+  expect(markerCountAfter).toBe(0);
 
   await page.close();
 });

@@ -140,4 +140,16 @@ describe('isolation attacks e2e (ADR 0018 구조 불변식)', () => {
     expect(res.status).toBe(401);
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
   });
+
+  it("attack-cookie-and-admin-api를 등록·공개 페이지로 렌더링해도(HTTP 응답 생성만, 스크립트 미실행) 관리자 API에 부작용을 남기지 않는다 — 'ATTACK-H3-MARKER' 캠페인이 생기지 않는다", async () => {
+    const flow = await createAttackFlow(agent, 'attack-cookie-and-admin-api.html', '부작용 없음 확인');
+
+    await ctx.http().get(`/p/${flow.form.slug}`);
+    await agent.get(`/api/admin/templates/${flow.templateId}/preview`);
+
+    const [{ count }] = await ctx.ds.query(
+      `SELECT count(*)::int AS count FROM campaigns WHERE name = 'ATTACK-H3-MARKER'`,
+    );
+    expect(count).toBe(0);
+  });
 });
