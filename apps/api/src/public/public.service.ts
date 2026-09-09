@@ -44,9 +44,16 @@ export class PublicService {
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * ADR 0014 보완: is_active와 무관하게 template.deletedAt이 있으면 404다(심층 방어).
+   * 관리자 서비스가 소프트 삭제 시 폼을 비활성화하지만, DB를 직접 건드려 is_active를
+   * true로 되돌려도 이 조회는 여전히 막는다.
+   */
   private async findActiveForm(slug: string): Promise<Form> {
     const form = await this.formRepo.findOne({ where: { slug }, relations: ['template'] });
-    if (!form || !form.isActive) throw new NotFoundException('폼을 찾을 수 없습니다');
+    if (!form || !form.isActive || form.template?.deletedAt) {
+      throw new NotFoundException('폼을 찾을 수 없습니다');
+    }
     return form;
   }
 

@@ -20,6 +20,8 @@ export interface FormResponse {
   publicUrl: string;
   createdAt: Date;
   updatedAt: Date;
+  /** 폼이 참조하는 템플릿이 소프트 삭제됐는지(ADR 0014 보완). template 관계가 로드되지 않았으면 false다. */
+  templateDeleted: boolean;
 }
 
 export function toFormResponse(form: Form, publicBaseUrl: string): FormResponse {
@@ -34,6 +36,7 @@ export function toFormResponse(form: Form, publicBaseUrl: string): FormResponse 
     publicUrl: `${publicBaseUrl}/p/${form.slug}`,
     createdAt: form.createdAt,
     updatedAt: form.updatedAt,
+    templateDeleted: Boolean(form.template?.deletedAt),
   };
 }
 
@@ -75,6 +78,7 @@ export class FormsService {
   findAll(campaignId?: string): Promise<Form[]> {
     return this.formRepo.find({
       where: campaignId ? { campaignId } : {},
+      relations: ['template'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -86,17 +90,26 @@ export class FormsService {
   }
 
   async findOneWithLinks(id: string): Promise<Form> {
-    const found = await this.formRepo.findOne({ where: { id }, relations: ['links'] });
+    const found = await this.formRepo.findOne({ where: { id }, relations: ['links', 'template'] });
     if (!found) throw new NotFoundException('폼을 찾을 수 없습니다');
     return found;
   }
 
+  /**
+   * ADR 0014 보완: 템플릿이 소프트 삭제된 폼은 isActive:true로 다시 켤 수 없다(409).
+   * 단, 같은 요청에 살아 있는 templateId로의 교체가 함께 오면 허용한다(템플릿 교체 후 활성화).
+   */
   async update(id: string, dto: UpdateFormDto): Promise<Form> {
     const form = await this.findOne(id);
     if (dto.templateId) {
       const template = await this.templateRepo.findOne({ where: { id: dto.templateId, deletedAt: IsNull() } });
       if (!template) throw new NotFoundException('템플릿을 찾을 수 없습니다');
       form.templateId = dto.templateId;
+    } else if (dto.isActive === true) {
+      const currentTemplate = await this.templateRepo.findOne({ where: { id: form.templateId } });
+      if (!currentTemplate || currentTemplate.deletedAt) {
+        throw new ConflictException('템플릿이 삭제된 폼은 다시 활성화할 수 없습니다');
+      }
     }
     if (dto.name !== undefined) form.name = dto.name;
     if (dto.successMessage !== undefined) form.successMessage = dto.successMessage;
