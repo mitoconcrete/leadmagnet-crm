@@ -37,6 +37,8 @@ describe('AuthService', () => {
       id: 'op-1',
       email: 'admin@example.com',
       passwordHash: await bcrypt.hash('correct-password', 10),
+      role: 'admin',
+      isActive: true,
       createdAt: new Date(),
     };
     service = new AuthService(operators as never, sessions as never, TTL);
@@ -62,6 +64,12 @@ describe('AuthService', () => {
     it('존재하지 않는 이메일이면 UnauthorizedException', async () => {
       operators.findOne.mockResolvedValue(null);
       await expect(service.login('nobody@example.com', 'x')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('ADR 0020: isActive=false인 운영자는 비밀번호가 맞아도 UnauthorizedException(사유 비노출)', async () => {
+      operators.findOne.mockResolvedValue({ ...operator, isActive: false });
+      await expect(service.login('admin@example.com', 'correct-password')).rejects.toThrow(UnauthorizedException);
+      expect(sessions.save).not.toHaveBeenCalled();
     });
   });
 
@@ -99,6 +107,21 @@ describe('AuthService', () => {
       sessions.createQueryBuilder.mockReturnValue(queryBuilderMock(null));
       const result = await service.validateSession('missing');
       expect(result).toBeNull();
+    });
+
+    it('ADR 0020: isActive=false인 운영자의 세션은 삭제하고 null을 반환한다', async () => {
+      sessions.createQueryBuilder.mockReturnValue(
+        queryBuilderMock({
+          id: 'sess-1',
+          operatorId: 'op-1',
+          operator: { ...operator, isActive: false },
+          expiresAt: new Date(Date.now() + 1000),
+          createdAt: new Date(),
+        }),
+      );
+      const result = await service.validateSession('sess-1');
+      expect(result).toBeNull();
+      expect(sessions.delete).toHaveBeenCalledWith('sess-1');
     });
 
     it('ADR 0017: findOne(relations) 대신 leftJoinAndSelect + getOne으로 단일 쿼리에 operator를 조인한다', async () => {

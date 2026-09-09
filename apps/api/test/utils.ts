@@ -83,14 +83,22 @@ export async function truncateAll(ds: DataSource): Promise<void> {
   );
 }
 
-/** bcryptjs 해시를 직접 insert해 운영자를 시드한다. */
+/** bcryptjs 해시를 직접 insert해 운영자를 시드한다. ADR 0020: 기본은 role=admin, is_active=true. */
 export async function seedOperator(
   ds: DataSource,
   email = DEFAULT_OPERATOR_EMAIL,
   password = DEFAULT_OPERATOR_PASSWORD,
+  opts: { role?: 'admin' | 'operator'; isActive?: boolean } = {},
 ): Promise<void> {
   const passwordHash = await bcrypt.hash(password, 10);
-  await ds.query(`INSERT INTO operators (email, password_hash) VALUES ($1, $2)`, [email, passwordHash]);
+  const role = opts.role ?? 'admin';
+  const isActive = opts.isActive ?? true;
+  await ds.query(`INSERT INTO operators (email, password_hash, role, is_active) VALUES ($1, $2, $3, $4)`, [
+    email,
+    passwordHash,
+    role,
+    isActive,
+  ]);
 }
 
 /** POST /api/admin/auth/login 후 sid 쿠키를 보관한 SuperAgentTest를 반환한다. */

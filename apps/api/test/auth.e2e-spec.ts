@@ -95,13 +95,41 @@ describe('auth e2e (§4.1 /api/admin/auth)', () => {
     void agent;
   });
 
-  it('GET /api/admin/auth/me는 로그인 상태에서 200과 {id,email}을 반환한다', async () => {
+  it('GET /api/admin/auth/me는 로그인 상태에서 200과 {id,email,role}을 반환한다', async () => {
     await seedOperator(ctx.ds);
     const { agent } = await loginAgent(ctx);
     const res = await agent.get('/api/admin/auth/me');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ email: DEFAULT_OPERATOR_EMAIL });
+    expect(res.body).toMatchObject({ email: DEFAULT_OPERATOR_EMAIL, role: 'admin' });
     expect(res.body.id).toBeDefined();
+  });
+
+  it('ADR 0020: is_active=false로 바꾸면 me는 401, 재로그인도 401, 세션은 즉시 전부 삭제된다', async () => {
+    await seedOperator(ctx.ds);
+    const { agent } = await loginAgent(ctx);
+    const meBefore = await agent.get('/api/admin/auth/me');
+    expect(meBefore.status).toBe(200);
+
+    await ctx.ds.query(`UPDATE operators SET is_active = false WHERE email = $1`, [DEFAULT_OPERATOR_EMAIL]);
+
+    const meAfter = await agent.get('/api/admin/auth/me');
+    expect(meAfter.status).toBe(401);
+
+    const loginRes = await ctx
+      .http()
+      .post('/api/admin/auth/login')
+      .send({ email: DEFAULT_OPERATOR_EMAIL, password: DEFAULT_OPERATOR_PASSWORD });
+    expect(loginRes.status).toBe(401);
+
+    const sessionRows = await ctx.ds.query(`SELECT count(*)::int AS count FROM sessions`);
+    expect(sessionRows[0].count).toBe(0);
+
+    await ctx.ds.query(`UPDATE operators SET is_active = true WHERE email = $1`, [DEFAULT_OPERATOR_EMAIL]);
+    const reloginRes = await ctx
+      .http()
+      .post('/api/admin/auth/login')
+      .send({ email: DEFAULT_OPERATOR_EMAIL, password: DEFAULT_OPERATOR_PASSWORD });
+    expect(reloginRes.status).toBe(200);
   });
 
   it('로그아웃은 204를 반환하고 쿠키를 만료시킨다', async () => {
