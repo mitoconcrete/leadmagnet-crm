@@ -141,6 +141,34 @@
         ]
       }
     },
+    "/api/admin/templates/{id}/preview": {
+      "get": {
+        "operationId": "TemplatesController_preview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "템플릿 원본 HTML을 sandbox iframe으로 감싼 미리보기 페이지. 방문·방문자·쿠키를 기록/설정하지 않는다."
+          }
+        },
+        "security": [
+          {
+            "sid": []
+          }
+        ],
+        "tags": [
+          "templates"
+        ]
+      }
+    },
     "/api/admin/campaigns": {
       "post": {
         "operationId": "CampaignsController_create",
