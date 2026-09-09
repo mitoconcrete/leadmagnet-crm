@@ -1,9 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SubmissionTable } from './submission-table';
 import { apiFetch, ApiError } from '@/lib/api';
 import { toast } from 'sonner';
 import type { SubmissionPage } from '@/lib/types';
+import { POLL_INTERVAL_MS } from '@/lib/polling';
 
 vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
@@ -107,5 +108,25 @@ describe('SubmissionTable', () => {
       expect(toast.error).toHaveBeenCalledWith('신청 명단을 불러오지 못했습니다');
     });
     expect(screen.getByText('신청 내역이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('30초마다 현재 페이지의 신청 명단을 다시 조회한다', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(apiFetch).mockResolvedValue(makePage(1));
+
+      render(<SubmissionTable campaignId="c1" />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
