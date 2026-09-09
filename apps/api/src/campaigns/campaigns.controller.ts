@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { CampaignsService } from './campaigns.service';
@@ -34,6 +34,12 @@ export class CampaignsController {
   @Patch(':id')
   update(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateCampaignDto) {
     return this.campaignsService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
+    return this.campaignsService.remove(id);
   }
 
   @Get(':id/stats')

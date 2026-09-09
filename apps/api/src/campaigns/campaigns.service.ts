@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Campaign } from '../entities/campaign.entity';
@@ -10,6 +10,13 @@ import { PUBLIC_BASE_URL } from '../common/tokens';
 
 export interface CampaignWithForms extends Omit<Campaign, 'forms'> {
   forms: FormResponse[];
+}
+
+/** ADR 0019 개정: 캠페인 소속 폼·방문·신청 수. 삭제 가능 여부 판단과 409 details에 쓰인다. */
+export interface CampaignEventCounts {
+  forms: number;
+  visits: number;
+  submissions: number;
 }
 
 @Injectable()
@@ -68,5 +75,48 @@ export class CampaignsService {
     }
 
     return this.campaignRepo.save(campaign);
+  }
+
+  /**
+   * ADR 0017: 소속 폼 수·방문 수·신청 수를 단일 집계 쿼리로 센다(템플릿 삭제의
+   * countReferences와 같은 패턴). 삭제 가능 여부 판단과 409 details에 쓴다.
+   */
+  private async countCampaignEvents(id: string): Promise<CampaignEventCounts> {
+    const [row] = await this.dataSource.query(
+      `SELECT
+         (SELECT COUNT(*) FROM forms WHERE campaign_id = $1)::int AS forms,
+         (SELECT COUNT(*) FROM visits v JOIN forms f ON f.id = v.form_id WHERE f.campaign_id = $1)::int AS visits,
+         (SELECT COUNT(*) FROM submissions s JOIN forms f ON f.id = s.form_id WHERE f.campaign_id = $1)::int AS submissions`,
+      [id],
+    );
+    return { forms: Number(row.forms), visits: Number(row.visits), submissions: Number(row.submissions) };
+  }
+
+  /**
+   * ADR 0019(개정): 소속 폼의 방문·신청이 모두 0건일 때만 삭제를 허용한다. 종료(archived)
+   * 여부는 무관하다. 1건이라도 있으면 409 + details(forms, visits, submissions)를 던진다.
+   * 삭제는 트랜잭션 안에서 배포 링크 → 폼 → 캠페인 순으로 한다.
+   */
+  async remove(id: string): Promise<void> {
+    const campaign = await this.campaignRepo.findOne({ where: { id } });
+    if (!campaign) throw new NotFoundException('캠페인을 찾을 수 없습니다');
+
+    const counts = await this.countCampaignEvents(id);
+    if (counts.visits > 0 || counts.submissions > 0) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: '이벤트가 있는 캠페인은 삭제할 수 없습니다. 종료(보관)하세요',
+        error: 'Conflict',
+        details: counts,
+      });
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.query(`DELETE FROM distribution_links WHERE form_id IN (SELECT id FROM forms WHERE campaign_id = $1)`, [
+        id,
+      ]);
+      await manager.query(`DELETE FROM forms WHERE campaign_id = $1`, [id]);
+      await manager.getRepository(Campaign).delete(id);
+    });
   }
 }
