@@ -14,12 +14,13 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes, ApiCookieAuth, ApiOkResponse, ApiProduces, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiCookieAuth, ApiOkResponse, ApiProduces, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/auth.guard';
 import { TemplatesService } from './templates.service';
 import { MAX_HTML_BYTES } from './html-validation';
+import type { UploadedHtmlFile } from './html-validation';
 import { toDetail, toListItem } from './dto/template-response.dto';
 import { MulterExceptionFilter } from './multer-exception.filter';
 import { buildCsp, buildWrapperPage } from '../public/wrapper';
@@ -39,12 +40,49 @@ export class TemplatesController {
   @UseFilters(MulterExceptionFilter)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_HTML_BYTES } }))
   @ApiConsumes('multipart/form-data')
-  async create(@UploadedFile() file: Express.Multer.File, @Body('name') name?: unknown) {
-    if (!file) throw new BadRequestException('.html 파일만 등록할 수 있습니다');
-    const created = await this.templatesService.create(
-      { originalname: file.originalname, size: file.size, buffer: file.buffer },
-      typeof name === 'string' ? name : undefined,
-    );
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary', description: '.html 파일. html 필드와 함께 보낼 수 없다' },
+        html: {
+          type: 'string',
+          description:
+            '붙여넣기 등록용 HTML 텍스트 전체. file 대신 사용하며, 이 필드를 쓸 때는 name이 필수다. 저장 파일명은 {name}.html이 된다',
+        },
+        name: { type: 'string', description: '템플릿 이름. html 필드 사용 시 필수' },
+      },
+    },
+  })
+  async create(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('name') name?: unknown,
+    @Body('html') html?: unknown,
+  ) {
+    const resolvedName = typeof name === 'string' ? name : undefined;
+
+    if (file && html !== undefined) {
+      throw new BadRequestException('file과 html은 함께 보낼 수 없습니다');
+    }
+    if (!file && html === undefined) {
+      throw new BadRequestException('file 또는 html 중 하나가 필요합니다');
+    }
+
+    let uploadFile: UploadedHtmlFile;
+    if (file) {
+      uploadFile = { originalname: file.originalname, size: file.size, buffer: file.buffer };
+    } else {
+      if (typeof html !== 'string') {
+        throw new BadRequestException('html은 문자열이어야 합니다');
+      }
+      if (!resolvedName || resolvedName.trim().length === 0) {
+        throw new BadRequestException('붙여넣기 등록에는 이름이 필요합니다');
+      }
+      const buffer = Buffer.from(html, 'utf-8');
+      uploadFile = { originalname: `${resolvedName}.html`, size: buffer.byteLength, buffer };
+    }
+
+    const created = await this.templatesService.create(uploadFile, resolvedName);
     return toListItem(created);
   }
 

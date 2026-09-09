@@ -81,6 +81,31 @@
       "post": {
         "operationId": "TemplatesController_create",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": ".html 파일. html 필드와 함께 보낼 수 없다"
+                  },
+                  "html": {
+                    "type": "string",
+                    "description": "붙여넣기 등록용 HTML 텍스트 전체. file 대신 사용하며, 이 필드를 쓸 때는 name이 필수다. 저장 파일명은 {name}.html이 된다"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "템플릿 이름. html 필드 사용 시 필수"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": ""
