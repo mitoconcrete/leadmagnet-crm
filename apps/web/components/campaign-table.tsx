@@ -17,37 +17,43 @@ export function CampaignTable({ rows, loading }: { rows: CampaignRow[]; loading:
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>이름</TableHead>
-          <TableHead>상태</TableHead>
-          <TableHead>방문</TableHead>
-          <TableHead>방문자</TableHead>
-          <TableHead>신청</TableHead>
-          <TableHead>전환율</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row) => (
-          <TableRow key={row.campaignId}>
-            <TableCell>
-              <Link href={`/campaigns/${row.campaignId}`} className="font-medium text-primary hover:underline">
-                {row.name}
-              </Link>
-            </TableCell>
-            <TableCell>
-              <Badge variant={row.status === 'active' ? 'default' : 'secondary'}>
-                {row.status === 'active' ? '진행중' : '보관됨'}
-              </Badge>
-            </TableCell>
-            <TableCell>{row.visits}</TableCell>
-            <TableCell>{row.visitors}</TableCell>
-            <TableCell>{row.submissions}</TableCell>
-            <TableCell>{formatRate(row.conversionRate)}</TableCell>
+    <div
+      role="region"
+      aria-label="캠페인 성과 목록"
+      className="max-h-[60vh] overflow-y-auto max-md:max-h-[50vh]"
+    >
+      <Table>
+        <TableHeader className="sticky top-0 z-10 bg-background">
+          <TableRow>
+            <TableHead>이름</TableHead>
+            <TableHead>상태</TableHead>
+            <TableHead>방문</TableHead>
+            <TableHead>방문자</TableHead>
+            <TableHead>신청</TableHead>
+            <TableHead>전환율</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.campaignId}>
+              <TableCell>
+                <Link href={`/campaigns/${row.campaignId}`} className="font-medium text-primary hover:underline">
+                  {row.name}
+                </Link>
+              </TableCell>
+              <TableCell>
+                <Badge variant={row.status === 'active' ? 'default' : 'secondary'}>
+                  {row.status === 'active' ? '진행중' : '보관됨'}
+                </Badge>
+              </TableCell>
+              <TableCell>{row.visits}</TableCell>
+              <TableCell>{row.visitors}</TableCell>
+              <TableCell>{row.submissions}</TableCell>
+              <TableCell>{formatRate(row.conversionRate)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

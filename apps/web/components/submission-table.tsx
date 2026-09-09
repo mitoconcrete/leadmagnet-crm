@@ -33,39 +33,45 @@ export function SubmissionTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>시각</TableHead>
-            <TableHead>폼</TableHead>
-            <TableHead>채널</TableHead>
-            <TableHead>내용</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{formatDateKST(item.createdAt)}</TableCell>
-              <TableCell>{item.formName}</TableCell>
-              <TableCell>{CHANNEL_LABELS[item.channel]}</TableCell>
-              <TableCell>
-                <ul className="flex flex-col gap-0.5">
-                  {Object.entries(item.payload).map(([key, value]) => (
-                    <li key={key}>
-                      <span className="text-muted-foreground">{key}:</span>{' '}
-                      {typeof value === 'string'
-                        ? value
-                        : Array.isArray(value)
-                          ? value.join(', ')
-                          : JSON.stringify(value)}
-                    </li>
-                  ))}
-                </ul>
-              </TableCell>
+      <div
+        role="region"
+        aria-label="신청 명단"
+        className="max-h-[60vh] overflow-y-auto max-md:max-h-[50vh]"
+      >
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableRow>
+              <TableHead>시각</TableHead>
+              <TableHead>폼</TableHead>
+              <TableHead>채널</TableHead>
+              <TableHead>내용</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{formatDateKST(item.createdAt)}</TableCell>
+                <TableCell>{item.formName}</TableCell>
+                <TableCell>{CHANNEL_LABELS[item.channel]}</TableCell>
+                <TableCell>
+                  <ul className="flex flex-col gap-0.5">
+                    {Object.entries(item.payload).map(([key, value]) => (
+                      <li key={key}>
+                        <span className="text-muted-foreground">{key}:</span>{' '}
+                        {typeof value === 'string'
+                          ? value
+                          : Array.isArray(value)
+                            ? value.join(', ')
+                            : JSON.stringify(value)}
+                      </li>
+                    ))}
+                  </ul>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">
           {page} / {totalPages}페이지 (총 {total}건)

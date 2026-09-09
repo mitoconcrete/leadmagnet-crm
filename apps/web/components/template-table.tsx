@@ -141,40 +141,46 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>이름</TableHead>
-            <TableHead>파일명</TableHead>
-            <TableHead>크기</TableHead>
-            <TableHead>등록일</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {templates.map((template) => (
-            <TableRow key={template.id}>
-              <TableCell>{template.name}</TableCell>
-              <TableCell>{template.originalFilename}</TableCell>
-              <TableCell>{(template.sizeBytes / 1024).toFixed(1)}KB</TableCell>
-              <TableCell>{formatDateKST(template.createdAt)}</TableCell>
-              <TableCell>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setPreviewTemplate(template)}>
-                    미리보기
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => openCode(template)}>
-                    코드
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(template)}>
-                    삭제
-                  </Button>
-                </div>
-              </TableCell>
+      <div
+        role="region"
+        aria-label="템플릿 목록"
+        className="max-h-[60vh] overflow-y-auto max-md:max-h-[50vh]"
+      >
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableRow>
+              <TableHead>이름</TableHead>
+              <TableHead>파일명</TableHead>
+              <TableHead>크기</TableHead>
+              <TableHead>등록일</TableHead>
+              <TableHead />
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {templates.map((template) => (
+              <TableRow key={template.id}>
+                <TableCell>{template.name}</TableCell>
+                <TableCell>{template.originalFilename}</TableCell>
+                <TableCell>{(template.sizeBytes / 1024).toFixed(1)}KB</TableCell>
+                <TableCell>{formatDateKST(template.createdAt)}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setPreviewTemplate(template)}>
+                      미리보기
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => openCode(template)}>
+                      코드
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(template)}>
+                      삭제
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       <Dialog open={previewTemplate !== null} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
         <DialogContent className="max-w-3xl">
