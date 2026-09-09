@@ -62,4 +62,51 @@ describe('CreateFormDialog', () => {
     await waitFor(() => expect(onCreated).toHaveBeenCalled());
     expect(toast.success).toHaveBeenCalled();
   });
+
+  it('템플릿을 선택하지 않고 제출하면 오류 토스트를 띄우고 API를 호출하지 않는다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(templates);
+
+    render(<CreateFormDialog campaignId="c1" onCreated={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: '폼 만들기' }));
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/api/admin/templates'));
+
+    fireEvent.change(screen.getByLabelText('이름'), { target: { value: '이름만 입력' } });
+    fireEvent.click(screen.getByRole('button', { name: '만들기' }));
+
+    expect(toast.error).toHaveBeenCalledWith('템플릿을 선택하세요');
+    expect(apiFetch).not.toHaveBeenCalledWith('/api/admin/forms', expect.anything());
+  });
+
+  it('템플릿 목록 조회에 실패해도 다이얼로그가 동작한다', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new Error('네트워크 오류'));
+
+    render(<CreateFormDialog campaignId="c1" onCreated={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: '폼 만들기' }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/api/admin/templates'));
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+  });
+
+  it('폼 생성 API가 실패하면 오류 토스트를 띄운다', async () => {
+    vi.mocked(apiFetch).mockImplementation((path: string, init?: { method?: string }) => {
+      if (path === '/api/admin/templates') return Promise.resolve(templates);
+      if (path === '/api/admin/forms' && init?.method === 'POST') {
+        return Promise.reject(new Error('실패'));
+      }
+      return Promise.reject(new Error('unexpected call'));
+    });
+
+    render(<CreateFormDialog campaignId="c1" onCreated={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: '폼 만들기' }));
+
+    await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('combobox'));
+    await waitFor(() => expect(screen.getByRole('option', { name: '가을 랜딩' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('option', { name: '가을 랜딩' }));
+
+    fireEvent.change(screen.getByLabelText('이름'), { target: { value: '기본 신청폼' } });
+    fireEvent.click(screen.getByRole('button', { name: '만들기' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('폼을 만들지 못했습니다'));
+  });
 });

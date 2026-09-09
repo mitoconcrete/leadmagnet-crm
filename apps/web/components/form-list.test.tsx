@@ -78,4 +78,25 @@ describe('FormList', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(form.publicUrl));
     expect(toast.success).toHaveBeenCalled();
   });
+
+  it('활성 토글 변경이 실패하면 오류 토스트를 띄우고 원래 상태로 되돌린다', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce([form]);
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('실패'));
+
+    render(<FormList campaignId="c1" />);
+
+    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('활성 상태를 변경하지 못했습니다'));
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('폼이 없으면 안내 문구를 보여준다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([]);
+
+    render(<FormList campaignId="c1" />);
+
+    await waitFor(() => expect(screen.getByText('등록된 폼이 없습니다.')).toBeInTheDocument());
+  });
 });

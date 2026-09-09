@@ -47,4 +47,12 @@ describe('CampaignTable', () => {
       expect(screen.getByText('등록된 캠페인이 없습니다.')).toBeInTheDocument();
     });
   });
+
+  it('보관된 캠페인은 보관됨 배지를 보여준다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([{ ...rows[0], status: 'archived' }]);
+
+    render(<CampaignTable />);
+
+    await waitFor(() => expect(screen.getByText('보관됨')).toBeInTheDocument());
+  });
 });
