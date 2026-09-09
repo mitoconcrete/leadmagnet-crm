@@ -64,6 +64,14 @@ describe('SubmissionsService.list', () => {
     expect(result.limit).toBe(20);
   });
 
+  it('limit이 100을 초과하면 100으로 보정한다', async () => {
+    const qb = queryBuilderMock();
+    const service = new SubmissionsService(repoMock(qb) as never);
+    const result = await service.list({ limit: 1000 });
+    expect(result.limit).toBe(100);
+    expect(qb.limit).toHaveBeenCalledWith(100);
+  });
+
   it('응답은 {items, total, page, limit} 형태이며 items는 formName을 포함한다', async () => {
     const qb = queryBuilderMock();
     const rows = [
