@@ -53,6 +53,9 @@ describe('public e2e (§4.7 /p/:slug, /api/public/forms/:slug/submissions)', () 
     const vidCookie = setCookie.find((c) => c.startsWith('vid='));
     expect(vidCookie).toBeDefined();
     expect(vidCookie).toContain('Path=/p');
+    expect(vidCookie).toContain('HttpOnly');
+    expect(vidCookie).toContain('SameSite=Lax');
+    expect(vidCookie).toContain('Max-Age=31536000');
 
     expect(res.text).toContain('sandbox="allow-scripts allow-forms"');
     expect(res.text).toContain('srcdoc');
@@ -108,7 +111,8 @@ describe('public e2e (§4.7 /p/:slug, /api/public/forms/:slug/submissions)', () 
     expect(res.status).toBe(404);
   });
 
-  it('제출은 201 {id,message}를 반환하고 submissions에 channel=instagram, payload.name이 저장된다', async () => {
+  it('제출은 201 {id,message: form.successMessage}를 반환하고 submissions에 channel=instagram, payload.name이 저장된다', async () => {
+    const formDetail = await agent.get(`/api/admin/forms/${flow.form.id}`);
     const page = await ctx.http().get(`/p/${flow.form.slug}?src=${flow.links.instagram.code}`);
     const visitToken = extractVisitToken(page.text);
 
@@ -119,7 +123,7 @@ describe('public e2e (§4.7 /p/:slug, /api/public/forms/:slug/submissions)', () 
 
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('id');
-    expect(res.body).toHaveProperty('message');
+    expect(res.body.message).toBe(formDetail.body.successMessage);
 
     const rows = await ctx.ds.query(`SELECT channel, payload FROM submissions WHERE form_id = $1`, [
       flow.form.id,
