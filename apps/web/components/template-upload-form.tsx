@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,18 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
   const [pasteName, setPasteName] = useState('');
   const [pasteHtml, setPasteHtml] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files?.[0] ?? null;
+    if (selected && !selected.name.toLowerCase().endsWith('.html')) {
+      toast.error('HTML 파일만 선택할 수 있습니다');
+      setFile(null);
+      event.target.value = '';
+      return;
+    }
+    setFile(selected);
+  }
 
   async function register(formData: FormData, resetFields: () => void) {
     setSubmitting(true);
@@ -91,14 +103,22 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
             <Input id="template-name" value={fileName} onChange={(e) => setFileName(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="template-file">HTML 파일</Label>
-            <input
-              id="template-file"
-              type="file"
-              accept=".html"
-              className="text-sm file:mr-2 file:rounded-lg file:border-0 file:bg-muted file:px-2.5 file:py-1"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
+            <span className="text-sm leading-none font-medium">HTML 파일</span>
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                id="template-file"
+                type="file"
+                accept=".html"
+                aria-label="HTML 파일"
+                className="sr-only"
+                onChange={handleFileChange}
+              />
+              <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                파일 선택
+              </Button>
+              <span className="text-sm text-muted-foreground">{file ? file.name : '선택된 파일 없음'}</span>
+            </div>
           </div>
           <Button type="submit" disabled={submitting}>
             {submitting ? '등록 중…' : '템플릿 등록'}
