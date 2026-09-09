@@ -236,6 +236,27 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
     expect(res.body.successMessage).toBe('수정된 성공 메시지');
   });
 
+  it('G2 리뷰 지적: force 소프트 삭제된 템플릿으로 폼을 생성하면 404, 기존 폼의 templateId를 그걸로 바꾸면 404이다', async () => {
+    const campaign = await agent.post('/api/admin/campaigns').send({ name: '소프트삭제 템플릿 테스트' });
+    const templateId = await uploadTemplate(agent);
+    // 참조하는 폼을 하나 만들어 강제 삭제가 hard delete가 아니라 소프트 삭제 경로를 타게 한다.
+    await agent.post('/api/admin/forms').send({ campaignId: campaign.body.id, templateId, name: '참조 폼' });
+    const deleteRes = await agent.delete(`/api/admin/templates/${templateId}?force=true`);
+    expect(deleteRes.status).toBe(204);
+
+    const createRes = await agent
+      .post('/api/admin/forms')
+      .send({ campaignId: campaign.body.id, templateId, name: '새 폼' });
+    expect(createRes.status).toBe(404);
+
+    const otherTemplateId = await uploadTemplate(agent);
+    const otherForm = await agent
+      .post('/api/admin/forms')
+      .send({ campaignId: campaign.body.id, templateId: otherTemplateId, name: '다른 폼' });
+    const patchRes = await agent.patch(`/api/admin/forms/${otherForm.body.id}`).send({ templateId });
+    expect(patchRes.status).toBe(404);
+  });
+
   describe('캠페인 종료 생애주기(ADR 0019)', () => {
     it('종료(archived) 시 소속 폼이 전부 isActive=false가 되고, 공개 페이지는 404, stats는 유지된다', async () => {
       const campaign = await agent.post('/api/admin/campaigns').send({ name: '종료 캠페인' });
