@@ -145,4 +145,46 @@ describe('TemplateUploadForm', () => {
     expect(toast.error).toHaveBeenCalledWith('HTML을 붙여넣으세요');
     expect(apiFetch).not.toHaveBeenCalled();
   });
+
+  it('등록 응답에 warnings가 있으면 점검 결과 목록을 보여준다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      id: 't1',
+      name: '이름',
+      warnings: ['name 없는 입력이 있습니다', '외부 스크립트가 있습니다'],
+    });
+
+    render(<TemplateUploadForm onUploaded={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
+    fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
+
+    await waitFor(() => expect(screen.getByText('점검 결과 2건')).toBeInTheDocument());
+    expect(screen.getByText('name 없는 입력이 있습니다')).toBeInTheDocument();
+    expect(screen.getByText('외부 스크립트가 있습니다')).toBeInTheDocument();
+  });
+
+  it('등록 응답에 warnings가 없으면(빈 배열) 이상 없음을 보여준다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '이름', warnings: [] });
+
+    render(<TemplateUploadForm onUploaded={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
+    fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
+
+    await waitFor(() => expect(screen.getByText('점검 이상 없음')).toBeInTheDocument());
+  });
+
+  it('닫기 버튼을 누르면 점검 결과를 감춘다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '이름', warnings: [] });
+
+    render(<TemplateUploadForm onUploaded={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
+    fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
+
+    await waitFor(() => expect(screen.getByText('점검 이상 없음')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+
+    expect(screen.queryByText('점검 이상 없음')).not.toBeInTheDocument();
+  });
 });
