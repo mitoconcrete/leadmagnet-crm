@@ -64,32 +64,35 @@ export function LinkPanel({ formId, disabled = false }: { formId: string; disabl
   const byChannel = new Map(links.map((l) => [l.channel, l]));
 
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <div className="flex flex-col gap-2">
       {CHANNELS.map((channel) => {
         const link = byChannel.get(channel);
         return (
-          <div
-            key={channel}
-            className="flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-sm"
-          >
-            <span className="font-medium">{CHANNEL_LABELS[channel]}</span>
+          <div key={channel} className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm">
+            <span className="w-20 shrink-0 whitespace-nowrap font-medium">{CHANNEL_LABELS[channel]}</span>
             {link ? (
-              <div className="flex items-center gap-2">
-                <span className="max-w-40 truncate text-muted-foreground">{link.url}</span>
+              <span className="min-w-0 flex-1 truncate text-muted-foreground" title={link.url}>
+                {link.url}
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">아직 없음</span>
+            )}
+            <div className="shrink-0">
+              {link ? (
                 <Button variant="outline" size="sm" onClick={() => handleCopy(link.url)}>
                   복사
                 </Button>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={disabled || creating === channel}
-                onClick={() => handleCreate(channel)}
-              >
-                링크 만들기
-              </Button>
-            )}
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={disabled || creating === channel}
+                  onClick={() => handleCreate(channel)}
+                >
+                  링크 만들기
+                </Button>
+              )}
+            </div>
           </div>
         );
       })}

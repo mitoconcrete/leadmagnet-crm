@@ -114,8 +114,8 @@ function FormRow({
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div>
             <p className="font-medium">{form.name}</p>
             <p className="text-xs text-muted-foreground">{form.slug}</p>
@@ -139,8 +139,11 @@ function FormRow({
         </div>
       </div>
       <div className="flex items-center gap-2 text-sm">
-        <span className="truncate text-muted-foreground">{form.publicUrl}</span>
-        <Button variant="outline" size="sm" disabled={templateDeleted} onClick={onCopy}>
+        <span className="w-20 shrink-0 whitespace-nowrap text-muted-foreground">공개 URL</span>
+        <span className="min-w-0 flex-1 truncate text-muted-foreground" title={form.publicUrl}>
+          {form.publicUrl}
+        </span>
+        <Button variant="outline" size="sm" className="shrink-0" disabled={templateDeleted} onClick={onCopy}>
           복사
         </Button>
       </div>
