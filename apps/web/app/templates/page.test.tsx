@@ -19,9 +19,9 @@ vi.mock('@/components/template-table', () => ({
   },
 }));
 
-vi.mock('@/components/template-upload-form', () => ({
-  TemplateUploadForm: ({ onUploaded }: { onUploaded: () => void }) => (
-    <button onClick={onUploaded}>템플릿 등록</button>
+vi.mock('@/components/template-register-dialog', () => ({
+  TemplateRegisterDialog: ({ onRegistered }: { onRegistered: () => void }) => (
+    <button onClick={onRegistered}>새 템플릿 등록</button>
   ),
 }));
 
@@ -30,47 +30,31 @@ describe('TemplatesPage', () => {
     templateTableProps.length = 0;
   });
 
-  it('업로드 폼과 템플릿 목록을 함께 보여준다', () => {
+  it('등록 다이얼로그 트리거와 템플릿 목록을 함께 보여준다', () => {
     render(<TemplatesPage />);
 
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '템플릿 등록' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '새 템플릿 등록' })).toBeInTheDocument();
     expect(screen.getByTestId('template-table')).toBeInTheDocument();
   });
 
-  it('업로드 후 TemplateTable의 refreshKey가 바뀐다', () => {
+  it('등록 다이얼로그의 onRegistered가 호출되면 TemplateTable의 refreshKey가 바뀐다', () => {
     render(<TemplatesPage />);
 
     const before = templateTableProps.at(-1)?.refreshKey;
-    fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
+    fireEvent.click(screen.getByRole('button', { name: '새 템플릿 등록' }));
     const after = templateTableProps.at(-1)?.refreshKey;
 
     expect(after).not.toBe(before);
   });
 
-  it('데스크톱 우선 레이아웃(ADR 0021): 2열(1:2) 그리드로 안내·등록과 목록을 나눠 갖는다', () => {
+  it('데스크톱 우선 레이아웃(ADR 0021 2026-09-10 개정): 등록은 상단 바 버튼+모달로 분리하고, 목록 섹션이 남은 공간을 전폭으로 채운다', () => {
     render(<TemplatesPage />);
 
-    const columns = screen.getByTestId('templates-columns');
-    expect(columns.className).toContain('min-h-0');
-    expect(columns.className).toContain('lg:grid-cols-[1fr_2fr]');
-  });
-
-  it('좌 열(ADR 0021 2026-09-10): AI 안내 박스는 상단 고정(shrink-0), 등록 폼 섹션은 남은 공간을 채우는 flex 열이다(자체 스크롤은 TemplateUploadForm 내부에서 처리)', () => {
-    render(<TemplatesPage />);
-
-    const leftColumn = screen.getByTestId('templates-left-column');
-    expect(leftColumn.className).toContain('flex');
-    expect(leftColumn.className).toContain('flex-col');
-    expect(leftColumn.className).toContain('min-h-0');
-
-    const aiBox = screen.getByTestId('templates-ai-box');
-    expect(aiBox.className).toContain('shrink-0');
-
-    const uploadSection = screen.getByTestId('templates-upload-section');
-    expect(uploadSection.className).toContain('flex');
-    expect(uploadSection.className).toContain('flex-col');
-    expect(uploadSection.className).toContain('flex-1');
-    expect(uploadSection.className).toContain('min-h-0');
+    const heading = screen.getByRole('heading', { name: '템플릿 목록' });
+    const section = heading.closest('section');
+    expect(section?.className).toContain('flex');
+    expect(section?.className).toContain('flex-1');
+    expect(section?.className).toContain('min-h-0');
   });
 });
