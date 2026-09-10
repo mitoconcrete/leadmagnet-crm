@@ -39,7 +39,7 @@ export function SubmissionTable({
         className="min-h-0 flex-1 overflow-y-auto"
       >
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-background">
+          <TableHeader className="sticky top-0 z-10 bg-inherit">
             <TableRow>
               <TableHead className="text-right tabular-nums">시각</TableHead>
               <TableHead>폼</TableHead>

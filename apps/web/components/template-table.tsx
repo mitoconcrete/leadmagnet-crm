@@ -147,7 +147,7 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
         className="min-h-0 flex-1 overflow-y-auto"
       >
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-background">
+          <TableHeader className="sticky top-0 z-10 bg-inherit">
             <TableRow>
               <TableHead>이름</TableHead>
               <TableHead>파일명</TableHead>

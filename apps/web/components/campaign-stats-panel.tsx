@@ -43,7 +43,7 @@ export function CampaignStatsPanel({ stats }: { stats: CampaignStats | null }) {
       />
 
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-background">
+        <TableHeader className="sticky top-0 z-10 bg-inherit">
           <TableRow>
             <TableHead>채널</TableHead>
             <TableHead className="text-right tabular-nums" title={VISIT_STAT_TITLE}>

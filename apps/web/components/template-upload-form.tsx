@@ -110,7 +110,7 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
         onValueChange={(value) => setActiveTab(value as 'file' | 'paste')}
         className="flex min-h-0 flex-1 flex-col max-w-2xl"
       >
-        <TabsList className="sticky top-0 z-10 shrink-0 bg-background pb-2">
+        <TabsList className="sticky top-0 z-10 shrink-0 bg-inherit pb-2">
           <TabsTrigger value="file">파일 업로드</TabsTrigger>
           <TabsTrigger value="paste">HTML 붙여넣기</TabsTrigger>
         </TabsList>
@@ -190,7 +190,7 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
         </div>
       </Tabs>
 
-      <div data-testid="upload-footer" className="shrink-0 border-t bg-background pt-3">
+      <div data-testid="upload-footer" className="shrink-0 border-t bg-inherit pt-3">
         <Button type="submit" form={activeTab === 'file' ? FILE_FORM_ID : PASTE_FORM_ID} disabled={submitting}>
           {submitting ? '등록 중…' : '템플릿 등록'}
         </Button>

@@ -29,7 +29,7 @@ export function CampaignTable({ rows, loading }: { rows: CampaignRow[]; loading:
       className="min-h-0 flex-1 overflow-y-auto"
     >
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-background">
+        <TableHeader className="sticky top-0 z-10 bg-inherit">
           <TableRow>
             <TableHead>이름</TableHead>
             <TableHead>상태</TableHead>
