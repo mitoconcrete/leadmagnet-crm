@@ -101,4 +101,29 @@ describe('AiPromptBox', () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     expect(toast.success).not.toHaveBeenCalled();
   });
+
+  it('최상위 요소는 위쪽 여백(mt-2)을 가진다(모달 제목과 붙지 않도록)', () => {
+    render(<AiPromptBox />);
+
+    const card = screen.getByRole('button', { name: /AI로 HTML 만들기/ }).closest('[data-slot="card"]');
+    expect(card?.className).toContain('mt-2');
+  });
+
+  it('펼치면 "프롬프트 복사" 버튼이 우측 정렬 컨테이너(flex justify-end) 안에 있다', () => {
+    render(<AiPromptBox />);
+    expandBox();
+
+    const button = screen.getByRole('button', { name: '프롬프트 복사' });
+    expect(button.parentElement?.className).toContain('flex');
+    expect(button.parentElement?.className).toContain('justify-end');
+  });
+
+  it('펼친 내용에 hr·구분선(Separator)이 없다(복사 버튼 위 구분선 제거)', () => {
+    const { container } = render(<AiPromptBox />);
+    expandBox();
+
+    expect(container.querySelector('hr')).toBeNull();
+    expect(container.querySelector('[data-slot="separator"]')).toBeNull();
+    expect(container.querySelector('.border-t')).toBeNull();
+  });
 });
