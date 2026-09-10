@@ -49,6 +49,26 @@ describe('TemplateRegisterDialog', () => {
     await waitFor(() => expect(screen.queryByRole('heading', { name: '새 템플릿 등록' })).not.toBeInTheDocument());
   });
 
+  it('등록에 성공(201)하고 점검 경고가 있어도 모달이 닫히고 onRegistered가 호출되며 toast.warning으로 경고를 안내한다(회귀 방지: 경고 때문에 모달이 열려 있으면 안 된다)', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      id: 't1',
+      name: '이름',
+      warnings: ['개인정보 수집 동의 체크박스(name="consent")가 없습니다'],
+    });
+    const onRegistered = vi.fn();
+
+    render(<TemplateRegisterDialog onRegistered={onRegistered} />);
+    fireEvent.click(screen.getByRole('button', { name: '새 템플릿 등록' }));
+
+    fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
+    fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
+
+    await waitFor(() => expect(onRegistered).toHaveBeenCalled());
+    expect(toast.warning).toHaveBeenCalledWith('점검 경고 1건', expect.anything());
+    expect(toast.success).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole('heading', { name: '새 템플릿 등록' })).not.toBeInTheDocument());
+  });
+
   it('등록이 거부(400)되면 toast만 뜨고 모달은 열린 채로 유지되며 onRegistered는 호출되지 않는다', async () => {
     const reasons = ['관리자 API 참조(/api/admin)가 포함되어 있습니다'];
     vi.mocked(apiFetch).mockRejectedValue(new ApiError(400, reasons.join(', '), undefined, reasons));
