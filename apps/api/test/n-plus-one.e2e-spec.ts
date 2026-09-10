@@ -163,6 +163,9 @@ describe('N+1 회귀 방지 (ADR 0017) e2e', () => {
 
     (Object.keys(CAPS) as Array<keyof typeof CAPS>).forEach((key) => {
       const cap = CAPS[key] + AUTH_QUERY_COUNT;
+      // 하한: 세션 검증(1) + 비즈니스 쿼리 최소 1개. 카운터가 고장 나 항상 0을 반환해도
+      // 상한 비교만으로는 공허하게 통과하므로, 실제로 쿼리가 세어지고 있음을 함께 단언한다.
+      expect(withOne[key]).toBeGreaterThanOrEqual(AUTH_QUERY_COUNT + 1);
       expect(withFive[key]).toBe(withOne[key]);
       expect(withOne[key]).toBeLessThanOrEqual(cap);
       expect(withFive[key]).toBeLessThanOrEqual(cap);
