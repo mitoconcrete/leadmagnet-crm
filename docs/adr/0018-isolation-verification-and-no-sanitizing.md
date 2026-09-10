@@ -11,6 +11,7 @@
 - 등록 HTML을 고치거나 태그를 제거하지 않는다. AI가 만든 HTML은 `<script>`·인라인 이벤트·`<style>`을 자유롭게 쓰며, 살균하면 폼이 깨지고 운영자가 이유를 알 수 없다.
 - 대신 등록 HTML을 **신뢰하지 않는 코드**로 다룬다. 어떤 스크립트가 들어 있어도 닿을 수 있는 것이 없도록 만든다. 관리자 화면은 등록 HTML을 절대 렌더하지 않고(코드 보기는 텍스트), 렌더는 공개 페이지와 미리보기의 sandbox iframe 안에서만 일어난다.
 - 검증(`<form` 필수, 512KB, `.html`)은 동작 요건이지 보안 필터가 아니다.
+- **차단 규칙(2026-09-10 추가)**: 고신뢰 패턴은 등록 자체를 거부한다(400, 이유 목록 `message: string[]`) — 관리자 API 참조(`/api/admin`), 쿠키 접근(`document.cookie`), 부모·최상위 창 접근(`parent.`, `top.`, `window.parent`, `window.top`), 저장소 접근(`localStorage`, `sessionStorage`), `<meta http-equiv="refresh">`, `target="_top"|"_parent"`, `<iframe>`·`<object>`·`<embed>`. 목적은 **실수를 등록 단계에서 되돌려 주는 것**이지 보안 경계가 아니다. 문자열 조립·인코딩으로 우회되며, 우회한 코드도 격리에 막힌다(샘플 `samples/isolation-check.html`이 그 증명, `samples/isolation-check-blocked.html`은 차단 예시). 살균(내용 수정)은 여전히 하지 않는다.
 - **점검은 안내, 격리는 방어.** 등록 시 프롬프트 템플릿 규칙을 벗어난 요소를 찾아 차단하지 않는 경고 목록(`warnings`)으로 돌려준다: `name` 없는 입력, 외부 `<script src>`(CSP로 차단됨), `action`/`method`/`onsubmit`(무시됨), 제출 버튼 없음, `<meta http-equiv=refresh>`·`target="_top"`(sandbox로 차단됨). 등록은 그대로 성공하고 화면이 경고를 보여 준다. 운영자가 "왜 동작하지 않는지"를 알게 하는 층이며, 보안은 여전히 격리가 담당한다.
 
 ### 격리가 실제로 성립함을 두 층에서 검증한다
@@ -29,4 +30,4 @@
 ## 결과
 - ADR 0008의 "Playwright 미채택"은 "격리 시나리오 1건에 한해 채택"으로 개정한다.
 - 알려진 잔여 위험(ADR 0003): 등록 HTML은 방문자 입력을 외부 이미지 비콘으로 보낼 수 있다. 운영자는 신뢰 주체.
-- 수동 확인용 자가 진단 템플릿 `samples/isolation-check.html`: 등록 후 미리보기나 배포 링크로 열면 쿠키 읽기·관리자 API GET/POST(3개 오리진)·부모 창·localStorage·최상위 이동·네이티브 전송·이미지 비콘을 스스로 시도해 결과 표를 보여 준다. 마지막 행(비콘)만 "허용됨(잔여 위험)"이 정상.
+- 수동 확인용 자가 진단 템플릿 `samples/isolation-check.html`(차단 규칙을 실행 시점 문자열 조립로 통과하는 버전): 등록 후 미리보기나 배포 링크로 열면 쿠키 읽기·관리자 API GET/POST(3개 오리진)·부모 창·localStorage·최상위 이동·네이티브 전송·이미지 비콘을 스스로 시도해 결과 표를 보여 준다. 마지막 행(비콘)만 "허용됨(잔여 위험)"이 정상.
