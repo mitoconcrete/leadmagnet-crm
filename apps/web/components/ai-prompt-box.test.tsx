@@ -27,10 +27,28 @@ describe('AiPromptBox', () => {
   it('기본 상태는 접혀 있고 트리거 한 줄만 보인다(ADR 0021 2026-09-10 개정)', () => {
     render(<AiPromptBox />);
 
-    expect(screen.getByRole('button', { name: /AI로 HTML 만들기 — 프롬프트 보기/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI로 HTML 만들기/ })).toBeInTheDocument();
     expect(screen.queryByText('AI로 만들기')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '프롬프트 복사' })).not.toBeInTheDocument();
     expect(screen.queryByText(AI_PROMPT_TEMPLATE)).not.toBeInTheDocument();
+  });
+
+  it('트리거가 클릭 요소로 보이도록 테두리·배경·호버·포커스 링 스타일을 가진다', () => {
+    render(<AiPromptBox />);
+
+    const trigger = screen.getByRole('button', { name: /AI로 HTML 만들기/ });
+    expect(trigger.className).toContain('border');
+    expect(trigger.className).toContain('bg-muted/50');
+    expect(trigger.className).toContain('hover:bg-muted');
+    expect(trigger.className).toContain('focus-visible:ring-2');
+    expect(trigger.className).toContain('focus-visible:ring-ring');
+  });
+
+  it('접힘/펼침에 따라 텍스트로도 상태가 드러난다(액션임이 명확한 문구)', () => {
+    render(<AiPromptBox />);
+
+    expect(screen.getByText(/AI로 HTML 만들기/)).toBeInTheDocument();
+    expect(screen.getByText(/프롬프트 열기/)).toBeInTheDocument();
   });
 
   it('트리거를 클릭하면 펼쳐져 제목·설명·조건 요약·프롬프트 전문을 보여준다', () => {
