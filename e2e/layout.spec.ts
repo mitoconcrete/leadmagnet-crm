@@ -198,7 +198,7 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
     expect(clientHeight).toBeGreaterThanOrEqual(500);
   });
 
-  test('등록 모달의 AI 안내 트리거를 클릭하면 펼쳐져 프롬프트와 복사 버튼이 보인다', async ({ page }) => {
+  test('등록 모달의 AI 안내 트리거를 클릭하면 떠 있는 패널이 열려 프롬프트와 복사 버튼이 보인다', async ({ page }) => {
     await page.request.post(`${WEB_BASE_URL}/api/admin/auth/login`, {
       data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
     });
@@ -210,6 +210,35 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
 
     await expect(page.getByText('AI로 만들기', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '프롬프트 복사' })).toBeVisible();
+  });
+
+  test('AI 안내 Popover를 열어도 떠서 겹칠 뿐 아래 붙여넣기 textarea의 크기·위치는 그대로다(폼을 밀지 않는다)', async ({
+    page,
+  }) => {
+    await page.request.post(`${WEB_BASE_URL}/api/admin/auth/login`, {
+      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+
+    await page.goto(`${WEB_BASE_URL}/templates`);
+    await page.getByRole('button', { name: '새 템플릿 등록' }).click();
+    await page.getByRole('tab', { name: 'HTML 붙여넣기' }).click();
+
+    const textarea = page.locator('#template-paste-html');
+    await textarea.waitFor();
+    const boxBefore = await textarea.boundingBox();
+    const heightBefore = await textarea.evaluate((el) => el.clientHeight);
+
+    await page.getByRole('button', { name: /AI로 HTML 만들기/ }).click();
+    await expect(page.getByRole('button', { name: '프롬프트 복사' })).toBeVisible();
+
+    const boxAfter = await textarea.boundingBox();
+    const heightAfter = await textarea.evaluate((el) => el.clientHeight);
+
+    expect(heightAfter).toBe(heightBefore);
+    expect(boxAfter?.x).toBe(boxBefore?.x);
+    expect(boxAfter?.y).toBe(boxBefore?.y);
+    expect(boxAfter?.width).toBe(boxBefore?.width);
+    expect(boxAfter?.height).toBe(boxBefore?.height);
   });
 
   test('캠페인 상세(/campaigns/:id)는 바깥 스크롤 없이 폼 목록·신청 명단이 자체 스크롤된다', async ({ page }) => {
