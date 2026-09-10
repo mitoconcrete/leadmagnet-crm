@@ -187,7 +187,7 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
     await page.getByRole('button', { name: '새 템플릿 등록' }).click();
 
     // AI 안내(AiPromptBox)는 기본 접힘이라 트리거 한 줄만 보이고, 펼친 내용(프롬프트 복사 버튼)은 없다.
-    await expect(page.getByRole('button', { name: /AI로 HTML 만들기/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /AI 프롬프트/ })).toBeVisible();
     await expect(page.getByRole('button', { name: '프롬프트 복사' })).toBeHidden();
 
     await page.getByRole('tab', { name: 'HTML 붙여넣기' }).click();
@@ -206,7 +206,7 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
     await page.goto(`${WEB_BASE_URL}/templates`);
     await page.getByRole('button', { name: '새 템플릿 등록' }).click();
 
-    await page.getByRole('button', { name: /AI로 HTML 만들기/ }).click();
+    await page.getByRole('button', { name: /AI 프롬프트/ }).click();
 
     await expect(page.getByText('AI로 만들기', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '프롬프트 복사' })).toBeVisible();
@@ -228,7 +228,7 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
     const boxBefore = await textarea.boundingBox();
     const heightBefore = await textarea.evaluate((el) => el.clientHeight);
 
-    await page.getByRole('button', { name: /AI로 HTML 만들기/ }).click();
+    await page.getByRole('button', { name: /AI 프롬프트/ }).click();
     await expect(page.getByRole('button', { name: '프롬프트 복사' })).toBeVisible();
 
     const boxAfter = await textarea.boundingBox();
