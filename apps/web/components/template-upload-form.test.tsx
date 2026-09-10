@@ -186,15 +186,16 @@ describe('TemplateUploadForm', () => {
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
-  it('붙여넣기 textarea는 뷰포트 기준 높이(h-48vh)를 직접 가져 flex 사슬에 의존하지 않고 고정 높이로 잘리지 않는다(ADR 0021 2026-09-10 개정)', () => {
+  it('붙여넣기 textarea는 뷰포트 기준 높이(h-60vh)를 직접 가져 flex 사슬에 의존하지 않고 고정 높이로 잘리지 않는다(ADR 0021 2026-09-10 개정 — AI 안내 기본 접힘으로 공간 확보)', () => {
     render(<TemplateUploadForm onUploaded={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'HTML 붙여넣기' }));
     const textarea = screen.getByPlaceholderText('AI가 생성한 HTML 전체를 붙여넣으세요');
 
     // flex-grow(flex-1)는 base-ui TabsContent에서 높이 사슬이 끊겨 실제로 늘어나지 않았다(실측
-    // Playwright 케이스로 확인, e2e/layout.spec.ts). 뷰포트 기준 h-[48vh]로 직접 높이를 준다.
-    expect(textarea.className).toContain('h-[48vh]');
+    // Playwright 케이스로 확인, e2e/layout.spec.ts). 뷰포트 기준 h-[60vh]로 직접 높이를 준다.
+    // AI 안내(AiPromptBox)가 기본 접힘이 되면서 모달 안 남는 공간이 늘어 60vh로 키웠다.
+    expect(textarea.className).toContain('h-[60vh]');
     expect(textarea.className).toContain('min-h-[16rem]');
     expect(textarea.className).not.toContain('h-64');
     expect(textarea.className).not.toContain('max-h-64');

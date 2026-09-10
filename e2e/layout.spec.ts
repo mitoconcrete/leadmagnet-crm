@@ -178,19 +178,38 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
     await expectNoOuterScrollButInnerScroll(page);
   });
 
-  test('등록 모달의 붙여넣기 textarea는 실제로 뷰포트 높이만큼 커진다(고정 h-64에 잘리지 않는다)', async ({ page }) => {
+  test('등록 모달의 붙여넣기 textarea는 AI 안내가 기본 접힘인 상태에서 뷰포트 높이만큼 크게 렌더된다', async ({ page }) => {
     await page.request.post(`${WEB_BASE_URL}/api/admin/auth/login`, {
       data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
     });
 
     await page.goto(`${WEB_BASE_URL}/templates`);
     await page.getByRole('button', { name: '새 템플릿 등록' }).click();
+
+    // AI 안내(AiPromptBox)는 기본 접힘이라 트리거 한 줄만 보이고, 펼친 내용(프롬프트 복사 버튼)은 없다.
+    await expect(page.getByRole('button', { name: /AI로 HTML 만들기/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: '프롬프트 복사' })).toBeHidden();
+
     await page.getByRole('tab', { name: 'HTML 붙여넣기' }).click();
 
     const textarea = page.locator('#template-paste-html');
     await textarea.waitFor();
     const clientHeight = await textarea.evaluate((el) => el.clientHeight);
-    expect(clientHeight).toBeGreaterThan(400);
+    expect(clientHeight).toBeGreaterThanOrEqual(500);
+  });
+
+  test('등록 모달의 AI 안내 트리거를 클릭하면 펼쳐져 프롬프트와 복사 버튼이 보인다', async ({ page }) => {
+    await page.request.post(`${WEB_BASE_URL}/api/admin/auth/login`, {
+      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+
+    await page.goto(`${WEB_BASE_URL}/templates`);
+    await page.getByRole('button', { name: '새 템플릿 등록' }).click();
+
+    await page.getByRole('button', { name: /AI로 HTML 만들기/ }).click();
+
+    await expect(page.getByText('AI로 만들기', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '프롬프트 복사' })).toBeVisible();
   });
 
   test('캠페인 상세(/campaigns/:id)는 바깥 스크롤 없이 폼 목록·신청 명단이 자체 스크롤된다', async ({ page }) => {

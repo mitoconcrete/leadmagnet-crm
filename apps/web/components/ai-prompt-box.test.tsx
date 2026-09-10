@@ -18,9 +18,25 @@ beforeEach(() => {
   });
 });
 
+/** 접힌 트리거를 펼친다(ADR 0021 2026-09-10 개정: 기본 접힘). */
+function expandBox() {
+  fireEvent.click(screen.getByRole('button', { name: /AI로 HTML 만들기/ }));
+}
+
 describe('AiPromptBox', () => {
-  it('제목·설명·조건 요약·프롬프트 전문을 보여준다', () => {
+  it('기본 상태는 접혀 있고 트리거 한 줄만 보인다(ADR 0021 2026-09-10 개정)', () => {
+    render(<AiPromptBox />);
+
+    expect(screen.getByRole('button', { name: /AI로 HTML 만들기 — 프롬프트 보기/ })).toBeInTheDocument();
+    expect(screen.queryByText('AI로 만들기')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '프롬프트 복사' })).not.toBeInTheDocument();
+    expect(screen.queryByText(AI_PROMPT_TEMPLATE)).not.toBeInTheDocument();
+  });
+
+  it('트리거를 클릭하면 펼쳐져 제목·설명·조건 요약·프롬프트 전문을 보여준다', () => {
     const { container } = render(<AiPromptBox />);
+
+    expandBox();
 
     expect(screen.getByText('AI로 만들기')).toBeInTheDocument();
     expect(
@@ -36,10 +52,21 @@ describe('AiPromptBox', () => {
     expect(pre?.textContent).toBe(AI_PROMPT_TEMPLATE);
   });
 
+  it('펼친 뒤 트리거를 다시 클릭하면 접힌다', () => {
+    render(<AiPromptBox />);
+
+    expandBox();
+    expect(screen.getByText('AI로 만들기')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /AI로 HTML 만들기/ }));
+    expect(screen.queryByText('AI로 만들기')).not.toBeInTheDocument();
+  });
+
   it('복사 버튼을 누르면 프롬프트를 클립보드에 기록하고 성공 토스트를 띄운다', async () => {
     writeText.mockResolvedValue(undefined);
 
     render(<AiPromptBox />);
+    expandBox();
     fireEvent.click(screen.getByRole('button', { name: '프롬프트 복사' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(AI_PROMPT_TEMPLATE));
@@ -50,6 +77,7 @@ describe('AiPromptBox', () => {
     writeText.mockRejectedValue(new Error('클립보드 접근이 거부되었습니다'));
 
     render(<AiPromptBox />);
+    expandBox();
     fireEvent.click(screen.getByRole('button', { name: '프롬프트 복사' }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
