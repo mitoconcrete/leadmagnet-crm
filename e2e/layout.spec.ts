@@ -102,13 +102,22 @@ async function waitForMinRows(page: Page, regionName: string, minRows: number, t
 
 /** 페이지가 바깥 문서를 스크롤하지 않는지(오차 1px), 목록 섹션에 내부 스크롤이 생겼는지 확인한다. */
 async function expectNoOuterScrollButInnerScroll(page: Page): Promise<void> {
-  const { docHeight, innerHeight } = await page.evaluate(() => ({
-    docHeight: document.documentElement.scrollHeight,
-    innerHeight: window.innerHeight,
-  }));
-  expect(docHeight).toBeLessThanOrEqual(innerHeight + 1);
+  // CI에서는 문서 높이 계산도 렌더 직후에는 아직 안정화되지 않을 수 있어 poll로 감싼다.
+  await expect
+    .poll(
+      async () => {
+        const { docHeight, innerHeight } = await page.evaluate(() => ({
+          docHeight: document.documentElement.scrollHeight,
+          innerHeight: window.innerHeight,
+        }));
+        return docHeight <= innerHeight + 1;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
 
   // 데이터 렌더 이후 레이아웃이 안정화될 때까지 기다린 뒤 내부 스크롤 여부를 확인한다(flaky 방지).
+  // CI에서는 시딩된 신청 목록 렌더가 로컬보다 늦어 넘칠 때까지 더 오래 걸릴 수 있어 타임아웃을 늘렸다.
   await expect
     .poll(
       async () => {
@@ -120,7 +129,7 @@ async function expectNoOuterScrollButInnerScroll(page: Page): Promise<void> {
         }
         return false;
       },
-      { timeout: 10_000 },
+      { timeout: 15_000 },
     )
     .toBe(true);
 }
@@ -230,18 +239,26 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
 
     await page.getByRole('button', { name: /AI 프롬프트/ }).click();
     await expect(page.getByRole('button', { name: '프롬프트 복사' })).toBeVisible();
+    // CI의 서브픽셀 반올림·스크롤바 리플로우가 안정화될 시간을 준다(로컬은 즉시 안정적이라 필요 없었다).
+    await page.waitForTimeout(150);
 
     const boxAfter = await textarea.boundingBox();
     const heightAfter = await textarea.evaluate((el) => el.clientHeight);
 
-    expect(heightAfter).toBe(heightBefore);
-    expect(boxAfter?.x).toBe(boxBefore?.x);
-    expect(boxAfter?.y).toBe(boxBefore?.y);
-    expect(boxAfter?.width).toBe(boxBefore?.width);
-    expect(boxAfter?.height).toBe(boxBefore?.height);
+    // 정확히 같은 값이 아니라 1px 오차까지 허용한다(CI 서브픽셀·스크롤바 리플로우 대응).
+    expect(heightAfter).toBeGreaterThanOrEqual(heightBefore - 1);
+    expect(heightAfter).toBeLessThanOrEqual(heightBefore + 1);
+    expect(Math.abs((boxAfter?.x ?? 0) - (boxBefore?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((boxAfter?.y ?? 0) - (boxBefore?.y ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((boxAfter?.width ?? 0) - (boxBefore?.width ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((boxAfter?.height ?? 0) - (boxBefore?.height ?? 0))).toBeLessThanOrEqual(1);
   });
 
   test('캠페인 상세(/campaigns/:id)는 바깥 스크롤 없이 폼 목록·신청 명단이 자체 스크롤된다', async ({ page }) => {
+    // beforeAll의 시딩 타임아웃(240s)과는 별개로, 이 테스트 자체도 CI에서 poll(각 15s)
+    // 여유를 두려면 기본 60s로는 빠듯할 수 있어 명시적으로 늘린다.
+    test.setTimeout(90_000);
+
     await page.request.post(`${WEB_BASE_URL}/api/admin/auth/login`, {
       data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
     });
