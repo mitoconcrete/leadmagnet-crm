@@ -117,6 +117,9 @@
               }
             }
           },
+          "400": {
+            "description": "동작 요건 위반(확장자·크기·<form> 없음) 또는 ADR 0018 차단 규칙(2026-09-10 개정) 위반. 차단 규칙 위반이면 message가 이유 문자열 배열이다(관리자 API 참조, 쿠키 접근, 부모·최상위 창 접근, 브라우저 저장소 접근, meta refresh 리다이렉트, target=_top/_parent, 중첩 프레임)."
+          },
           "409": {
             "description": "같은 이름의 살아 있는 템플릿이 이미 있다(ADR 0014). 소프트 삭제된 이름은 재사용할 수 있다."
           }
@@ -786,7 +789,7 @@
             "type": "string"
           },
           "warnings": {
-            "description": "등록 시점 점검 경고(ADR 0018). 등록을 막지 않는다. name 없는 입력, 외부 script, form의 action/method/onsubmit, 제출 버튼 없음, 페이지 이동 시도, 관리자 API 호출, 개인정보 수집 동의 체크박스 없음을 안내한다.",
+            "description": "등록 시점 점검 경고(ADR 0018). 등록을 막지 않는다. name 없는 입력, 외부 script, form의 action/method/onsubmit, 제출 버튼 없음, 개인정보 수집 동의 체크박스 없음을 안내한다. meta refresh·target=_top/_parent·관리자 API 호출은 2026-09-10 개정으로 차단 규칙(등록 자체를 400으로 거부)으로 승격되어 더 이상 경고에 포함되지 않는다.",
             "type": "array",
             "items": {
               "type": "string"

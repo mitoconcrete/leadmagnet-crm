@@ -18,6 +18,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  ApiBadRequestResponse,
   ApiBody,
   ApiConflictResponse,
   ApiConsumes,
@@ -73,6 +74,12 @@ export class TemplatesController {
   })
   @ApiConflictResponse({
     description: '같은 이름의 살아 있는 템플릿이 이미 있다(ADR 0014). 소프트 삭제된 이름은 재사용할 수 있다.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      '동작 요건 위반(확장자·크기·<form> 없음) 또는 ADR 0018 차단 규칙(2026-09-10 개정) 위반. 차단 규칙 위반이면 ' +
+      'message가 이유 문자열 배열이다(관리자 API 참조, 쿠키 접근, 부모·최상위 창 접근, 브라우저 저장소 접근, ' +
+      'meta refresh 리다이렉트, target=_top/_parent, 중첩 프레임).',
   })
   async create(
     @UploadedFile() file: Express.Multer.File,

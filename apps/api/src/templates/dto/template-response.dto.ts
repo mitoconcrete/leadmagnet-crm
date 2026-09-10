@@ -22,7 +22,8 @@ export class TemplateCreatedDto extends TemplateListItemDto {
     type: [String],
     description:
       '등록 시점 점검 경고(ADR 0018). 등록을 막지 않는다. name 없는 입력, 외부 script, form의 action/method/onsubmit, ' +
-      '제출 버튼 없음, 페이지 이동 시도, 관리자 API 호출, 개인정보 수집 동의 체크박스 없음을 안내한다.',
+      '제출 버튼 없음, 개인정보 수집 동의 체크박스 없음을 안내한다. meta refresh·target=_top/_parent·관리자 API 호출은 ' +
+      '2026-09-10 개정으로 차단 규칙(등록 자체를 400으로 거부)으로 승격되어 더 이상 경고에 포함되지 않는다.',
   })
   warnings!: string[];
 }
