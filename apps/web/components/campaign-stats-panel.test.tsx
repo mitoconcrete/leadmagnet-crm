@@ -37,4 +37,14 @@ describe('CampaignStatsPanel', () => {
     const thead = document.querySelector('thead');
     expect(thead).toHaveClass('sticky');
   });
+
+  it('breakdown 표 헤더는 "조회수"·"방문자 수"로 표시하고 정의 title이 있다(ADR 0005)', () => {
+    render(<CampaignStatsPanel stats={stats} />);
+
+    const visitHeader = screen.getByRole('columnheader', { name: '조회수' });
+    expect(visitHeader).toHaveAttribute('title', '링크가 열린 횟수(새로고침 포함)');
+
+    const visitorHeader = screen.getByRole('columnheader', { name: '방문자 수' });
+    expect(visitorHeader).toHaveAttribute('title', '서로 다른 브라우저(쿠키) 수');
+  });
 });

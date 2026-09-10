@@ -93,12 +93,12 @@ describe('CampaignTable', () => {
     expect(screen.getByText('0/0')).toBeInTheDocument();
   });
 
-  it('밀도(ADR 0021): 방문·방문자·신청·전환율 열은 헤더·셀 모두 우측 정렬 고정폭 숫자다', () => {
+  it('밀도(ADR 0021): 조회수·방문자 수·신청·전환율 열은 헤더·셀 모두 우측 정렬 고정폭 숫자다', () => {
     render(<CampaignTable rows={rows} loading={false} />);
 
     const headerCells = screen.getAllByRole('columnheader');
     const numericHeaders = headerCells.filter((cell) =>
-      ['방문', '방문자', '신청', '전환율'].includes(cell.textContent ?? ''),
+      ['조회수', '방문자 수', '신청', '전환율'].includes(cell.textContent ?? ''),
     );
     expect(numericHeaders).toHaveLength(4);
     for (const header of numericHeaders) {
@@ -113,5 +113,15 @@ describe('CampaignTable', () => {
     const rateCell = screen.getByText('25.0%');
     expect(rateCell.className).toContain('text-right');
     expect(rateCell.className).toContain('tabular-nums');
+  });
+
+  it('조회수·방문자 수 헤더에 정의를 알려주는 title 툴팁이 있다(ADR 0005)', () => {
+    render(<CampaignTable rows={rows} loading={false} />);
+
+    const visitHeader = screen.getByRole('columnheader', { name: '조회수' });
+    expect(visitHeader).toHaveAttribute('title', '링크가 열린 횟수(새로고침 포함)');
+
+    const visitorHeader = screen.getByRole('columnheader', { name: '방문자 수' });
+    expect(visitorHeader).toHaveAttribute('title', '서로 다른 브라우저(쿠키) 수');
   });
 });
