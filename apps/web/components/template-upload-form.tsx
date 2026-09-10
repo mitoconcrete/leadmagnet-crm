@@ -178,7 +178,7 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
                   value={pasteHtml}
                   onChange={(e) => setPasteHtml(e.target.value)}
                   placeholder="AI가 생성한 HTML 전체를 붙여넣으세요"
-                  className="min-h-[12rem] flex-1 resize-none font-mono text-xs"
+                  className="h-[48vh] min-h-[16rem] resize-none font-mono text-xs"
                 />
               </div>
             </form>
