@@ -31,4 +31,11 @@ describe('ChannelTable', () => {
     expect(screen.getAllByRole('row')).toHaveLength(6);
     expect(screen.getAllByText('0.0%')).toHaveLength(5);
   });
+
+  it('표 헤더가 sticky다(ADR 0021 2026-09-10)', () => {
+    render(<ChannelTable stats={stats} loading={false} />);
+
+    const thead = document.querySelector('thead');
+    expect(thead).toHaveClass('sticky');
+  });
 });

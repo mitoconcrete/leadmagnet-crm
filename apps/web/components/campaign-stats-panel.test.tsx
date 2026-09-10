@@ -30,4 +30,11 @@ describe('CampaignStatsPanel', () => {
     expect(screen.getByText('성과를 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByRole('row')).not.toBeInTheDocument();
   });
+
+  it('채널 breakdown 표 헤더가 sticky다(ADR 0021 2026-09-10)', () => {
+    render(<CampaignStatsPanel stats={stats} />);
+
+    const thead = document.querySelector('thead');
+    expect(thead).toHaveClass('sticky');
+  });
 });
