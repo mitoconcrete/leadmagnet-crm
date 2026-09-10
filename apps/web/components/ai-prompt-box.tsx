@@ -30,7 +30,7 @@ export function AiPromptBox() {
   }
 
   return (
-    <Card className="mt-2 gap-0 py-0">
+    <Card className="mt-4 gap-0 py-0">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md border bg-muted/50 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
           <span className="flex items-center gap-2">

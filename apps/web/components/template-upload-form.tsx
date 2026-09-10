@@ -186,7 +186,7 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
         </div>
       </Tabs>
 
-      <div data-testid="upload-footer" className="shrink-0 border-t bg-inherit pt-3">
+      <div data-testid="upload-footer" className="flex shrink-0 justify-end border-t bg-inherit pt-3">
         <Button type="submit" form={activeTab === 'file' ? FILE_FORM_ID : PASTE_FORM_ID} disabled={submitting}>
           {submitting ? '등록 중…' : '템플릿 등록'}
         </Button>
