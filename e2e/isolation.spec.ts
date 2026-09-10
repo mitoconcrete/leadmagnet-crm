@@ -71,14 +71,14 @@ interface ObservedAdminRequest {
  * 합법적 요청이다). 공격 iframe(및 그 안에 중첩된 미리보기 iframe)에서 나간 요청만 남긴다.
  * 반드시 `page.goto()` 이전에 등록해야 한다.
  */
-function observeAdminApiRequests(page: Page): {
+async function observeAdminApiRequests(page: Page): Promise<{
   requests: ObservedAdminRequest[];
   responseStatuses: number[];
-} {
+}> {
   const requests: ObservedAdminRequest[] = [];
   const responseStatuses: number[] = [];
 
-  void page.route('**/api/admin/**', async (route) => {
+  await page.route('**/api/admin/**', async (route) => {
     const req = route.request();
     const fromAttackFrame = req.frame() !== page.mainFrame();
     if (fromAttackFrame && !req.url().includes('/preview')) {
@@ -181,7 +181,7 @@ function publicUrl(flow: AttackFlow): string {
 test('공개 페이지: 등록 HTML은 관리자 쿠키를 읽지 못하고 관리자 API에 인증된 요청/부작용을 남기지 못한다', async () => {
   const flow = flows.cookieAndAdminApi!;
   const page = await context.newPage();
-  const observed = observeAdminApiRequests(page);
+  const observed = await observeAdminApiRequests(page);
 
   const markerCountBefore = await countMarkerCampaigns();
 
@@ -309,7 +309,7 @@ test('공개 페이지: 이미지 비콘 유출은 실제로 시도된다(ADR 00
 test('관리자 화면 미리보기 Dialog 안(오리진 3000)에서도 쿠키·관리자 API 접근이 동일하게 차단된다', async () => {
   const flow = flows.cookieAndAdminApi!;
   const page = await context.newPage();
-  const observed = observeAdminApiRequests(page);
+  const observed = await observeAdminApiRequests(page);
 
   const markerCountBefore = await countMarkerCampaigns();
 
