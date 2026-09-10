@@ -127,4 +127,33 @@ describe('AiPromptBox', () => {
     expect(container.querySelector('[data-slot="separator"]')).toBeNull();
     expect(container.querySelector('.border-t')).toBeNull();
   });
+
+  it('CollapsibleContent가 통일 패딩(p-4, box-border)을 갖고 테두리·둥근 모서리는 유지한다', () => {
+    const { container } = render(<AiPromptBox />);
+    expandBox();
+
+    const content = container.querySelector('[data-slot="collapsible-content"]');
+    expect(content?.className).toContain('p-4');
+    expect(content?.className).toContain('box-border');
+    expect(content?.className).toContain('border');
+    expect(content?.className).toContain('border-t-0');
+    expect(content?.className).toContain('rounded-b-md');
+  });
+
+  it('내부 요소는 개별 패딩/마진 없는 일반 div로 단순화되어 있다(Card의 CardHeader/CardContent 패딩 미사용)', () => {
+    const { container } = render(<AiPromptBox />);
+    expandBox();
+
+    expect(container.querySelector('[data-slot="card-header"]')).toBeNull();
+    expect(container.querySelector('[data-slot="card-content"]')).toBeNull();
+  });
+
+  it('프롬프트 <pre>는 box-border·w-full이라 패딩이 너비에 영향을 주지 않는다', () => {
+    const { container } = render(<AiPromptBox />);
+    expandBox();
+
+    const pre = container.querySelector('pre');
+    expect(pre?.className).toContain('box-border');
+    expect(pre?.className).toContain('w-full');
+  });
 });
