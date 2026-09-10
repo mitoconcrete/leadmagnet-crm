@@ -18,44 +18,29 @@ beforeEach(() => {
   });
 });
 
-/** 닫힌 트리거를 연다(ADR 0021 2026-09-10 추가 개정: 뜨는 Popover, 기본 닫힘). */
+/** 닫힌 트리거(팁 버튼)를 연다(ADR 0021 2026-09-10 추가 개정: 작은 팁 버튼 + 뜨는 Popover). */
 function openBox() {
-  fireEvent.click(screen.getByRole('button', { name: /AI로 HTML 만들기/ }));
+  fireEvent.click(screen.getByRole('button', { name: /AI 프롬프트/ }));
 }
 
 describe('AiPromptBox', () => {
-  it('기본 상태는 닫혀 있고 트리거 한 줄만 보인다', () => {
+  it('기본 상태는 닫혀 있고 작은 팁 버튼만 보인다', () => {
     render(<AiPromptBox />);
 
-    expect(screen.getByRole('button', { name: /AI로 HTML 만들기/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI 프롬프트/ })).toBeInTheDocument();
     expect(screen.queryByText('AI로 만들기')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '프롬프트 복사' })).not.toBeInTheDocument();
     expect(screen.queryByText(AI_PROMPT_TEMPLATE)).not.toBeInTheDocument();
   });
 
-  it('트리거가 클릭 요소로 보이도록 테두리·배경·호버·포커스 링 스타일을 가진다', () => {
+  it('트리거는 전폭이 아닌 작은 outline 버튼이다(팁 느낌, 탭 줄에 어울리게)', () => {
     render(<AiPromptBox />);
 
-    const trigger = screen.getByRole('button', { name: /AI로 HTML 만들기/ });
-    expect(trigger.className).toContain('border');
-    expect(trigger.className).toContain('bg-muted/50');
-    expect(trigger.className).toContain('hover:bg-muted');
-    expect(trigger.className).toContain('focus-visible:ring-2');
-    expect(trigger.className).toContain('focus-visible:ring-ring');
-  });
-
-  it('트리거 문구는 액션임이 명확하게 드러난다', () => {
-    render(<AiPromptBox />);
-
-    expect(screen.getByText(/AI로 HTML 만들기/)).toBeInTheDocument();
-    expect(screen.getByText(/프롬프트 열기/)).toBeInTheDocument();
-  });
-
-  it('트리거는 위쪽 여백(mt-4, 16px 이상)을 가진다(모달 제목과 충분히 떨어지도록)', () => {
-    render(<AiPromptBox />);
-
-    const trigger = screen.getByRole('button', { name: /AI로 HTML 만들기/ });
-    expect(trigger.className).toContain('mt-4');
+    const trigger = screen.getByRole('button', { name: /AI 프롬프트/ });
+    expect(trigger.className).not.toContain('w-full');
+    // Button 컴포넌트의 outline variant·sm size 클래스를 그대로 쓴다.
+    expect(trigger.className).toContain('border-border');
+    expect(trigger.className).toContain('h-7');
   });
 
   it('트리거를 클릭하면 떠 있는 패널이 열려 제목·설명·조건 요약·프롬프트 전문을 보여준다', () => {
@@ -96,7 +81,7 @@ describe('AiPromptBox', () => {
     openBox();
     expect(screen.getByText('AI로 만들기')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /AI로 HTML 만들기/ }));
+    fireEvent.click(screen.getByRole('button', { name: /AI 프롬프트/ }));
     expect(screen.queryByText('AI로 만들기')).not.toBeInTheDocument();
   });
 

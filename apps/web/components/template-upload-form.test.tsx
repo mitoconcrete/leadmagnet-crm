@@ -211,7 +211,7 @@ describe('TemplateUploadForm', () => {
     expect(tabsRoot?.className).not.toContain('max-w-2xl');
   });
 
-  it('탭 토글은 상단 고정, 등록 버튼은 하단 고정 푸터, 입력 영역만 스크롤한다(ADR 0021 2026-09-10)', () => {
+  it('탭 토글 줄은 상단 고정, 등록 버튼은 하단 고정 푸터, 입력 영역만 스크롤한다(ADR 0021 2026-09-10)', () => {
     render(<TemplateUploadForm onUploaded={vi.fn()} />);
 
     const scrollArea = screen.getByTestId('upload-scroll');
@@ -219,12 +219,15 @@ describe('TemplateUploadForm', () => {
     expect(scrollArea.className).toContain('flex-1');
     expect(scrollArea.className).toContain('min-h-0');
 
+    const tabsRow = screen.getByTestId('upload-tabs-row');
+    expect(tabsRow.className).toContain('sticky');
+    expect(tabsRow.className).toContain('top-0');
+    expect(tabsRow.className).toContain('bg-inherit');
+    expect(tabsRow.className).not.toContain('bg-background');
+    expect(tabsRow.closest('[data-testid="upload-scroll"]')).toBeNull();
+
     const tabList = screen.getByRole('tablist');
-    expect(tabList.className).toContain('sticky');
-    expect(tabList.className).toContain('top-0');
-    expect(tabList.className).toContain('bg-inherit');
-    expect(tabList.className).not.toContain('bg-background');
-    expect(tabList.closest('[data-testid="upload-scroll"]')).toBeNull();
+    expect(tabList.closest('[data-testid="upload-tabs-row"]')).not.toBeNull();
 
     const button = screen.getByRole('button', { name: '템플릿 등록' });
     const footer = button.closest('[data-testid="upload-footer"]');
@@ -237,6 +240,21 @@ describe('TemplateUploadForm', () => {
     expect(footer?.className).toContain('flex');
     expect(footer?.className).toContain('justify-end');
     expect(button.closest('[data-testid="upload-scroll"]')).toBeNull();
+  });
+
+  it('AI 안내 팁 버튼은 탭 토글과 같은 줄 우측에 있다(ADR 0021 2026-09-10 추가 개정)', () => {
+    render(<TemplateUploadForm onUploaded={vi.fn()} />);
+
+    const tabsRow = screen.getByTestId('upload-tabs-row');
+    expect(tabsRow.className).toContain('items-center');
+    expect(tabsRow.className).toContain('justify-between');
+
+    const tabList = screen.getByRole('tablist');
+    const aiTrigger = screen.getByRole('button', { name: /AI 프롬프트/ });
+    expect(tabList.closest('[data-testid="upload-tabs-row"]')).toBe(tabsRow);
+    expect(aiTrigger.closest('[data-testid="upload-tabs-row"]')).toBe(tabsRow);
+    // 전폭 트리거가 아니라 탭 줄 우측에 놓이는 작은 버튼이다.
+    expect(aiTrigger.className).not.toContain('w-full');
   });
 
   it('붙여넣기 탭으로 전환해도 등록 버튼은 여전히 하단 고정 푸터에서 해당 탭의 폼과 연결된다', async () => {

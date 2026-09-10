@@ -22,14 +22,14 @@ describe('TemplateRegisterDialog', () => {
     vi.clearAllMocks();
   });
 
-  it('"새 템플릿 등록" 버튼을 누르면 모달이 열리고 AI 안내 트리거(기본 접힘)·등록 폼(탭·등록 버튼)이 보인다', () => {
+  it('"새 템플릿 등록" 버튼을 누르면 모달이 열리고 AI 프롬프트 팁 버튼(닫힘)·등록 폼(탭·등록 버튼)이 보인다', () => {
     render(<TemplateRegisterDialog onRegistered={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: '새 템플릿 등록' }));
 
     expect(screen.getByRole('heading', { name: '새 템플릿 등록' })).toBeInTheDocument();
-    // AI 안내(AiPromptBox)는 기본 접힘이라 트리거 한 줄만 보이고, 펼친 내용(제목 "AI로 만들기")은 없다.
-    expect(screen.getByRole('button', { name: /AI로 HTML 만들기/ })).toBeInTheDocument();
+    // AI 안내(AiPromptBox)는 닫힌 팁 버튼만 보이고, 펼친 내용(제목 "AI로 만들기")은 없다.
+    expect(screen.getByRole('button', { name: /AI 프롬프트/ })).toBeInTheDocument();
     expect(screen.queryByText('AI로 만들기')).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '파일 업로드' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'HTML 붙여넣기' })).toBeInTheDocument();
