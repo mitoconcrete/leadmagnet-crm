@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 import * as request from 'supertest';
 import {
@@ -10,6 +11,7 @@ import {
   VALID_FORM_FIXTURE_PATH,
   NO_FORM_FIXTURE_PATH,
   WARN_FORM_FIXTURE_PATH,
+  BLOCKED_FORM_FIXTURE_PATH,
   TestContext,
 } from './utils';
 
@@ -192,6 +194,44 @@ describe('templates e2e (§4.2 /api/admin/templates)', () => {
 
       const detailRes = await agent.get(`/api/admin/templates/${created.body.id}`);
       expect(detailRes.body).not.toHaveProperty('warnings');
+    });
+  });
+
+  describe('POST / 차단 규칙(ADR 0018 2026-09-10 개정, §4.2 400)', () => {
+    it('고신뢰 공격 패턴이 있는 HTML 업로드는 400이고 message 배열에 이유가 2개 이상 담긴다', async () => {
+      const res = await agent
+        .post('/api/admin/templates')
+        .field('name', '차단 규칙 테스트')
+        .attach('file', BLOCKED_FORM_FIXTURE_PATH);
+
+      expect(res.status).toBe(400);
+      expect(Array.isArray(res.body.message)).toBe(true);
+      expect(res.body.message.length).toBeGreaterThanOrEqual(2);
+      expect(res.body.error).toBe('Bad Request');
+    });
+
+    it('붙여넣기로 같은 HTML을 등록해도 400이다', async () => {
+      const html = fs.readFileSync(BLOCKED_FORM_FIXTURE_PATH, 'utf-8');
+      const res = await agent.post('/api/admin/templates').field('html', html).field('name', '붙여넣기 차단');
+
+      expect(res.status).toBe(400);
+      expect(Array.isArray(res.body.message)).toBe(true);
+      expect(res.body.message.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('차단된 HTML은 저장되지 않는다(목록에 나타나지 않는다)', async () => {
+      await agent.post('/api/admin/templates').field('name', '저장 안 됨 확인').attach('file', BLOCKED_FORM_FIXTURE_PATH);
+
+      const listRes = await agent.get('/api/admin/templates');
+      expect(listRes.body.find((t: { name: string }) => t.name === '저장 안 됨 확인')).toBeUndefined();
+    });
+
+    it('기존 정상 픽스처(valid-form.html)는 그대로 201이다', async () => {
+      const res = await agent
+        .post('/api/admin/templates')
+        .field('name', '정상 픽스처 유지 확인')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(res.status).toBe(201);
     });
   });
 

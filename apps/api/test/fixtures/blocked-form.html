@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>차단 규칙 테스트용 폼</title>
+</head>
+<body>
+  <h1>무료 체험 신청</h1>
+  <form>
+    <label>이름 <input name="name" required /></label>
+    <input type="checkbox" name="consent" />
+    <button type="submit">신청</button>
+  </form>
+  <iframe src="https://evil.example/"></iframe>
+  <script>
+    fetch('/api/admin/campaigns');
+    var c = document.cookie;
+    var p = parent.document;
+  </script>
+</body>
+</html>

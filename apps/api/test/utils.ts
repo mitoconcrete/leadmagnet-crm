@@ -22,6 +22,7 @@ export const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL ?? 'http://localhost
 export const VALID_FORM_FIXTURE_PATH = path.join(__dirname, 'fixtures', 'valid-form.html');
 export const NO_FORM_FIXTURE_PATH = path.join(__dirname, 'fixtures', 'no-form.html');
 export const WARN_FORM_FIXTURE_PATH = path.join(__dirname, 'fixtures', 'warn-form.html');
+export const BLOCKED_FORM_FIXTURE_PATH = path.join(__dirname, 'fixtures', 'blocked-form.html');
 
 export interface TestContext {
   app: INestApplication;

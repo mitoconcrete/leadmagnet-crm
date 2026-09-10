@@ -1,6 +1,6 @@
-import { lintHtmlTemplate } from './html-lint';
+import { findBlockedPatterns, lintHtmlTemplate } from './html-lint';
 
-/** 규칙 1~7을 모두 만족하는 최소 클린 폼. 각 규칙의 음성 케이스 기준선으로 쓴다. */
+/** 규칙 1~5(경고)를 모두 만족하는 최소 클린 폼. 각 규칙의 음성 케이스 기준선으로 쓴다. */
 const BASE = `<form>
   <input name="email" type="email">
   <input type="checkbox" name="consent">
@@ -12,9 +12,15 @@ const MISSING_NAME_MSG = (n: number) =>
 const EXTERNAL_SCRIPT_MSG = (n: number) => `외부 스크립트 ${n}개는 격리 정책(CSP)으로 실행되지 않습니다`;
 const FORM_IGNORED_ATTR_MSG = 'form의 action/method/onsubmit은 무시됩니다. 제출은 시스템이 처리합니다';
 const NO_SUBMIT_MSG = '제출 버튼(type="submit")이 없습니다';
-const NAVIGATION_ESCAPE_MSG = '페이지 이동 시도(meta refresh, target=_top)는 sandbox로 차단됩니다';
-const ADMIN_API_MSG = '관리자 API 호출은 격리 정책으로 차단됩니다';
 const NO_CONSENT_MSG = '개인정보 수집 동의 체크박스(name="consent")가 없습니다';
+
+const BLOCKED_ADMIN_MSG = '관리자 API 참조(/api/admin)가 포함되어 있습니다';
+const BLOCKED_COOKIE_MSG = '쿠키 접근(document.cookie)이 포함되어 있습니다';
+const BLOCKED_PARENT_TOP_MSG = '부모·최상위 창 접근이 포함되어 있습니다';
+const BLOCKED_STORAGE_MSG = '브라우저 저장소 접근이 포함되어 있습니다';
+const BLOCKED_META_REFRESH_MSG = 'meta refresh 리다이렉트가 포함되어 있습니다';
+const BLOCKED_TARGET_MSG = 'target=_top/_parent가 포함되어 있습니다';
+const BLOCKED_FRAME_MSG = '중첩 프레임(iframe/object/embed)이 포함되어 있습니다';
 
 /** samples/free-checklist-signup.html 내용을 그대로 복사한 문자열. */
 const CLEAN_SAMPLE = `<!doctype html>
@@ -185,70 +191,7 @@ describe('lintHtmlTemplate (ADR 0018 등록 점검 경고)', () => {
     });
   });
 
-  describe('규칙 5: meta refresh 또는 target=_top/_parent', () => {
-    it('meta http-equiv=refresh가 있으면 경고한다', () => {
-      const html = BASE.replace(
-        '<form>',
-        '<meta http-equiv="refresh" content="0;url=https://evil.example.com"><form>',
-      );
-      expect(lintHtmlTemplate(html)).toContain(NAVIGATION_ESCAPE_MSG);
-    });
-
-    it('target="_top"이 있으면 경고한다', () => {
-      const html = BASE.replace('</form>', '</form><a href="#" target="_top">이동</a>');
-      expect(lintHtmlTemplate(html)).toContain(NAVIGATION_ESCAPE_MSG);
-    });
-
-    it("target='_parent'(작은따옴표)도 잡는다", () => {
-      const html = BASE.replace('</form>', "</form><a href='#' target='_parent'>이동</a>");
-      expect(lintHtmlTemplate(html)).toContain(NAVIGATION_ESCAPE_MSG);
-    });
-
-    it('<form target="_parent">도 잡는다', () => {
-      const html = BASE.replace('<form>', '<form target="_parent">');
-      expect(lintHtmlTemplate(html)).toContain(NAVIGATION_ESCAPE_MSG);
-    });
-
-    it('<base target="_top">도 잡는다', () => {
-      const html = BASE.replace('<form>', '<base target="_top"><form>');
-      expect(lintHtmlTemplate(html)).toContain(NAVIGATION_ESCAPE_MSG);
-    });
-
-    it('본문 텍스트에 target="_top" 문구가 있어도(태그 속성이 아니면) 경고하지 않는다(오탐 방지)', () => {
-      const html = BASE.replace('</form>', '</form><p>이 옵션은 target="_top" 옵션과 비슷합니다</p>');
-      expect(lintHtmlTemplate(html)).not.toContain(NAVIGATION_ESCAPE_MSG);
-    });
-
-    it('BASE(음성)에는 이 경고가 없다', () => {
-      expect(lintHtmlTemplate(BASE)).not.toContain(NAVIGATION_ESCAPE_MSG);
-    });
-  });
-
-  describe('규칙 6: 관리자 API 호출', () => {
-    it('<a href>가 /api/admin을 포함하면 경고한다', () => {
-      const html = BASE.replace('</form>', '</form><a href="/api/admin/campaigns">관리</a>');
-      expect(lintHtmlTemplate(html)).toContain(ADMIN_API_MSG);
-    });
-
-    it("fetch('/api/admin/...')가 있으면 경고한다", () => {
-      const html = BASE.replace('</form>', "</form><script>fetch('/api/admin/campaigns')</script>");
-      expect(lintHtmlTemplate(html)).toContain(ADMIN_API_MSG);
-    });
-
-    it('XMLHttpRequest로 /api/admin을 호출하면 경고한다', () => {
-      const html = BASE.replace(
-        '</form>',
-        "</form><script>var x = new XMLHttpRequest(); x.open('GET', '/api/admin/campaigns');</script>",
-      );
-      expect(lintHtmlTemplate(html)).toContain(ADMIN_API_MSG);
-    });
-
-    it('BASE(음성)에는 이 경고가 없다', () => {
-      expect(lintHtmlTemplate(BASE)).not.toContain(ADMIN_API_MSG);
-    });
-  });
-
-  describe('규칙 7: 개인정보 수집 동의 체크박스(name="consent")', () => {
+  describe('규칙 5: 개인정보 수집 동의 체크박스(name="consent")', () => {
     it('consent 체크박스가 없으면 경고한다', () => {
       const html = BASE.replace('<input type="checkbox" name="consent">', '');
       expect(lintHtmlTemplate(html)).toContain(NO_CONSENT_MSG);
@@ -267,24 +210,234 @@ describe('lintHtmlTemplate (ADR 0018 등록 점검 경고)', () => {
     });
   });
 
-  it('여러 규칙을 동시에 위반하면 고정된 순서(1~7)로 경고를 담는다', () => {
+  it('여러 규칙을 동시에 위반하면 고정된 순서(1~5)로 경고를 담는다', () => {
     const html = `<form action="/submit">
       <input type="text">
-      <meta http-equiv="refresh" content="0">
-      <a href="/api/admin/campaigns">관리</a>
       <script src="https://cdn.example.com/x.js"></script>
     </form>`;
 
     const warnings = lintHtmlTemplate(html);
 
-    expect(warnings).toEqual([
-      MISSING_NAME_MSG(1),
-      EXTERNAL_SCRIPT_MSG(1),
-      FORM_IGNORED_ATTR_MSG,
-      NO_SUBMIT_MSG,
-      NAVIGATION_ESCAPE_MSG,
-      ADMIN_API_MSG,
-      NO_CONSENT_MSG,
+    expect(warnings).toEqual([MISSING_NAME_MSG(1), EXTERNAL_SCRIPT_MSG(1), FORM_IGNORED_ATTR_MSG, NO_SUBMIT_MSG, NO_CONSENT_MSG]);
+  });
+
+  it('meta refresh·target=_top·관리자 API 호출은 더 이상 경고로 나오지 않는다(차단 규칙으로 승격, ADR 0018 2026-09-10 개정)', () => {
+    const html = BASE.replace(
+      '</form>',
+      '</form><meta http-equiv="refresh" content="0"><a href="/api/admin/campaigns" target="_top">관리</a>',
+    );
+
+    const warnings = lintHtmlTemplate(html);
+
+    expect(warnings).not.toEqual(expect.arrayContaining([expect.stringContaining('페이지 이동 시도')]));
+    expect(warnings).not.toEqual(expect.arrayContaining([expect.stringContaining('관리자 API 호출')]));
+  });
+});
+
+describe('findBlockedPatterns (ADR 0018 차단 규칙, 2026-09-10 개정 · 스펙 §4.2 400)', () => {
+  it('규칙을 모두 만족하는 최소 폼(BASE)은 차단 이유가 없다', () => {
+    expect(findBlockedPatterns(BASE)).toEqual([]);
+  });
+
+  it('samples/free-checklist-signup.html 내용은 차단 이유가 없다', () => {
+    expect(findBlockedPatterns(CLEAN_SAMPLE)).toEqual([]);
+  });
+
+  describe('규칙 1: 관리자 API 참조(/api/admin)', () => {
+    it('/api/admin 문자열이 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', "</form><script>fetch('/api/admin/campaigns')</script>");
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_ADMIN_MSG);
+    });
+
+    it('대문자·경로 뒤 추가 세그먼트가 있어도 잡는다', () => {
+      const html = BASE.replace('</form>', '</form><a href="/API/ADMIN/campaigns">관리</a>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_ADMIN_MSG);
+    });
+
+    it('BASE(음성)에는 이 이유가 없다', () => {
+      expect(findBlockedPatterns(BASE)).not.toContain(BLOCKED_ADMIN_MSG);
+    });
+  });
+
+  describe('규칙 2: 쿠키 접근(document.cookie)', () => {
+    it('document.cookie가 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><script>var c = document.cookie;</script>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_COOKIE_MSG);
+    });
+
+    it('공백이 섞여도(document . cookie) 잡는다', () => {
+      const html = BASE.replace('</form>', '</form><script>var c = document . cookie;</script>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_COOKIE_MSG);
+    });
+
+    it('대소문자(Document.Cookie)도 잡는다', () => {
+      const html = BASE.replace('</form>', '</form><script>var c = Document.Cookie;</script>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_COOKIE_MSG);
+    });
+
+    it('BASE(음성)에는 이 이유가 없다', () => {
+      expect(findBlockedPatterns(BASE)).not.toContain(BLOCKED_COOKIE_MSG);
+    });
+  });
+
+  describe('규칙 3: 부모·최상위 창 접근', () => {
+    it('window.parent가 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><script>var p = window.parent;</script>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_PARENT_TOP_MSG);
+    });
+
+    it('window.top이 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><script>var t = window.top;</script>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_PARENT_TOP_MSG);
+    });
+
+    it('parent.(식별자 경계)가 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><script>parent.document.title = "x";</script>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_PARENT_TOP_MSG);
+    });
+
+    it('top.location이 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><script>top.location.href = "https://evil.example/";</script>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_PARENT_TOP_MSG);
+    });
+
+    it('top.document가 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><script>var d = top.document;</script>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_PARENT_TOP_MSG);
+    });
+
+    it('parentElement는 잡지 않는다(식별자 경계, 오탐 방지)', () => {
+      const html = BASE.replace('</form>', '</form><script>var e = el.parentElement;</script>');
+      expect(findBlockedPatterns(html)).not.toContain(BLOCKED_PARENT_TOP_MSG);
+    });
+
+    it('top.location/top.document가 아닌 다른 top.* 프로퍼티(top.style)는 잡지 않는다(오탐 방지)', () => {
+      const html = BASE.replace('</form>', '</form><script>var s = top.style;</script>');
+      expect(findBlockedPatterns(html)).not.toContain(BLOCKED_PARENT_TOP_MSG);
+    });
+
+    it('.top(다른 객체의 top 프로퍼티, 예: el.style.top)은 잡지 않는다(오탐 방지)', () => {
+      const html = BASE.replace('</form>', '</form><script>el.style.top = "10px";</script>');
+      expect(findBlockedPatterns(html)).not.toContain(BLOCKED_PARENT_TOP_MSG);
+    });
+
+    it('BASE(음성)에는 이 이유가 없다', () => {
+      expect(findBlockedPatterns(BASE)).not.toContain(BLOCKED_PARENT_TOP_MSG);
+    });
+  });
+
+  describe('규칙 4: 브라우저 저장소 접근', () => {
+    it('localStorage가 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', "</form><script>localStorage.setItem('x', '1');</script>");
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_STORAGE_MSG);
+    });
+
+    it('sessionStorage가 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', "</form><script>sessionStorage.setItem('x', '1');</script>");
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_STORAGE_MSG);
+    });
+
+    it('대소문자(LOCALSTORAGE)도 잡는다', () => {
+      const html = BASE.replace('</form>', "</form><script>LOCALSTORAGE.setItem('x', '1');</script>");
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_STORAGE_MSG);
+    });
+
+    it('BASE(음성)에는 이 이유가 없다', () => {
+      expect(findBlockedPatterns(BASE)).not.toContain(BLOCKED_STORAGE_MSG);
+    });
+  });
+
+  describe('규칙 5: meta refresh 리다이렉트', () => {
+    it('meta http-equiv=refresh가 있으면 차단한다', () => {
+      const html = BASE.replace(
+        '<form>',
+        '<meta http-equiv="refresh" content="0;url=https://evil.example/"><form>',
+      );
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_META_REFRESH_MSG);
+    });
+
+    it('대소문자(HTTP-EQUIV=REFRESH)도 잡는다', () => {
+      const html = BASE.replace('<form>', '<meta HTTP-EQUIV="REFRESH" content="0"><form>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_META_REFRESH_MSG);
+    });
+
+    it('BASE(음성)에는 이 이유가 없다', () => {
+      expect(findBlockedPatterns(BASE)).not.toContain(BLOCKED_META_REFRESH_MSG);
+    });
+  });
+
+  describe('규칙 6: target=_top/_parent', () => {
+    it('<a target="_top">이 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><a href="#" target="_top">이동</a>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_TARGET_MSG);
+    });
+
+    it('<form target="_parent">도 잡는다', () => {
+      const html = BASE.replace('<form>', '<form target="_parent">');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_TARGET_MSG);
+    });
+
+    it('<base target="_top">도 잡는다', () => {
+      const html = BASE.replace('<form>', '<base target="_top"><form>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_TARGET_MSG);
+    });
+
+    it('본문 텍스트에 target="_top" 문구가 있어도(태그 속성이 아니면) 차단하지 않는다(오탐 방지)', () => {
+      const html = BASE.replace('</form>', '</form><p>이 옵션은 target="_top" 옵션과 비슷합니다</p>');
+      expect(findBlockedPatterns(html)).not.toContain(BLOCKED_TARGET_MSG);
+    });
+
+    it('BASE(음성)에는 이 이유가 없다', () => {
+      expect(findBlockedPatterns(BASE)).not.toContain(BLOCKED_TARGET_MSG);
+    });
+  });
+
+  describe('규칙 7: 중첩 프레임(iframe/object/embed)', () => {
+    it('<iframe>이 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><iframe src="https://evil.example/"></iframe>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_FRAME_MSG);
+    });
+
+    it('<object>가 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><object data="https://evil.example/"></object>');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_FRAME_MSG);
+    });
+
+    it('<embed>가 있으면 차단한다', () => {
+      const html = BASE.replace('</form>', '</form><embed src="https://evil.example/">');
+      expect(findBlockedPatterns(html)).toContain(BLOCKED_FRAME_MSG);
+    });
+
+    it('BASE(음성)에는 이 이유가 없다', () => {
+      expect(findBlockedPatterns(BASE)).not.toContain(BLOCKED_FRAME_MSG);
+    });
+  });
+
+  it('HTML 주석(<!-- -->) 안 텍스트는 검사 대상에서 제외한다(설명 글에 이유가 있어도 차단되지 않는다)', () => {
+    const html = `<!-- 이 예시는 /api/admin, document.cookie, parent., localStorage를 설명용으로만 언급한다 -->\n${BASE}`;
+    expect(findBlockedPatterns(html)).toEqual([]);
+  });
+
+  it('여러 규칙을 동시에 위반하면 고정된 순서(1~7)로 이유를 담는다', () => {
+    const html = `<form>
+      <meta http-equiv="refresh" content="0">
+      <a href="/api/admin/campaigns" target="_top">관리</a>
+      <iframe src="https://evil.example/"></iframe>
+      <script>
+        var c = document.cookie;
+        var p = window.parent;
+        localStorage.setItem('x', '1');
+      </script>
+    </form>`;
+
+    expect(findBlockedPatterns(html)).toEqual([
+      BLOCKED_ADMIN_MSG,
+      BLOCKED_COOKIE_MSG,
+      BLOCKED_PARENT_TOP_MSG,
+      BLOCKED_STORAGE_MSG,
+      BLOCKED_META_REFRESH_MSG,
+      BLOCKED_TARGET_MSG,
+      BLOCKED_FRAME_MSG,
     ]);
   });
 });

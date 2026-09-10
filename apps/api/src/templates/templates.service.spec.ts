@@ -61,6 +61,35 @@ describe('validateHtmlUpload', () => {
     const upperForm = { ...validFile, buffer: Buffer.from('<html><FORM></FORM></html>') };
     expect(() => validateHtmlUpload(upperForm)).not.toThrow();
   });
+
+  describe('차단 규칙(ADR 0018 2026-09-10 개정, §4.2 400)', () => {
+    it('고신뢰 공격 패턴이 있으면 400이고 message가 이유 배열인 응답 형태를 던진다', () => {
+      const blocked = {
+        ...validFile,
+        buffer: Buffer.from("<form></form><script>fetch('/api/admin/campaigns'); var c = document.cookie;</script>"),
+      };
+
+      expect(() => validateHtmlUpload(blocked)).toThrow(BadRequestException);
+      try {
+        validateHtmlUpload(blocked);
+      } catch (e) {
+        const response = (e as BadRequestException).getResponse();
+        expect(response).toEqual({
+          statusCode: 400,
+          message: expect.arrayContaining([
+            '관리자 API 참조(/api/admin)가 포함되어 있습니다',
+            '쿠키 접근(document.cookie)이 포함되어 있습니다',
+          ]),
+          error: 'Bad Request',
+        });
+        expect((response as { message: string[] }).message).toHaveLength(2);
+      }
+    });
+
+    it('차단 패턴이 없으면 통과한다(음성)', () => {
+      expect(() => validateHtmlUpload(validFile)).not.toThrow();
+    });
+  });
 });
 
 describe('TemplatesService', () => {
