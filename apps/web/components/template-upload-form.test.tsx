@@ -186,16 +186,36 @@ describe('TemplateUploadForm', () => {
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
-  it('붙여넣기 textarea는 고정 높이 내부 스크롤이라 긴 HTML을 붙여도 페이지가 밀리지 않는다(ADR 0021 2026-09-10)', () => {
+  it('붙여넣기 textarea는 모달의 남는 세로 공간을 채우고(flex-1) 고정 높이로 잘리지 않는다(ADR 0021 2026-09-10 개정)', () => {
     render(<TemplateUploadForm onUploaded={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'HTML 붙여넣기' }));
     const textarea = screen.getByPlaceholderText('AI가 생성한 HTML 전체를 붙여넣으세요');
 
-    expect(textarea.className).toContain('h-64');
-    expect(textarea.className).toContain('max-h-64');
+    expect(textarea.className).toContain('flex-1');
+    expect(textarea.className).toContain('min-h-[12rem]');
+    expect(textarea.className).not.toContain('h-64');
+    expect(textarea.className).not.toContain('max-h-64');
     expect(textarea.className).toContain('resize-none');
     expect(textarea.className).toContain('font-mono');
+
+    // 높이 사슬(min-h-0)이 tabs-content·form까지 이어져야 textarea의 flex-1이 실제로 늘어난다.
+    const tabPanel = textarea.closest('[data-slot="tabs-content"]');
+    expect(tabPanel?.className).toContain('flex');
+    expect(tabPanel?.className).toContain('min-h-0');
+    expect(tabPanel?.className).toContain('h-full');
+
+    const form = textarea.closest('form');
+    expect(form?.className).toContain('flex-1');
+    expect(form?.className).toContain('min-h-0');
+  });
+
+  it('폼 래퍼는 모달 폭을 다 쓴다(고정 max-w-2xl 제거, ADR 0021 2026-09-10 개정)', () => {
+    render(<TemplateUploadForm onUploaded={vi.fn()} />);
+
+    const tabList = screen.getByRole('tablist');
+    const tabsRoot = tabList.closest('[data-slot="tabs"]');
+    expect(tabsRoot?.className).not.toContain('max-w-2xl');
   });
 
   it('탭 토글은 상단 고정, 등록 버튼은 하단 고정 푸터, 입력 영역만 스크롤한다(ADR 0021 2026-09-10)', () => {
