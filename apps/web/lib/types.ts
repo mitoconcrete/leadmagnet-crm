@@ -4,12 +4,13 @@ export type ChannelOrDirect = Channel | 'direct';
 
 export const CHANNELS: Channel[] = ['instagram', 'x', 'youtube', 'threads'];
 
+/** direct는 코드 없이 열린 경우(코드가 지워진 링크 등)를 담는다(ADR 0005 결과 절, 2026-09-10). */
 export const CHANNEL_LABELS: Record<ChannelOrDirect, string> = {
   instagram: '인스타그램',
   x: 'X',
   youtube: '유튜브',
   threads: '스레드',
-  direct: '직접 유입',
+  direct: '직접 유입(코드 없음)',
 };
 
 /**
