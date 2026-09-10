@@ -2,6 +2,9 @@
 
 설계 스펙 `superpowers/specs/2026-09-09-leadmagnet-crm-design.md`와 ADR을 그림으로 옮긴 참고 문서다. 계약의 최종 권위는 스펙이며, 이 문서는 그 요약이다.
 
+> 이 다이어그램들은 `docs/img/*.svg`로도 렌더돼 README에 삽입돼 있다. GitHub는 아래 ```mermaid``` 블록을 그대로 렌더한다. 이미지 재생성: 각 블록을 `.mmd`로 저장 후 `mmdc -i x.mmd -o docs/img/x.svg`.
+
+
 ## 1. DB 스키마 (ER)
 
 마이그레이션 `apps/api/src/migrations/1757400000000-init.ts` 기준. 컬럼명은 snake_case, PK는 모두 uuid.
