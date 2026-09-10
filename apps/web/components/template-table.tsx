@@ -183,7 +183,7 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
       </div>
 
       <Dialog open={previewTemplate !== null} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
-        <DialogContent className="flex h-[85vh] max-w-5xl flex-col">
+        <DialogContent className="flex h-[85vh] w-[min(64rem,95vw)] max-w-none sm:max-w-none flex-col">
           <DialogHeader>
             <DialogTitle>{previewTemplate?.name}</DialogTitle>
           </DialogHeader>
@@ -199,7 +199,7 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
       </Dialog>
 
       <Dialog open={codeTemplate !== null} onOpenChange={(open) => !open && closeCode()}>
-        <DialogContent className="flex h-[85vh] max-w-5xl flex-col">
+        <DialogContent className="flex h-[85vh] w-[min(64rem,95vw)] max-w-none sm:max-w-none flex-col">
           <DialogHeader>
             <DialogTitle>{codeTemplate?.name} 코드</DialogTitle>
           </DialogHeader>
