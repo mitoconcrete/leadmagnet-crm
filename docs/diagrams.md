@@ -19,7 +19,7 @@ erDiagram
     forms ||--o{ submissions : "form_id"
     visitors ||--o{ visits : "visitor_id"
     visitors ||--o{ submissions : "visitor_id"
-    visits ||--o{ submissions : "visit_id"
+    visits ||--o| submissions : "visit_id (방문당 1건)"
     distribution_links o|--o{ visits : "link_id (nullable)"
     distribution_links o|--o{ submissions : "link_id (nullable)"
 
@@ -27,6 +27,8 @@ erDiagram
         uuid id PK
         varchar email UK
         varchar password_hash
+        operator_role role "admin | operator (ADR 0020)"
+        boolean is_active "기본 true"
         timestamptz created_at
     }
     sessions {
@@ -37,10 +39,11 @@ erDiagram
     }
     html_templates {
         uuid id PK
-        varchar name
+        varchar name "UK: 살아 있는 이름 고유(부분)"
         varchar original_filename
         text html "등록 원본, 무가공"
         int size_bytes
+        timestamptz deleted_at "소프트 삭제, nullable (ADR 0014)"
         timestamptz created_at
     }
     campaigns {
@@ -86,7 +89,7 @@ erDiagram
     submissions {
         uuid id PK
         uuid form_id FK
-        uuid visit_id FK
+        uuid visit_id FK "UK: 방문당 신청 1건"
         uuid visitor_id FK
         uuid link_id FK "nullable"
         varchar channel
@@ -95,7 +98,7 @@ erDiagram
     }
 ```
 
-제약: `distribution_links UNIQUE(form_id, channel)` (채널당 링크 1개), `forms.slug UNIQUE`, `operators.email UNIQUE`. 인덱스: `visits(form_id)`, `visits(link_id)`, `submissions(form_id)`, `submissions(created_at)`.
+제약: `distribution_links UNIQUE(form_id, channel)`(채널당 링크 1개), `forms.slug UNIQUE`, `operators.email UNIQUE`, `submissions.visit_id UNIQUE`(방문당 신청 1건), `html_templates(name) WHERE deleted_at IS NULL` 부분 유니크(살아 있는 이름 고유). 인덱스: `visits(form_id)`, `visits(link_id)`, `submissions(form_id)`, `submissions(created_at)`. 이후 마이그레이션이 `html_templates.deleted_at`, `operators.role`·`is_active`를 추가했다.
 
 ## 2. 운영자 흐름 (관리자 화면 → 관리자 API)
 
@@ -125,20 +128,24 @@ sequenceDiagram
     participant S as API /api/public/forms/:slug/submissions
 
     V->>P: GET /p/:slug?src=CODE (쿠키 vid 있으면 전송)
-    P->>DB: forms(slug, is_active) 조회
-    alt 폼 없음 / 비활성
+    P->>DB: forms(slug) + template·campaign 조회
+    alt 폼 없음 / 비활성 / 템플릿 삭제됨 / 캠페인 종료
         P-->>V: 404
     end
-    P->>DB: visitors upsert (vid 없으면 신규)
     P->>DB: distribution_links(code) → link_id, channel (없으면 direct)
-    P->>DB: visits INSERT → visit.id = visitToken
+    P->>DB: visitors upsert (vid 없으면 신규, 트랜잭션)
+    P->>DB: visits INSERT → visit.id = visitToken (트랜잭션)
     P-->>V: 200 text/html + Set-Cookie vid (Path=/p, 1년)<br/>CSP · X-Frame-Options · 래퍼 안에 srcdoc iframe
     V->>I: srcdoc 렌더 (sandbox="allow-scripts allow-forms", same-origin 없음)
     Note over I: 서버가 </body> 앞에 주입한 스크립트가<br/>모든 <form> submit을 가로챔
     I->>S: POST {visitToken, fields} (JSON, CORS *)
-    S->>DB: visits(visitToken) 검증 → form 일치 확인
-    alt fields 비었음 / 토큰 불일치
+    S->>DB: 폼 재조회(findActiveForm) + visits(visitToken) 검증
+    alt 폼 없음/비활성/템플릿 삭제/캠페인 종료
+        S-->>I: 404
+    else fields 비었음 / 값이 문자열 아님 / 토큰 불일치
         S-->>I: 400
+    else 같은 visitToken 재제출 (visit_id UNIQUE)
+        S-->>I: 409
     end
     S->>DB: submissions INSERT (payload jsonb, channel, link_id)
     S-->>I: 201 {id, message}
@@ -199,6 +206,6 @@ flowchart LR
     F --> L["로컬<br/>pnpm --filter api test:cov<br/>pnpm --filter web test:cov"]
     L --> C["docker compose --profile test<br/>run --rm api-test"]
     C --> G["GitHub Actions<br/>api · web · integration"]
-    G --> I["integration: compose up --wait<br/>→ api-test → Bruno → curl 스모크"]
+    G --> I["integration: compose up --wait<br/>→ api-test → Bruno<br/>→ Playwright 브라우저 e2e → curl 스모크"]
     L -.->|"lines/statements/functions 90%<br/>branches 80% 미달 시 실패"| L
 ```
