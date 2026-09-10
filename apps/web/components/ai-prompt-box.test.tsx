@@ -18,13 +18,13 @@ beforeEach(() => {
   });
 });
 
-/** 접힌 트리거를 펼친다(ADR 0021 2026-09-10 개정: 기본 접힘). */
-function expandBox() {
+/** 닫힌 트리거를 연다(ADR 0021 2026-09-10 추가 개정: 뜨는 Popover, 기본 닫힘). */
+function openBox() {
   fireEvent.click(screen.getByRole('button', { name: /AI로 HTML 만들기/ }));
 }
 
 describe('AiPromptBox', () => {
-  it('기본 상태는 접혀 있고 트리거 한 줄만 보인다(ADR 0021 2026-09-10 개정)', () => {
+  it('기본 상태는 닫혀 있고 트리거 한 줄만 보인다', () => {
     render(<AiPromptBox />);
 
     expect(screen.getByRole('button', { name: /AI로 HTML 만들기/ })).toBeInTheDocument();
@@ -44,17 +44,24 @@ describe('AiPromptBox', () => {
     expect(trigger.className).toContain('focus-visible:ring-ring');
   });
 
-  it('접힘/펼침에 따라 텍스트로도 상태가 드러난다(액션임이 명확한 문구)', () => {
+  it('트리거 문구는 액션임이 명확하게 드러난다', () => {
     render(<AiPromptBox />);
 
     expect(screen.getByText(/AI로 HTML 만들기/)).toBeInTheDocument();
     expect(screen.getByText(/프롬프트 열기/)).toBeInTheDocument();
   });
 
-  it('트리거를 클릭하면 펼쳐져 제목·설명·조건 요약·프롬프트 전문을 보여준다', () => {
-    const { container } = render(<AiPromptBox />);
+  it('트리거는 위쪽 여백(mt-4, 16px 이상)을 가진다(모달 제목과 충분히 떨어지도록)', () => {
+    render(<AiPromptBox />);
 
-    expandBox();
+    const trigger = screen.getByRole('button', { name: /AI로 HTML 만들기/ });
+    expect(trigger.className).toContain('mt-4');
+  });
+
+  it('트리거를 클릭하면 떠 있는 패널이 열려 제목·설명·조건 요약·프롬프트 전문을 보여준다', () => {
+    const { baseElement } = render(<AiPromptBox />);
+
+    openBox();
 
     expect(screen.getByText('AI로 만들기')).toBeInTheDocument();
     expect(
@@ -65,18 +72,42 @@ describe('AiPromptBox', () => {
     expect(screen.getByText('<form>과 모든 입력의 name 속성 필수')).toBeInTheDocument();
     expect(screen.getByText('외부 스크립트 없이 완전한 파일 하나')).toBeInTheDocument();
 
-    const pre = container.querySelector('pre');
+    const pre = baseElement.querySelector('pre');
     expect(pre).not.toBeNull();
     expect(pre?.textContent).toBe(AI_PROMPT_TEMPLATE);
   });
 
-  it('펼친 뒤 트리거를 다시 클릭하면 접힌다', () => {
+  it('열린 패널은 Popover로 렌더되어(popover-content) 뜨는 크기·스크롤 제약을 갖는다', () => {
+    const { baseElement } = render(<AiPromptBox />);
+    openBox();
+
+    const content = baseElement.querySelector('[data-slot="popover-content"]');
+    expect(content?.className).toContain('w-[36rem]');
+    expect(content?.className).toContain('max-w-[calc(100vw-2rem)]');
+    expect(content?.className).toContain('max-h-[60vh]');
+    expect(content?.className).toContain('overflow-auto');
+    expect(content?.className).toContain('p-4');
+    expect(content?.className).toContain('box-border');
+  });
+
+  it('열린 뒤 트리거를 다시 클릭하면 닫힌다', () => {
     render(<AiPromptBox />);
 
-    expandBox();
+    openBox();
     expect(screen.getByText('AI로 만들기')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /AI로 HTML 만들기/ }));
+    expect(screen.queryByText('AI로 만들기')).not.toBeInTheDocument();
+  });
+
+  it('열린 뒤 바깥을 클릭하면 닫힌다', () => {
+    render(<AiPromptBox />);
+
+    openBox();
+    expect(screen.getByText('AI로 만들기')).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    fireEvent.click(document.body);
     expect(screen.queryByText('AI로 만들기')).not.toBeInTheDocument();
   });
 
@@ -84,7 +115,7 @@ describe('AiPromptBox', () => {
     writeText.mockResolvedValue(undefined);
 
     render(<AiPromptBox />);
-    expandBox();
+    openBox();
     fireEvent.click(screen.getByRole('button', { name: '프롬프트 복사' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(AI_PROMPT_TEMPLATE));
@@ -95,64 +126,43 @@ describe('AiPromptBox', () => {
     writeText.mockRejectedValue(new Error('클립보드 접근이 거부되었습니다'));
 
     render(<AiPromptBox />);
-    expandBox();
+    openBox();
     fireEvent.click(screen.getByRole('button', { name: '프롬프트 복사' }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it('최상위 요소는 위쪽 여백(mt-4, 16px 이상)을 가진다(모달 제목과 충분히 떨어지도록, 2026-09-10 추가 수정: mt-2는 8px라 눈에 안 띄었다)', () => {
+  it('열리면 "프롬프트 복사" 버튼이 우측 정렬 컨테이너(flex justify-end) 안에 있다', () => {
     render(<AiPromptBox />);
-
-    const card = screen.getByRole('button', { name: /AI로 HTML 만들기/ }).closest('[data-slot="card"]');
-    expect(card?.className).toContain('mt-4');
-    expect(card?.className).not.toContain('mt-2');
-  });
-
-  it('펼치면 "프롬프트 복사" 버튼이 우측 정렬 컨테이너(flex justify-end) 안에 있다', () => {
-    render(<AiPromptBox />);
-    expandBox();
+    openBox();
 
     const button = screen.getByRole('button', { name: '프롬프트 복사' });
     expect(button.parentElement?.className).toContain('flex');
     expect(button.parentElement?.className).toContain('justify-end');
   });
 
-  it('펼친 내용에 hr·구분선(Separator)이 없다(복사 버튼 위 구분선 제거)', () => {
-    const { container } = render(<AiPromptBox />);
-    expandBox();
+  it('열린 내용에 hr·구분선(Separator)이 없다', () => {
+    const { baseElement } = render(<AiPromptBox />);
+    openBox();
 
-    expect(container.querySelector('hr')).toBeNull();
-    expect(container.querySelector('[data-slot="separator"]')).toBeNull();
-    expect(container.querySelector('.border-t')).toBeNull();
-  });
-
-  it('CollapsibleContent가 통일 패딩(p-4, box-border)을 갖고 테두리·둥근 모서리는 유지한다', () => {
-    const { container } = render(<AiPromptBox />);
-    expandBox();
-
-    const content = container.querySelector('[data-slot="collapsible-content"]');
-    expect(content?.className).toContain('p-4');
-    expect(content?.className).toContain('box-border');
-    expect(content?.className).toContain('border');
-    expect(content?.className).toContain('border-t-0');
-    expect(content?.className).toContain('rounded-b-md');
+    expect(baseElement.querySelector('hr')).toBeNull();
+    expect(baseElement.querySelector('[data-slot="separator"]')).toBeNull();
   });
 
   it('내부 요소는 개별 패딩/마진 없는 일반 div로 단순화되어 있다(Card의 CardHeader/CardContent 패딩 미사용)', () => {
-    const { container } = render(<AiPromptBox />);
-    expandBox();
+    const { baseElement } = render(<AiPromptBox />);
+    openBox();
 
-    expect(container.querySelector('[data-slot="card-header"]')).toBeNull();
-    expect(container.querySelector('[data-slot="card-content"]')).toBeNull();
+    expect(baseElement.querySelector('[data-slot="card-header"]')).toBeNull();
+    expect(baseElement.querySelector('[data-slot="card-content"]')).toBeNull();
   });
 
   it('프롬프트 <pre>는 box-border·w-full이라 패딩이 너비에 영향을 주지 않는다', () => {
-    const { container } = render(<AiPromptBox />);
-    expandBox();
+    const { baseElement } = render(<AiPromptBox />);
+    openBox();
 
-    const pre = container.querySelector('pre');
+    const pre = baseElement.querySelector('pre');
     expect(pre?.className).toContain('box-border');
     expect(pre?.className).toContain('w-full');
   });
