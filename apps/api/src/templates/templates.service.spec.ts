@@ -187,6 +187,23 @@ describe('TemplatesService.remove (ADR 0014 삭제 규칙)', () => {
     expect(dataSource.transaction).not.toHaveBeenCalled();
   });
 
+  it('ADR 0017 TOCTOU: 참조 폼이 0개로 집계됐어도 hard delete 실행 중 FK 위반(23503)이 나면 409로 매핑한다', async () => {
+    repo.findOne.mockResolvedValue({ id: 't1' });
+    dataSource.query.mockResolvedValue([{ forms: 0, visits: 0, submissions: 0 }]);
+    repo.delete.mockRejectedValue(Object.assign(new Error('foreign key violation'), { code: '23503' }));
+
+    await expect(service.remove('t1', false)).rejects.toThrow(ConflictException);
+    await expect(service.remove('t1', false)).rejects.toThrow('사용 중인 템플릿입니다');
+  });
+
+  it('hard delete 중 FK 위반이 아닌 다른 오류는 그대로 던진다(409로 뭉개지 않는다)', async () => {
+    repo.findOne.mockResolvedValue({ id: 't1' });
+    dataSource.query.mockResolvedValue([{ forms: 0, visits: 0, submissions: 0 }]);
+    repo.delete.mockRejectedValue(new Error('커넥션 끊김'));
+
+    await expect(service.remove('t1', false)).rejects.toThrow('커넥션 끊김');
+  });
+
   it('참조하는 폼이 있고 force가 아니면 409와 details를 던지고 아무것도 쓰지 않는다', async () => {
     repo.findOne.mockResolvedValue({ id: 't1' });
     dataSource.query.mockResolvedValue([{ forms: 2, visits: 5, submissions: 3 }]);
