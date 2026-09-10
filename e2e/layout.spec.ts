@@ -225,3 +225,23 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
     await expectNoOuterScrollButInnerScroll(page);
   });
 });
+
+/**
+ * 전역 폰트 실측. globals.css의 --font-sans가 자기 참조(var(--font-sans))라 값이
+ * 비어 CSS가 font-sans 유틸을 브라우저 기본값으로 떨어뜨리는 버그를 잡는다. 클래스
+ * 이름만으로는 실제 적용 여부를 알 수 없으므로 getComputedStyle로 실측한다.
+ * 로그인 없이 접근 가능한 /login에서 확인해 seedAdminData(무거운 훅)에 의존하지 않는다.
+ */
+test('전역 폰트: body와 한글 텍스트 요소의 font-family가 Geist/Noto 웹폰트를 포함한다(브라우저 기본 sans-serif로 떨어지지 않는다)', async ({
+  page,
+}) => {
+  await page.goto(`${WEB_BASE_URL}/login`);
+
+  const bodyFontFamily = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
+  expect(bodyFontFamily).toMatch(/Geist|Noto/i);
+
+  const heading = page.getByText('관리자 로그인', { exact: true });
+  await heading.waitFor();
+  const headingFontFamily = await heading.evaluate((el) => getComputedStyle(el).fontFamily);
+  expect(headingFontFamily).toMatch(/Geist|Noto/i);
+});
