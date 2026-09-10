@@ -171,14 +171,14 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
                 <Label htmlFor="template-paste-name">이름</Label>
                 <Input id="template-paste-name" value={pasteName} onChange={(e) => setPasteName(e.target.value)} />
               </div>
-              <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+              <div className="flex shrink-0 flex-col gap-1.5">
                 <Label htmlFor="template-paste-html">HTML</Label>
                 <Textarea
                   id="template-paste-html"
                   value={pasteHtml}
                   onChange={(e) => setPasteHtml(e.target.value)}
                   placeholder="AI가 생성한 HTML 전체를 붙여넣으세요"
-                  className="h-[48vh] min-h-[16rem] resize-none font-mono text-xs"
+                  className="h-[48vh] min-h-[16rem] shrink-0 resize-none font-mono text-xs"
                 />
               </div>
             </form>
