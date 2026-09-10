@@ -79,7 +79,7 @@ describe('TemplateTable', () => {
     expect(screen.getByRole('heading', { name: '가을 랜딩' })).toBeInTheDocument();
   });
 
-  it('미리보기 Dialog는 큰 화면 크기(max-w-5xl h-[85vh])를 갖고 iframe이 남은 공간을 채운다(ADR 0021 2026-09-10)', async () => {
+  it('미리보기 Dialog는 큰 화면 크기(w-[min(64rem,95vw)] h-[85vh])를 갖고 기본 sm:max-w-sm에 덮이지 않으며 iframe이 남은 공간을 채운다(ADR 0021 2026-09-10)', async () => {
     vi.mocked(apiFetch).mockResolvedValue(templates);
 
     render(<TemplateTable />);
@@ -89,7 +89,9 @@ describe('TemplateTable', () => {
 
     const iframe = await screen.findByTitle('템플릿 미리보기');
     const content = iframe.closest('[data-slot="dialog-content"]');
-    expect(content?.className).toContain('max-w-5xl');
+    expect(content?.className).not.toContain('max-w-5xl');
+    expect(content?.className).toContain('w-[min(64rem,95vw)]');
+    expect(content?.className).toContain('sm:max-w-none');
     expect(content?.className).toContain('h-[85vh]');
     expect(content?.className).toContain('flex');
     expect(content?.className).toContain('flex-col');
@@ -115,7 +117,7 @@ describe('TemplateTable', () => {
     expect(document.querySelector('form')).not.toBeInTheDocument();
   });
 
-  it('코드 Dialog는 큰 화면 크기(max-w-5xl h-[85vh])를 갖고 pre가 남은 공간에서 내부 스크롤한다(ADR 0021 2026-09-10)', async () => {
+  it('코드 Dialog는 큰 화면 크기(w-[min(64rem,95vw)] h-[85vh])를 갖고 기본 sm:max-w-sm에 덮이지 않으며 pre가 남은 공간에서 내부 스크롤한다(ADR 0021 2026-09-10)', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(templates); // GET list
     vi.mocked(apiFetch).mockResolvedValueOnce({ ...templates[0], html: '<form></form>' }); // GET detail
 
@@ -125,7 +127,9 @@ describe('TemplateTable', () => {
 
     const pre = await screen.findByText('<form></form>', { selector: 'pre' });
     const content = pre.closest('[data-slot="dialog-content"]');
-    expect(content?.className).toContain('max-w-5xl');
+    expect(content?.className).not.toContain('max-w-5xl');
+    expect(content?.className).toContain('w-[min(64rem,95vw)]');
+    expect(content?.className).toContain('sm:max-w-none');
     expect(content?.className).toContain('h-[85vh]');
     expect(content?.className).toContain('flex');
     expect(content?.className).toContain('flex-col');
