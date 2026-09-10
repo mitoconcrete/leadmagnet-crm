@@ -133,4 +133,15 @@ describe('LinkPanel', () => {
     expect(container.querySelector('.grid-cols-2')).toBeNull();
     expect(container.querySelector('.sm\\:grid-cols-2')).toBeNull();
   });
+
+  it('마운트 시 링크 목록을 1회만 조회한다(배포 링크 패널이 항상 펼쳐져 있어도 재조회하지 않는다)', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce([]);
+
+    render(<LinkPanel formId="f1" />);
+
+    await waitFor(() => expect(screen.getAllByRole('button', { name: '링크 만들기' })).toHaveLength(4));
+
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(apiFetch).toHaveBeenCalledWith('/api/admin/forms/f1/links');
+  });
 });

@@ -4,13 +4,24 @@ export type ChannelOrDirect = Channel | 'direct';
 
 export const CHANNELS: Channel[] = ['instagram', 'x', 'youtube', 'threads'];
 
+/** direct는 코드 없이 열린 경우(코드가 지워진 링크 등)를 담는다(ADR 0005 결과 절, 2026-09-10). */
 export const CHANNEL_LABELS: Record<ChannelOrDirect, string> = {
   instagram: '인스타그램',
   x: 'X',
   youtube: '유튜브',
   threads: '스레드',
-  direct: '직접 유입',
+  direct: '직접 유입(코드 없음)',
 };
+
+/**
+ * 조회수·방문자 수 표시 라벨과 헤더 툴팁(ADR 0005 결과 절, 2026-09-10).
+ * API 필드명(visits, visitors)은 그대로 유지하고 화면 워딩만 바꾼다.
+ * "방문" → "조회수", "방문자" → "방문자 수". 모든 표·성과 카드가 이 상수를 함께 쓴다.
+ */
+export const VISIT_STAT_LABEL = '조회수';
+export const VISIT_STAT_TITLE = '링크가 열린 횟수(새로고침 포함)';
+export const VISITOR_STAT_LABEL = '방문자 수';
+export const VISITOR_STAT_TITLE = '서로 다른 브라우저(쿠키) 수';
 
 export type CampaignStatus = 'active' | 'archived';
 

@@ -15,10 +15,10 @@ vi.mock('sonner', () => ({
 }));
 
 vi.mock('./link-panel', () => ({
-  LinkPanel: ({ formId }: { formId: string }) => <div data-testid={`link-panel-${formId}`} />,
+  LinkPanel: ({ formId, disabled }: { formId: string; disabled?: boolean }) => (
+    <div data-testid={`link-panel-${formId}`} data-disabled={disabled ? 'true' : 'false'} />
+  ),
 }));
-
-const writeText = vi.fn().mockResolvedValue(undefined);
 
 const form: Form = {
   id: 'f1',
@@ -36,10 +36,9 @@ const form: Form = {
 describe('FormList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
   });
 
-  it('폼 목록을 조회해 이름·slug·공개 URL을 보여주고, 배포 링크 패널은 기본 접혀 있다가 펼치면 LinkPanel을 보여준다', async () => {
+  it('폼 목록을 조회해 이름·slug를 보여주고, 배포 링크 패널을 접기 없이 항상 펼쳐서 보여준다(ADR 0021 2026-09-10 개정)', async () => {
     vi.mocked(apiFetch).mockResolvedValue([form]);
 
     render(<FormList campaignId="c1" />);
@@ -47,16 +46,26 @@ describe('FormList', () => {
     expect(apiFetch).toHaveBeenCalledWith('/api/admin/forms?campaignId=c1');
     await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
     expect(screen.getByText('lead-abcd')).toBeInTheDocument();
-    expect(screen.getByText(form.publicUrl)).toBeInTheDocument();
 
-    const toggle = screen.getByRole('button', { name: '배포 링크' });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByTestId('link-panel-f1')).not.toBeInTheDocument();
+    // 접기 토글 버튼이 없다: "배포 링크"는 라벨일 뿐 버튼이 아니다.
+    expect(screen.queryByRole('button', { name: '배포 링크' })).not.toBeInTheDocument();
+    const label = screen.getByText('배포 링크');
+    expect(label.tagName).not.toBe('BUTTON');
 
-    fireEvent.click(toggle);
-
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    // LinkPanel은 클릭 없이 처음부터 마운트돼 있다.
     expect(screen.getByTestId('link-panel-f1')).toBeInTheDocument();
+  });
+
+  it('공개 URL 복사 행을 보여주지 않는다(ADR 0005): 코드 없는 직접 링크는 공유 수단이 아니다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([form]);
+
+    render(<FormList campaignId="c1" />);
+
+    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
+
+    expect(screen.queryByText('공개 URL')).not.toBeInTheDocument();
+    expect(screen.queryByText(form.publicUrl)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '복사' })).not.toBeInTheDocument();
   });
 
   it('활성 토글을 누르면 PATCH isActive를 호출한다', async () => {
@@ -74,18 +83,6 @@ describe('FormList', () => {
         json: { isActive: false },
       });
     });
-  });
-
-  it('복사 버튼을 누르면 공개 URL을 클립보드에 기록한다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue([form]);
-
-    render(<FormList campaignId="c1" />);
-
-    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: '복사' }));
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(form.publicUrl));
-    expect(toast.success).toHaveBeenCalled();
   });
 
   it('활성 토글 변경이 실패하면 오류 토스트를 띄우고 원래 상태로 되돌린다', async () => {
@@ -134,7 +131,7 @@ describe('FormList', () => {
     expect(region.className).not.toContain('max-h-[60vh]');
   });
 
-  it('templateDeleted인 폼은 배지를 보여주고 활성 스위치·복사 버튼을 비활성화한다', async () => {
+  it('templateDeleted인 폼은 배지를 보여주고 활성 스위치를 비활성화하며 LinkPanel도 비활성화한다', async () => {
     const deletedForm: Form = { ...form, templateDeleted: true };
     vi.mocked(apiFetch).mockResolvedValue([deletedForm]);
 
@@ -149,7 +146,7 @@ describe('FormList', () => {
     fireEvent.click(toggle);
     expect(apiFetch).not.toHaveBeenCalledWith('/api/admin/forms/f1', expect.anything());
 
-    expect(screen.getByRole('button', { name: '복사' })).toBeDisabled();
+    expect(screen.getByTestId('link-panel-f1')).toHaveAttribute('data-disabled', 'true');
   });
 
   it('templateDeleted가 false면 배지 없이 기존과 동일하게 동작한다', async () => {
@@ -161,7 +158,7 @@ describe('FormList', () => {
 
     expect(screen.queryByText('템플릿 삭제됨')).not.toBeInTheDocument();
     expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByRole('button', { name: '복사' })).not.toBeDisabled();
+    expect(screen.getByTestId('link-panel-f1')).toHaveAttribute('data-disabled', 'false');
   });
 
   it('campaignArchived면 활성 스위치가 비활성화되고 클릭해도 PATCH를 호출하지 않는다(ADR 0019 보완)', async () => {
@@ -175,6 +172,15 @@ describe('FormList', () => {
     expect(toggle).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(toggle);
     expect(apiFetch).not.toHaveBeenCalledWith('/api/admin/forms/f1', expect.anything());
+  });
+
+  it('linksDisabled면 LinkPanel에 disabled를 전달한다(ADR 0019)', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([form]);
+
+    render(<FormList campaignId="c1" linksDisabled />);
+
+    await waitFor(() => expect(screen.getByText('기본 신청폼')).toBeInTheDocument());
+    expect(screen.getByTestId('link-panel-f1')).toHaveAttribute('data-disabled', 'true');
   });
 
   it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {

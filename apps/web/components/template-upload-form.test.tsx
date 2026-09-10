@@ -174,6 +174,18 @@ describe('TemplateUploadForm', () => {
     await waitFor(() => expect(screen.getByText('점검 이상 없음')).toBeInTheDocument());
   });
 
+  it('붙여넣기 textarea는 고정 높이 내부 스크롤이라 긴 HTML을 붙여도 페이지가 밀리지 않는다(ADR 0021 2026-09-10)', () => {
+    render(<TemplateUploadForm onUploaded={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'HTML 붙여넣기' }));
+    const textarea = screen.getByPlaceholderText('AI가 생성한 HTML 전체를 붙여넣으세요');
+
+    expect(textarea.className).toContain('h-64');
+    expect(textarea.className).toContain('max-h-64');
+    expect(textarea.className).toContain('resize-none');
+    expect(textarea.className).toContain('font-mono');
+  });
+
   it('닫기 버튼을 누르면 점검 결과를 감춘다', async () => {
     vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '이름', warnings: [] });
 

@@ -183,7 +183,7 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
       </div>
 
       <Dialog open={previewTemplate !== null} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="flex h-[85vh] max-w-5xl flex-col">
           <DialogHeader>
             <DialogTitle>{previewTemplate?.name}</DialogTitle>
           </DialogHeader>
@@ -192,14 +192,14 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
               title="템플릿 미리보기"
               sandbox="allow-scripts allow-forms"
               src={`/api/admin/templates/${previewTemplate.id}/preview`}
-              className="h-[70vh] w-full border-0"
+              className="h-full w-full min-h-0 flex-1 overflow-auto border-0"
             />
           )}
         </DialogContent>
       </Dialog>
 
       <Dialog open={codeTemplate !== null} onOpenChange={(open) => !open && closeCode()}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="flex h-[85vh] max-w-5xl flex-col">
           <DialogHeader>
             <DialogTitle>{codeTemplate?.name} 코드</DialogTitle>
           </DialogHeader>
@@ -207,7 +207,7 @@ export function TemplateTable({ refreshKey = 0 }: { refreshKey?: number }) {
             <p className="text-sm text-muted-foreground">불러오는 중…</p>
           ) : (
             <>
-              <pre className="max-h-[60vh] overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap">
+              <pre className="min-h-0 flex-1 overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap">
                 {codeHtml}
               </pre>
               <Button variant="outline" size="sm" className="self-start" onClick={handleCopyCode}>

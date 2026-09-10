@@ -18,9 +18,13 @@ export default function TemplatesPage() {
           <h1 className="text-xl font-semibold">HTML 템플릿</h1>
 
           <div data-testid="templates-columns" className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr]">
-            <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
-              <AiPromptBox />
-              <TemplateUploadForm onUploaded={() => setRefreshKey((key) => key + 1)} />
+            <div data-testid="templates-left-column" className="flex min-h-0 flex-col gap-4">
+              <div data-testid="templates-ai-box" className="shrink-0">
+                <AiPromptBox />
+              </div>
+              <div data-testid="templates-upload-section" className="min-h-0 flex-1 overflow-y-auto">
+                <TemplateUploadForm onUploaded={() => setRefreshKey((key) => key + 1)} />
+              </div>
             </div>
 
             <section className="flex min-h-0 flex-col gap-3">
