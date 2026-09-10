@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon, SparklesIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,8 @@ import { AI_PROMPT_TEMPLATE } from '@/lib/ai-prompt';
  *
  * 기본 접힘(ADR 0021 2026-09-10 개정): 등록 모달에서 HTML 입력 공간을 넓게 쓰도록
  * 트리거 한 줄만 기본으로 보이고, 클릭하면 기존 설명·조건 요약·프롬프트·복사 버튼이 펼쳐진다.
+ * 트리거는 테두리·배경·호버·포커스 링을 가진 버튼형으로 만들어(2026-09-10 추가 수정)
+ * 평문+아이콘처럼 클릭 요소로 안 보이는 문제를 없앤다.
  */
 export function AiPromptBox() {
   const [open, setOpen] = useState(false);
@@ -30,13 +32,16 @@ export function AiPromptBox() {
   return (
     <Card className="gap-0 py-0">
       <Collapsible open={open} onOpenChange={setOpen}>
-        <CollapsibleTrigger className="flex w-full shrink-0 items-center justify-between gap-2 px-4 py-3 text-left text-sm font-medium">
-          <span>AI로 HTML 만들기 — 프롬프트 보기</span>
+        <CollapsibleTrigger className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md border bg-muted/50 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+          <span className="flex items-center gap-2">
+            <SparklesIcon className="size-4 shrink-0 text-muted-foreground" />
+            AI로 HTML 만들기 (프롬프트 열기)
+          </span>
           <ChevronDownIcon
             className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
           />
         </CollapsibleTrigger>
-        <CollapsibleContent>
+        <CollapsibleContent className="rounded-b-md border border-t-0">
           <CardHeader>
             <CardTitle>AI로 만들기</CardTitle>
             <CardDescription>
