@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TemplateCombobox } from '@/components/template-combobox';
 import { apiFetch } from '@/lib/api';
 import type { Form, Template } from '@/lib/types';
 
@@ -85,21 +85,7 @@ export function CreateFormDialog({
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="form-template">템플릿</Label>
-            <Select
-              value={templateId || null}
-              onValueChange={(value) => setTemplateId(value ? String(value) : '')}
-            >
-              <SelectTrigger id="form-template">
-                <SelectValue placeholder="템플릿 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
-                    {template.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <TemplateCombobox id="form-template" templates={templates} value={templateId} onChange={setTemplateId} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="form-name">이름</Label>
