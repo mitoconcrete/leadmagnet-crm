@@ -297,6 +297,21 @@ describe('campaigns & forms e2e (§4.3, §4.4)', () => {
       const publicAfterReplace = await ctx.http().get(`/p/${form.body.slug}`);
       expect(publicAfterReplace.status).toBe(200);
     });
+
+    it('§4.4: 템플릿을 force 삭제하면 캠페인 상세의 forms[].templateDeleted가 true다', async () => {
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: 'templateDeleted 확인' });
+      const templateId = await uploadTemplate(agent);
+      const form = await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId, name: '폼' });
+
+      await agent.delete(`/api/admin/templates/${templateId}?force=true`);
+
+      const campaignRes = await agent.get(`/api/admin/campaigns/${campaign.body.id}`);
+      expect(campaignRes.status).toBe(200);
+      const formInCampaign = campaignRes.body.forms.find((f: { id: string }) => f.id === form.body.id);
+      expect(formInCampaign.templateDeleted).toBe(true);
+    });
   });
 
   describe('캠페인 종료 생애주기(ADR 0019)', () => {

@@ -143,6 +143,18 @@ describe('CampaignsService', () => {
       expect(result.forms).toHaveLength(1);
       expect(result.forms[0].publicUrl).toBe('http://localhost:3001/p/my-slug');
     });
+
+    it('§4.4/ADR 0017: template 관계를 함께 조회해(쿼리 추가 없이) forms[].templateDeleted를 정확히 계산한다', async () => {
+      campaignRepo.findOne.mockResolvedValue({ id: 'camp-1', name: 'X', status: 'active' } as Campaign);
+      formRepo.find.mockResolvedValue([
+        { id: 'f1', slug: 'my-slug', template: { id: 'tpl-1', deletedAt: new Date() } } as unknown as Form,
+      ]);
+
+      const result = await service.findOneWithForms('camp-1');
+
+      expect(formRepo.find).toHaveBeenCalledWith(expect.objectContaining({ relations: ['template'] }));
+      expect(result.forms[0].templateDeleted).toBe(true);
+    });
   });
 
   describe('ensureExists', () => {
