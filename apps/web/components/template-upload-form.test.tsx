@@ -10,11 +10,20 @@ vi.mock('@/lib/api', async () => {
 });
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
 
 function makeHtmlFile() {
   return new File(['<form></form>'], 'lead.html', { type: 'text/html' });
+}
+
+/** toast description은 string 또는 JSX(whitespace-pre-line div)로 온다 — 개행 보존 여부를 문자열로 비교하기 위한 헬퍼. */
+function descriptionText(description: unknown): string | undefined {
+  if (typeof description === 'string') return description;
+  if (description && typeof description === 'object' && 'props' in description) {
+    return (description as { props: { children: string } }).props.children;
+  }
+  return undefined;
 }
 
 describe('TemplateUploadForm', () => {
@@ -146,7 +155,7 @@ describe('TemplateUploadForm', () => {
     expect(apiFetch).not.toHaveBeenCalled();
   });
 
-  it('등록 응답에 warnings가 있으면 점검 결과 목록을 보여준다', async () => {
+  it('등록 응답에 warnings가 있으면 스크롤과 무관한 toast.warning으로 건수·이유를 보여준다', async () => {
     vi.mocked(apiFetch).mockResolvedValue({
       id: 't1',
       name: '이름',
@@ -158,12 +167,14 @@ describe('TemplateUploadForm', () => {
     fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
     fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
 
-    await waitFor(() => expect(screen.getByText('점검 결과 2건')).toBeInTheDocument());
-    expect(screen.getByText('name 없는 입력이 있습니다')).toBeInTheDocument();
-    expect(screen.getByText('외부 스크립트가 있습니다')).toBeInTheDocument();
+    await waitFor(() => expect(toast.warning).toHaveBeenCalled());
+    const [title, options] = vi.mocked(toast.warning).mock.calls[0];
+    expect(title).toBe('점검 경고 2건');
+    expect(descriptionText(options?.description)).toBe('name 없는 입력이 있습니다\n외부 스크립트가 있습니다');
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it('등록 응답에 warnings가 없으면(빈 배열) 이상 없음을 보여준다', async () => {
+  it('등록 응답에 warnings가 없으면(빈 배열) 성공 toast만 띄운다', async () => {
     vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '이름', warnings: [] });
 
     render(<TemplateUploadForm onUploaded={vi.fn()} />);
@@ -171,7 +182,8 @@ describe('TemplateUploadForm', () => {
     fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
     fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
 
-    await waitFor(() => expect(screen.getByText('점검 이상 없음')).toBeInTheDocument());
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('템플릿을 등록했습니다'));
+    expect(toast.warning).not.toHaveBeenCalled();
   });
 
   it('붙여넣기 textarea는 고정 높이 내부 스크롤이라 긴 HTML을 붙여도 페이지가 밀리지 않는다(ADR 0021 2026-09-10)', () => {
@@ -233,37 +245,22 @@ describe('TemplateUploadForm', () => {
     expect(body.get('html')).toBe('<form></form>');
   });
 
-  it('닫기 버튼을 누르면 점검 결과를 감춘다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '이름', warnings: [] });
+  it('등록이 배열 메시지(ADR 0018 차단 규칙)로 거부되면 화면 고정 toast.error에 제목·이유 목록을 보여준다(스크롤 무관)', async () => {
+    const reasons = ['관리자 API 참조(/api/admin)가 포함되어 있습니다', '쿠키 접근(document.cookie)이 포함되어 있습니다'];
+    vi.mocked(apiFetch).mockRejectedValue(new ApiError(400, reasons.join(', '), undefined, reasons));
 
     render(<TemplateUploadForm onUploaded={vi.fn()} />);
 
     fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
     fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
 
-    await waitFor(() => expect(screen.getByText('점검 이상 없음')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
-
-    expect(screen.queryByText('점검 이상 없음')).not.toBeInTheDocument();
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    const [title, options] = vi.mocked(toast.error).mock.calls[0];
+    expect(title).toBe('등록이 거부되었습니다');
+    expect(descriptionText(options?.description)).toBe(reasons.join('\n'));
   });
 
-  it('등록이 배열 메시지(ADR 0018 차단 규칙)로 거부되면 폼 아래 destructive Alert에 이유 2개를 보여주고 toast는 호출하지 않는다', async () => {
-    vi.mocked(apiFetch).mockRejectedValue(
-      new ApiError(400, '이유1, 이유2', undefined, ['관리자 API 참조(/api/admin)가 포함되어 있습니다', '쿠키 접근(document.cookie)이 포함되어 있습니다']),
-    );
-
-    render(<TemplateUploadForm onUploaded={vi.fn()} />);
-
-    fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
-    fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
-
-    await waitFor(() => expect(screen.getByText('등록이 거부되었습니다')).toBeInTheDocument());
-    expect(screen.getByText('관리자 API 참조(/api/admin)가 포함되어 있습니다')).toBeInTheDocument();
-    expect(screen.getByText('쿠키 접근(document.cookie)이 포함되어 있습니다')).toBeInTheDocument();
-    expect(toast.error).not.toHaveBeenCalled();
-  });
-
-  it('등록이 문자열 메시지로 실패하면(배열 메시지가 아니면) 기존처럼 toast만 띄우고 거부 Alert는 없다', async () => {
+  it('등록이 문자열 메시지로 실패하면(배열 메시지가 아니면) 기존처럼 메시지만 담아 toast.error를 띄운다', async () => {
     vi.mocked(apiFetch).mockRejectedValue(new ApiError(400, '<form>이 없는 HTML입니다'));
 
     render(<TemplateUploadForm onUploaded={vi.fn()} />);
@@ -272,54 +269,5 @@ describe('TemplateUploadForm', () => {
     fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('<form>이 없는 HTML입니다'));
-    expect(screen.queryByText('등록이 거부되었습니다')).not.toBeInTheDocument();
-  });
-
-  it('점검/거부 Alert가 표시된 상태에서 파일 선택을 바꾸면 Alert가 사라진다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '이름', warnings: ['경고1'] });
-
-    render(<TemplateUploadForm onUploaded={vi.fn()} />);
-
-    fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
-    fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
-    await waitFor(() => expect(screen.getByText('점검 결과 1건')).toBeInTheDocument());
-
-    fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
-
-    expect(screen.queryByText('점검 결과 1건')).not.toBeInTheDocument();
-  });
-
-  it('점검 Alert가 표시된 상태에서 붙여넣기 textarea에 입력하면 Alert가 사라진다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '붙여넣기', warnings: ['경고1'] });
-
-    render(<TemplateUploadForm onUploaded={vi.fn()} />);
-
-    fireEvent.click(screen.getByRole('tab', { name: 'HTML 붙여넣기' }));
-    fireEvent.change(screen.getByLabelText('이름'), { target: { value: '붙여넣기 템플릿' } });
-    fireEvent.change(screen.getByPlaceholderText('AI가 생성한 HTML 전체를 붙여넣으세요'), {
-      target: { value: '<form><input name="email"></form>' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
-    await waitFor(() => expect(screen.getByText('점검 결과 1건')).toBeInTheDocument());
-
-    fireEvent.change(screen.getByPlaceholderText('AI가 생성한 HTML 전체를 붙여넣으세요'), {
-      target: { value: '<form><input name="email"><input name="phone"></form>' },
-    });
-
-    expect(screen.queryByText('점검 결과 1건')).not.toBeInTheDocument();
-  });
-
-  it('점검 Alert가 표시된 상태에서 탭을 전환하면 Alert가 사라진다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '이름', warnings: ['경고1'] });
-
-    render(<TemplateUploadForm onUploaded={vi.fn()} />);
-
-    fireEvent.change(screen.getByLabelText('HTML 파일'), { target: { files: [makeHtmlFile()] } });
-    fireEvent.click(screen.getByRole('button', { name: '템플릿 등록' }));
-    await waitFor(() => expect(screen.getByText('점검 결과 1건')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByRole('tab', { name: 'HTML 붙여넣기' }));
-
-    expect(screen.queryByText('점검 결과 1건')).not.toBeInTheDocument();
   });
 });
