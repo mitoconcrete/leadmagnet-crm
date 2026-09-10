@@ -53,6 +53,8 @@ describe('CampaignTable', () => {
 
     const thead = region.querySelector('thead');
     expect(thead).toHaveClass('sticky');
+    expect(thead).toHaveClass('bg-inherit');
+    expect(thead).not.toHaveClass('bg-background');
   });
 
   it('진행중인데 활성 폼이 0개면 활성 폼 없음 배지를 보여준다(ADR 0019)', () => {

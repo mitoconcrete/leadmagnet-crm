@@ -52,6 +52,8 @@ describe('CampaignStatsPanel', () => {
 
     const thead = document.querySelector('thead');
     expect(thead).toHaveClass('sticky');
+    expect(thead).toHaveClass('bg-inherit');
+    expect(thead).not.toHaveClass('bg-background');
   });
 
   it('breakdown 표 헤더는 "조회수"·"방문자 수"로 표시하고 정의 title이 있다(ADR 0005)', () => {

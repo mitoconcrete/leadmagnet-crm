@@ -197,6 +197,8 @@ describe('TemplateUploadForm', () => {
     const tabList = screen.getByRole('tablist');
     expect(tabList.className).toContain('sticky');
     expect(tabList.className).toContain('top-0');
+    expect(tabList.className).toContain('bg-inherit');
+    expect(tabList.className).not.toContain('bg-background');
     expect(tabList.closest('[data-testid="upload-scroll"]')).toBeNull();
 
     const button = screen.getByRole('button', { name: '템플릿 등록' });
@@ -204,6 +206,8 @@ describe('TemplateUploadForm', () => {
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('shrink-0');
     expect(footer?.className).toContain('border-t');
+    expect(footer?.className).toContain('bg-inherit');
+    expect(footer?.className).not.toContain('bg-background');
     expect(button.closest('[data-testid="upload-scroll"]')).toBeNull();
   });
 

@@ -52,6 +52,8 @@ describe('ChannelTable', () => {
 
     const thead = document.querySelector('thead');
     expect(thead).toHaveClass('sticky');
+    expect(thead).toHaveClass('bg-inherit');
+    expect(thead).not.toHaveClass('bg-background');
   });
 
   it('방문 열은 "조회수", 방문자 열은 "방문자 수"로 표시하고 헤더에 정의 title이 있다(ADR 0005)', () => {

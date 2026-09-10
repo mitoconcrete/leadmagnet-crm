@@ -296,6 +296,8 @@ describe('TemplateTable', () => {
 
     const thead = region.querySelector('thead');
     expect(thead).toHaveClass('sticky');
+    expect(thead).toHaveClass('bg-inherit');
+    expect(thead).not.toHaveClass('bg-background');
   });
 
   it('언마운트 후 응답이 와도 상태를 갱신하지 않는다', async () => {

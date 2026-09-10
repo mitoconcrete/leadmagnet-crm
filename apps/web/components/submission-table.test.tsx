@@ -120,5 +120,7 @@ describe('SubmissionTable', () => {
 
     const thead = region.querySelector('thead');
     expect(thead).toHaveClass('sticky');
+    expect(thead).toHaveClass('bg-inherit');
+    expect(thead).not.toHaveClass('bg-background');
   });
 });
