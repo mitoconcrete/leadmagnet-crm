@@ -2,6 +2,7 @@
 
 import { useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
+import { AiPromptBox } from '@/components/ai-prompt-box';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,10 +31,10 @@ function multilineDescription(text: string) {
  * - 400 + message 배열(차단 규칙): toast.error('등록이 거부되었습니다', {description: 이유들})
  * - 그 외 오류(문자열 메시지): toast.error(message)
  *
- * 레이아웃(ADR 0021 2026-09-10): 탭 토글은 상단 고정, 등록 버튼은 하단 고정
- * 푸터에 두고, 그 사이(이름·파일·textarea)만 자체 스크롤한다. 등록 버튼은 폼
- * 밖 푸터에 있지만 `form` 속성으로 현재 탭의 <form>과 연결되어 submit 동작은
- * 그대로 유지된다.
+ * 레이아웃(ADR 0021 2026-09-10, 추가 개정): 탭 토글 줄(우측에 AiPromptBox 팁
+ * 버튼 포함)은 상단 고정, 등록 버튼은 하단 고정 푸터에 두고, 그 사이(이름·파일·
+ * textarea)만 자체 스크롤한다. 등록 버튼은 폼 밖 푸터에 있지만 `form` 속성으로
+ * 현재 탭의 <form>과 연결되어 submit 동작은 그대로 유지된다.
  */
 export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
   const [activeTab, setActiveTab] = useState<'file' | 'paste'>('file');
@@ -128,10 +129,16 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
         onValueChange={(value) => setActiveTab(value as 'file' | 'paste')}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TabsList className="sticky top-0 z-10 shrink-0 bg-inherit pb-2">
-          <TabsTrigger value="file">파일 업로드</TabsTrigger>
-          <TabsTrigger value="paste">HTML 붙여넣기</TabsTrigger>
-        </TabsList>
+        <div
+          data-testid="upload-tabs-row"
+          className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 bg-inherit pb-2"
+        >
+          <TabsList>
+            <TabsTrigger value="file">파일 업로드</TabsTrigger>
+            <TabsTrigger value="paste">HTML 붙여넣기</TabsTrigger>
+          </TabsList>
+          <AiPromptBox />
+        </div>
 
         <div data-testid="upload-scroll" className="min-h-0 flex-1 overflow-y-auto">
           <TabsContent value="file">
