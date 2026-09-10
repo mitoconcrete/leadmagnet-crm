@@ -30,7 +30,7 @@ export function AiPromptBox() {
   }
 
   return (
-    <Card className="gap-0 py-0">
+    <Card className="mt-2 gap-0 py-0">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md border bg-muted/50 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
           <span className="flex items-center gap-2">
@@ -57,9 +57,11 @@ export function AiPromptBox() {
             <pre className="max-h-64 overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap">
               {AI_PROMPT_TEMPLATE}
             </pre>
-            <Button variant="outline" size="sm" className="self-start" onClick={handleCopy}>
-              프롬프트 복사
-            </Button>
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={handleCopy}>
+                프롬프트 복사
+              </Button>
+            </div>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
