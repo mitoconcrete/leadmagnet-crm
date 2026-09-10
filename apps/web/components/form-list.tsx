@@ -3,14 +3,16 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ApiError, apiFetch } from '@/lib/api';
 import type { Form } from '@/lib/types';
 import { LinkPanel } from '@/components/link-panel';
 
 /**
- * 캠페인에 속한 폼 목록. 폼마다 활성 토글, 공개 URL 복사, 배포 링크 패널을 보여준다.
+ * 캠페인에 속한 폼 목록. 폼마다 활성 토글과 배포 링크 패널(4채널, 항상 펼침)을 보여준다.
+ * 배포 링크 패널은 접기 없이 처음부터 펼쳐져 있다(ADR 0021, 2026-09-10 개정): 운영자가 링크를
+ * 바로 복사하는 것이 이 화면의 주목적이라 한 번 더 클릭하게 하지 않는다.
+ * 코드 없는 공개 URL 복사는 제공하지 않는다(ADR 0005): 채널 링크만 공유 수단이다.
  * linksDisabled가 true면(캠페인 종료) 배포 링크 생성 버튼을 비활성화한다(ADR 0019).
  */
 export function FormList({
@@ -56,11 +58,6 @@ export function FormList({
     }
   }
 
-  async function handleCopy(url: string) {
-    await navigator.clipboard.writeText(url);
-    toast.success('링크를 복사했습니다');
-  }
-
   if (loading) {
     return <p className="text-sm text-muted-foreground">불러오는 중…</p>;
   }
@@ -83,7 +80,6 @@ export function FormList({
             linksDisabled={linksDisabled}
             campaignArchived={campaignArchived}
             onToggle={(isActive) => handleToggle(form, isActive)}
-            onCopy={() => handleCopy(form.publicUrl)}
           />
         ))}
       </div>
@@ -92,23 +88,19 @@ export function FormList({
 }
 
 /**
- * 폼 한 행. 배포 링크 패널은 기본 접혀 있고, 펼치기 전에는 LinkPanel을 마운트하지 않는다
- * (열기 전까지 링크 목록을 조회하지 않는다).
+ * 폼 한 행. 이름·배지 + 활성 스위치(우측) → "배포 링크" 라벨 → 채널 4행(LinkPanel, 항상 펼침).
  */
 function FormRow({
   form,
   linksDisabled,
   campaignArchived,
   onToggle,
-  onCopy,
 }: {
   form: Form;
   linksDisabled: boolean;
   campaignArchived: boolean;
   onToggle: (isActive: boolean) => void;
-  onCopy: () => void;
 }) {
-  const [linksOpen, setLinksOpen] = useState(false);
   const templateDeleted = form.templateDeleted ?? false;
   const activationBlocked = templateDeleted || campaignArchived;
 
@@ -138,26 +130,8 @@ function FormRow({
           />
         </div>
       </div>
-      <div className="flex items-center gap-2 text-sm">
-        <span className="w-20 shrink-0 whitespace-nowrap text-muted-foreground">공개 URL</span>
-        <span className="min-w-0 flex-1 truncate text-muted-foreground" title={form.publicUrl}>
-          {form.publicUrl}
-        </span>
-        <Button variant="outline" size="sm" className="shrink-0" disabled={templateDeleted} onClick={onCopy}>
-          복사
-        </Button>
-      </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="self-start"
-        aria-expanded={linksOpen}
-        onClick={() => setLinksOpen((open) => !open)}
-      >
-        배포 링크
-      </Button>
-      {linksOpen && <LinkPanel formId={form.id} disabled={linksDisabled || templateDeleted} />}
+      <span className="text-sm text-muted-foreground">배포 링크</span>
+      <LinkPanel formId={form.id} disabled={linksDisabled || templateDeleted} />
     </div>
   );
 }
