@@ -126,7 +126,7 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as 'file' | 'paste')}
-        className="flex min-h-0 flex-1 flex-col max-w-2xl"
+        className="flex min-h-0 flex-1 flex-col"
       >
         <TabsList className="sticky top-0 z-10 shrink-0 bg-inherit pb-2">
           <TabsTrigger value="file">파일 업로드</TabsTrigger>
@@ -161,20 +161,24 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
             </form>
           </TabsContent>
 
-          <TabsContent value="paste">
-            <form id={PASTE_FORM_ID} className="flex flex-col gap-4" onSubmit={handlePasteSubmit}>
-              <div className="flex flex-col gap-1.5">
+          <TabsContent value="paste" className="flex h-full min-h-0 flex-col">
+            <form
+              id={PASTE_FORM_ID}
+              className="flex h-full min-h-0 flex-1 flex-col gap-4"
+              onSubmit={handlePasteSubmit}
+            >
+              <div className="flex shrink-0 flex-col gap-1.5">
                 <Label htmlFor="template-paste-name">이름</Label>
                 <Input id="template-paste-name" value={pasteName} onChange={(e) => setPasteName(e.target.value)} />
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-h-0 flex-1 flex-col gap-1.5">
                 <Label htmlFor="template-paste-html">HTML</Label>
                 <Textarea
                   id="template-paste-html"
                   value={pasteHtml}
                   onChange={(e) => setPasteHtml(e.target.value)}
                   placeholder="AI가 생성한 HTML 전체를 붙여넣으세요"
-                  className="h-64 max-h-64 resize-none font-mono text-xs"
+                  className="min-h-[12rem] flex-1 resize-none font-mono text-xs"
                 />
               </div>
             </form>
