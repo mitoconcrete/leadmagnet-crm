@@ -102,11 +102,12 @@ describe('AiPromptBox', () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it('최상위 요소는 위쪽 여백(mt-2)을 가진다(모달 제목과 붙지 않도록)', () => {
+  it('최상위 요소는 위쪽 여백(mt-4, 16px 이상)을 가진다(모달 제목과 충분히 떨어지도록, 2026-09-10 추가 수정: mt-2는 8px라 눈에 안 띄었다)', () => {
     render(<AiPromptBox />);
 
     const card = screen.getByRole('button', { name: /AI로 HTML 만들기/ }).closest('[data-slot="card"]');
-    expect(card?.className).toContain('mt-2');
+    expect(card?.className).toContain('mt-4');
+    expect(card?.className).not.toContain('mt-2');
   });
 
   it('펼치면 "프롬프트 복사" 버튼이 우측 정렬 컨테이너(flex justify-end) 안에 있다', () => {

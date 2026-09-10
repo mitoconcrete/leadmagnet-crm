@@ -233,6 +233,9 @@ describe('TemplateUploadForm', () => {
     expect(footer?.className).toContain('border-t');
     expect(footer?.className).toContain('bg-inherit');
     expect(footer?.className).not.toContain('bg-background');
+    // 등록 버튼은 푸터 우측에 정렬된다(2026-09-10 추가 수정: 좌측 정렬이던 것을 교정).
+    expect(footer?.className).toContain('flex');
+    expect(footer?.className).toContain('justify-end');
     expect(button.closest('[data-testid="upload-scroll"]')).toBeNull();
   });
 
