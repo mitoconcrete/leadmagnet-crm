@@ -79,6 +79,27 @@ describe('TemplateTable', () => {
     expect(screen.getByRole('heading', { name: '가을 랜딩' })).toBeInTheDocument();
   });
 
+  it('미리보기 Dialog는 큰 화면 크기(max-w-5xl h-[85vh])를 갖고 iframe이 남은 공간을 채운다(ADR 0021 2026-09-10)', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(templates);
+
+    render(<TemplateTable />);
+    await waitFor(() => expect(screen.getByText('가을 랜딩')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: '미리보기' }));
+
+    const iframe = await screen.findByTitle('템플릿 미리보기');
+    const content = iframe.closest('[data-slot="dialog-content"]');
+    expect(content?.className).toContain('max-w-5xl');
+    expect(content?.className).toContain('h-[85vh]');
+    expect(content?.className).toContain('flex');
+    expect(content?.className).toContain('flex-col');
+
+    expect(iframe.className).toContain('h-full');
+    expect(iframe.className).toContain('w-full');
+    expect(iframe.className).toContain('flex-1');
+    expect(iframe.className).toContain('min-h-0');
+  });
+
   it('코드 버튼을 클릭하면 상세 조회 결과의 html을 <pre> 텍스트로 보여준다(렌더 금지)', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(templates); // GET list
     vi.mocked(apiFetch).mockResolvedValueOnce({ ...templates[0], html: '<form><input name="email"></form>' }); // GET detail
@@ -92,6 +113,26 @@ describe('TemplateTable', () => {
     const pre = await screen.findByText('<form><input name="email"></form>', { selector: 'pre' });
     expect(pre.tagName).toBe('PRE');
     expect(document.querySelector('form')).not.toBeInTheDocument();
+  });
+
+  it('코드 Dialog는 큰 화면 크기(max-w-5xl h-[85vh])를 갖고 pre가 남은 공간에서 내부 스크롤한다(ADR 0021 2026-09-10)', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(templates); // GET list
+    vi.mocked(apiFetch).mockResolvedValueOnce({ ...templates[0], html: '<form></form>' }); // GET detail
+
+    render(<TemplateTable />);
+    await waitFor(() => expect(screen.getByText('가을 랜딩')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: '코드' }));
+
+    const pre = await screen.findByText('<form></form>', { selector: 'pre' });
+    const content = pre.closest('[data-slot="dialog-content"]');
+    expect(content?.className).toContain('max-w-5xl');
+    expect(content?.className).toContain('h-[85vh]');
+    expect(content?.className).toContain('flex');
+    expect(content?.className).toContain('flex-col');
+
+    expect(pre.className).toContain('flex-1');
+    expect(pre.className).toContain('min-h-0');
+    expect(pre.className).toContain('overflow-auto');
   });
 
   it('코드 Dialog의 복사 버튼을 클릭하면 클립보드에 html을 기록하고 토스트를 띄운다', async () => {
