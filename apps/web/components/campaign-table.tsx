@@ -1,6 +1,12 @@
 import Link from 'next/link';
 import { formatRate } from '@/lib/format';
-import type { CampaignRow } from '@/lib/types';
+import {
+  VISIT_STAT_LABEL,
+  VISIT_STAT_TITLE,
+  VISITOR_STAT_LABEL,
+  VISITOR_STAT_TITLE,
+  type CampaignRow,
+} from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -28,8 +34,12 @@ export function CampaignTable({ rows, loading }: { rows: CampaignRow[]; loading:
             <TableHead>이름</TableHead>
             <TableHead>상태</TableHead>
             <TableHead className="text-right tabular-nums">폼(활성/전체)</TableHead>
-            <TableHead className="text-right tabular-nums">방문</TableHead>
-            <TableHead className="text-right tabular-nums">방문자</TableHead>
+            <TableHead className="text-right tabular-nums" title={VISIT_STAT_TITLE}>
+              {VISIT_STAT_LABEL}
+            </TableHead>
+            <TableHead className="text-right tabular-nums" title={VISITOR_STAT_TITLE}>
+              {VISITOR_STAT_LABEL}
+            </TableHead>
             <TableHead className="text-right tabular-nums">신청</TableHead>
             <TableHead className="text-right tabular-nums">전환율</TableHead>
           </TableRow>

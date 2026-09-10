@@ -1,5 +1,14 @@
 import { formatRate } from '@/lib/format';
-import { CHANNELS, CHANNEL_LABELS, type ChannelOrDirect, type ChannelStat } from '@/lib/types';
+import {
+  CHANNELS,
+  CHANNEL_LABELS,
+  VISIT_STAT_LABEL,
+  VISIT_STAT_TITLE,
+  VISITOR_STAT_LABEL,
+  VISITOR_STAT_TITLE,
+  type ChannelOrDirect,
+  type ChannelStat,
+} from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const CHANNEL_ORDER: ChannelOrDirect[] = ['direct', ...CHANNELS];
@@ -20,8 +29,12 @@ export function ChannelTable({ stats, loading }: { stats: ChannelStat[]; loading
       <TableHeader className="sticky top-0 z-10 bg-background">
         <TableRow>
           <TableHead>채널</TableHead>
-          <TableHead className="text-right tabular-nums">방문</TableHead>
-          <TableHead className="text-right tabular-nums">방문자</TableHead>
+          <TableHead className="text-right tabular-nums" title={VISIT_STAT_TITLE}>
+            {VISIT_STAT_LABEL}
+          </TableHead>
+          <TableHead className="text-right tabular-nums" title={VISITOR_STAT_TITLE}>
+            {VISITOR_STAT_LABEL}
+          </TableHead>
           <TableHead className="text-right tabular-nums">신청</TableHead>
           <TableHead className="text-right tabular-nums">전환율</TableHead>
         </TableRow>
