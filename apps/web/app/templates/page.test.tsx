@@ -56,7 +56,7 @@ describe('TemplatesPage', () => {
     expect(columns.className).toContain('lg:grid-cols-[1fr_2fr]');
   });
 
-  it('좌 열(ADR 0021 2026-09-10): AI 안내 박스는 상단 고정(shrink-0), 등록 폼 섹션만 자체 스크롤한다', () => {
+  it('좌 열(ADR 0021 2026-09-10): AI 안내 박스는 상단 고정(shrink-0), 등록 폼 섹션은 남은 공간을 채우는 flex 열이다(자체 스크롤은 TemplateUploadForm 내부에서 처리)', () => {
     render(<TemplatesPage />);
 
     const leftColumn = screen.getByTestId('templates-left-column');
@@ -68,8 +68,9 @@ describe('TemplatesPage', () => {
     expect(aiBox.className).toContain('shrink-0');
 
     const uploadSection = screen.getByTestId('templates-upload-section');
+    expect(uploadSection.className).toContain('flex');
+    expect(uploadSection.className).toContain('flex-col');
     expect(uploadSection.className).toContain('flex-1');
     expect(uploadSection.className).toContain('min-h-0');
-    expect(uploadSection.className).toContain('overflow-y-auto');
   });
 });

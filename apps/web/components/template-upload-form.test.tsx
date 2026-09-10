@@ -186,6 +186,49 @@ describe('TemplateUploadForm', () => {
     expect(textarea.className).toContain('font-mono');
   });
 
+  it('탭 토글은 상단 고정, 등록 버튼은 하단 고정 푸터, 입력 영역만 스크롤한다(ADR 0021 2026-09-10)', () => {
+    render(<TemplateUploadForm onUploaded={vi.fn()} />);
+
+    const scrollArea = screen.getByTestId('upload-scroll');
+    expect(scrollArea.className).toContain('overflow-y-auto');
+    expect(scrollArea.className).toContain('flex-1');
+    expect(scrollArea.className).toContain('min-h-0');
+
+    const tabList = screen.getByRole('tablist');
+    expect(tabList.className).toContain('sticky');
+    expect(tabList.className).toContain('top-0');
+    expect(tabList.closest('[data-testid="upload-scroll"]')).toBeNull();
+
+    const button = screen.getByRole('button', { name: '템플릿 등록' });
+    const footer = button.closest('[data-testid="upload-footer"]');
+    expect(footer).not.toBeNull();
+    expect(footer?.className).toContain('shrink-0');
+    expect(footer?.className).toContain('border-t');
+    expect(button.closest('[data-testid="upload-scroll"]')).toBeNull();
+  });
+
+  it('붙여넣기 탭으로 전환해도 등록 버튼은 여전히 하단 고정 푸터에서 해당 탭의 폼과 연결된다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '붙여넣기' });
+    const onUploaded = vi.fn();
+
+    render(<TemplateUploadForm onUploaded={onUploaded} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'HTML 붙여넣기' }));
+
+    const button = screen.getByRole('button', { name: '템플릿 등록' });
+    expect(button.closest('[data-testid="upload-footer"]')).not.toBeNull();
+
+    fireEvent.change(screen.getByLabelText('이름'), { target: { value: '붙여넣기 템플릿' } });
+    fireEvent.change(screen.getByPlaceholderText('AI가 생성한 HTML 전체를 붙여넣으세요'), {
+      target: { value: '<form></form>' },
+    });
+    fireEvent.click(button);
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+    const [, init] = vi.mocked(apiFetch).mock.calls[0];
+    const body = init?.body as FormData;
+    expect(body.get('html')).toBe('<form></form>');
+  });
+
   it('닫기 버튼을 누르면 점검 결과를 감춘다', async () => {
     vi.mocked(apiFetch).mockResolvedValue({ id: 't1', name: '이름', warnings: [] });
 
