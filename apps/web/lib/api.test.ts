@@ -111,6 +111,33 @@ describe('apiFetch', () => {
     await expect(apiFetch('/api/admin/templates')).rejects.toMatchObject({ details: undefined });
   });
 
+  it('message가 배열이면 join한 문자열을 message로, 원본 배열을 messages에 보존한다(ADR 0018 차단 규칙)', async () => {
+    const reasons = ['관리자 API 참조(/api/admin)가 포함되어 있습니다', '쿠키 접근(document.cookie)이 포함되어 있습니다'];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ statusCode: 400, message: reasons, error: 'Bad Request' }), { status: 400 }),
+      ),
+    );
+
+    await expect(apiFetch('/api/admin/templates', { method: 'POST' })).rejects.toMatchObject({
+      status: 400,
+      message: reasons.join(', '),
+      messages: reasons,
+    });
+  });
+
+  it('message가 문자열이면 messages는 undefined다', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ statusCode: 400, message: '오류', error: 'Bad Request' }), { status: 400 }),
+      ),
+    );
+
+    await expect(apiFetch('/api/admin/templates')).rejects.toMatchObject({ messages: undefined });
+  });
+
   it('이미 /login 경로에 있으면 401이어도 재이동하지 않고 ApiError만 던진다', async () => {
     Object.defineProperty(window, 'location', {
       value: { ...window.location, assign: assignMock, pathname: '/login' },
