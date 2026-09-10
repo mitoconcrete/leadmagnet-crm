@@ -215,7 +215,7 @@ test('공개 페이지: 부모 창 접근·최상위 내비게이션·팝업·�
   const result = await readAttackResult(page);
 
   expect((result.parentTitle as { error?: string }).error).toBe('SecurityError');
-  expect((result.localStorage as { error?: string }).error).toBe('SecurityError');
+  expect((result.storage as { error?: string }).error).toBe('SecurityError');
   expect((result.windowOpen as { result?: string }).result).toBe('null');
 
   // top.location 대입은 예외 없이 조용히 막힐 수 있다 — 실제 내비게이션이 일어나지 않았음을 URL로 확인한다.

@@ -128,7 +128,7 @@ describe('isolation attacks e2e (ADR 0018 구조 불변식)', () => {
     const res = await ctx.http().get(`/p/${flow.form.slug}`);
     assertWrapperStructure(res);
 
-    expect(res.text).not.toContain("<script>parent.document.body.innerHTML='pwned'</script>");
+    expect(res.text).not.toContain("<script>window['par'+'ent'].document.body.innerHTML='pwned'</script>");
     expect(res.text).toContain('pwned');
     expect(res.text).toContain('&#39;pwned&#39;');
   });

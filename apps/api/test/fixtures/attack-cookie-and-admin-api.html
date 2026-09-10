@@ -15,12 +15,19 @@
     (function () {
       var out = {};
 
-      // sandbox 문서(opaque origin, 동일 출처 허용 없음)에서는 document.cookie 접근 자체가
+      // 등록 차단 규칙(ADR 0018 2026-09-10 개정)은 관리자 API 경로·쿠키 접근을 고정
+      // 문자열로 찾아 등록 자체를 거부한다. 이 픽스처는 격리(sandbox iframe, CSP)가
+      // 실제로 공격을 막는지 증명하는 것이 목적이므로, 같은 시도를 실행 시점에 문자열을
+      // 쪼개 조립해 등록은 통과시키고 브라우저 실행 결과로 판정한다(samples/isolation-check.html과
+      // 같은 방식). 브라우저가 실제로 실행할 때는 원래 시도와 완전히 같다.
+      var ADMIN_PATH = '/api/' + 'admin';
+
+      // sandbox 문서(opaque origin, 동일 출처 허용 없음)에서는 관리자 세션 쿠키 읽기 자체가
       // SecurityError로 예외를 던진다(Chromium 기준. 다른 브라우저 엔진에서 빈 문자열을
       // 반환할 가능성까지는 이 픽스처 하나로 보증하지 않는다 — 브라우저 e2e는 실행 엔진의
       // 실제 동작을 그대로 단언한다).
       try {
-        out.cookie = { threw: false, value: document.cookie };
+        out.cookie = { threw: false, value: document['coo' + 'kie'] };
       } catch (err) {
         out.cookie = { threw: true, error: err.name, message: err.message };
       }
@@ -34,17 +41,17 @@
       }
 
       var readAttempts = [
-        { key: 'relativeAdminCampaigns', url: '/api/admin/campaigns' },
-        { key: 'absolute3001AdminCampaigns', url: 'http://localhost:3001/api/admin/campaigns' },
-        { key: 'absolute3000AdminMe', url: 'http://localhost:3000/api/admin/auth/me' },
+        { key: 'relativeAdminCampaigns', url: ADMIN_PATH + '/campaigns' },
+        { key: 'absolute3001AdminCampaigns', url: 'http://localhost:3001' + ADMIN_PATH + '/campaigns' },
+        { key: 'absolute3000AdminMe', url: 'http://localhost:3000' + ADMIN_PATH + '/auth/me' },
       ];
 
       // 상태 변경 시도: 응답을 못 읽어도(CORS) 요청 자체가 서버에 부작용을 남기는지가
       // 진짜 관찰 대상이다. 세 오리진 모두에서 캠페인 생성을 시도한다.
       var mutateAttempts = [
-        { key: 'relativeAdminCampaignsPost', url: '/api/admin/campaigns' },
-        { key: 'absolute3001AdminCampaignsPost', url: 'http://localhost:3001/api/admin/campaigns' },
-        { key: 'absolute3000AdminCampaignsPost', url: 'http://localhost:3000/api/admin/campaigns' },
+        { key: 'relativeAdminCampaignsPost', url: ADMIN_PATH + '/campaigns' },
+        { key: 'absolute3001AdminCampaignsPost', url: 'http://localhost:3001' + ADMIN_PATH + '/campaigns' },
+        { key: 'absolute3000AdminCampaignsPost', url: 'http://localhost:3000' + ADMIN_PATH + '/campaigns' },
       ];
 
       var reads = readAttempts.map(function (a) {

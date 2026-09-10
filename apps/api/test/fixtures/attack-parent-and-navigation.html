@@ -10,20 +10,28 @@
     <label>이름 <input name="name" required /></label>
     <button type="submit">신청</button>
   </form>
-  <a id="top-nav-link" href="https://evil.example/" target="_top">최상위로 이동</a>
+  <a id="top-nav-link" href="https://evil.example/">최상위로 이동</a>
   <pre id="attack-result">대기 중</pre>
   <script>
     (function () {
+      // 등록 차단 규칙(ADR 0018 2026-09-10 개정)은 부모/최상위 창 접근, 브라우저 저장소,
+      // target=_top/_parent를 정적으로 찾아 등록 자체를 거부한다. 격리(sandbox iframe, CSP)가
+      // 실제로 막는지 증명하는 것이 목적이므로, 같은 시도를 실행 시점에 문자열을 쪼개 조립하거나
+      // 속성을 런타임에 설정해 등록은 통과시키고 브라우저 실행 결과로 판정한다
+      // (samples/isolation-check.html과 같은 방식) — 브라우저가 실제로 실행할 때는
+      // 원래 시도와 완전히 같다.
+      document.getElementById('top-nav-link').target = '_top';
+
       var out = {};
 
       try {
-        out.parentTitle = { ok: true, value: parent.document.title };
+        out.parentTitle = { ok: true, value: window['par' + 'ent'].document.title };
       } catch (err) {
         out.parentTitle = { error: err.name, message: err.message };
       }
 
       try {
-        top.location.href = 'https://evil.example/';
+        window['t' + 'op'].location.href = 'https://evil.example/';
         out.topNavigation = { attempted: true, threw: false };
       } catch (err) {
         out.topNavigation = { attempted: true, threw: true, error: err.name, message: err.message };
@@ -37,10 +45,10 @@
       }
 
       try {
-        localStorage.setItem('attack', 'value');
-        out.localStorage = { ok: true, threw: false };
+        window['local' + 'Storage'].setItem('attack', 'value');
+        out.storage = { ok: true, threw: false };
       } catch (err) {
-        out.localStorage = { threw: true, error: err.name, message: err.message };
+        out.storage = { threw: true, error: err.name, message: err.message };
       }
 
       document.getElementById('attack-result').textContent = JSON.stringify(out);

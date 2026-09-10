@@ -13,7 +13,7 @@
   <pre id="attack-result">대기 중</pre>
   <script>
     (function () {
-      // ADR 0003 잔여 위험: document.cookie는 sandbox 문서(동일 출처 허용 없음)에서 접근 자체가
+      // ADR 0003 잔여 위험: 관리자 세션 쿠키는 sandbox 문서(동일 출처 허용 없음)에서 읽기 자체가
       // 막히므로(예외), 이 픽스처는 그 대신 실제로 열려 있는 경로 — 방문자가 입력한 폼 값을
       // img-src * 로 허용된 외부 이미지 비콘에 실어 보내는 시도 — 를 보여준다.
       var out = {};
