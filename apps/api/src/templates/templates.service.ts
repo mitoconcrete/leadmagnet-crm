@@ -5,6 +5,7 @@ import { HtmlTemplate } from '../entities/html-template.entity';
 import { Form } from '../entities/form.entity';
 import { validateHtmlUpload, UploadedHtmlFile } from './html-validation';
 import { lintHtmlTemplate } from './html-lint';
+import { isForeignKeyViolation } from '../common/db-errors';
 
 /** 저장된 템플릿 엔티티에 등록 시점 점검 경고(ADR 0018)를 얹은 결과. DB에는 저장하지 않는다. */
 export type CreatedHtmlTemplate = HtmlTemplate & { warnings: string[] };
@@ -74,7 +75,16 @@ export class TemplatesService {
     const counts = await this.countReferences(id);
 
     if (counts.forms === 0) {
-      await this.repo.delete(id);
+      try {
+        await this.repo.delete(id);
+      } catch (err) {
+        // ADR 0017 알려진 예외의 다음 단계: "참조 폼 수 조회 → DELETE" 사이에 폼이 생기면
+        // FK 위반(23503)으로 실패한다 — 500 대신 409로 매핑한다(캠페인 삭제와 같은 패턴).
+        if (isForeignKeyViolation(err)) {
+          throw new ConflictException('사용 중인 템플릿입니다');
+        }
+        throw err;
+      }
       return;
     }
 

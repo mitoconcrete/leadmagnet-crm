@@ -7,6 +7,7 @@ import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { toFormResponse, FormResponse } from '../forms/forms.service';
 import { PUBLIC_BASE_URL } from '../common/tokens';
+import { isForeignKeyViolation } from '../common/db-errors';
 
 export interface CampaignWithForms extends Omit<Campaign, 'forms'> {
   forms: FormResponse[];
@@ -40,12 +41,6 @@ export interface CampaignEventCounts {
  * 트랜잭션 밖(존재 확인 없음)과 안(재집계) 어느 쪽에서 호출되든 같은 코드를 쓰기 위함이다. */
 interface Queryable {
   query<T = unknown>(query: string, parameters?: unknown[]): Promise<T>;
-}
-
-/** Postgres 외래키 위반(23503) 여부. TOCTOU 재집계가 통과한 뒤에도 삭제 문장 실행 사이에
- * 새 방문/신청이 끼어들면 forms DELETE가 이 에러로 실패한다 — 최후 방어로 409에 매핑한다. */
-function isForeignKeyViolation(err: unknown): boolean {
-  return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === '23503';
 }
 
 @Injectable()
