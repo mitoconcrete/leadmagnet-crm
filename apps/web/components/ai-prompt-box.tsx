@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ChevronDownIcon, SparklesIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AI_PROMPT_TEMPLATE } from '@/lib/ai-prompt';
 
@@ -41,20 +41,20 @@ export function AiPromptBox() {
             className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
           />
         </CollapsibleTrigger>
-        <CollapsibleContent className="rounded-b-md border border-t-0">
-          <CardHeader>
-            <CardTitle>AI로 만들기</CardTitle>
-            <CardDescription>
-              아래 프롬프트를 ChatGPT·Claude 등에 붙여넣어 HTML 파일을 만든 뒤 여기에 등록하세요
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 pb-4">
+        <CollapsibleContent className="box-border rounded-b-md border border-t-0 p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <CardTitle>AI로 만들기</CardTitle>
+              <CardDescription>
+                아래 프롬프트를 ChatGPT·Claude 등에 붙여넣어 HTML 파일을 만든 뒤 여기에 등록하세요
+              </CardDescription>
+            </div>
             <ul className="list-disc pl-5 text-sm text-muted-foreground">
               <li>.html 파일 하나</li>
               <li>&lt;form&gt;과 모든 입력의 name 속성 필수</li>
               <li>외부 스크립트 없이 완전한 파일 하나</li>
             </ul>
-            <pre className="max-h-64 overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap">
+            <pre className="box-border max-h-64 w-full overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap">
               {AI_PROMPT_TEMPLATE}
             </pre>
             <div className="flex justify-end">
@@ -62,7 +62,7 @@ export function AiPromptBox() {
                 프롬프트 복사
               </Button>
             </div>
-          </CardContent>
+          </div>
         </CollapsibleContent>
       </Collapsible>
     </Card>
