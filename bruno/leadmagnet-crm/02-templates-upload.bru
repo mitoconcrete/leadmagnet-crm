@@ -15,7 +15,7 @@ headers {
 }
 
 body:multipart-form {
-  name: Bruno 템플릿
+  name: Bruno 템플릿 {{$timestamp}}
   file: @file(../../apps/api/test/fixtures/valid-form.html)
 }
 

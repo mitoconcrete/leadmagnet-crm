@@ -16,7 +16,7 @@ headers {
 
 body:multipart-form {
   html: <form><input name="email"></form>
-  name: Bruno 붙여넣기 템플릿
+  name: Bruno 붙여넣기 템플릿 {{$timestamp}}
 }
 
 script:post-response {
@@ -25,5 +25,6 @@ script:post-response {
 
 assert {
   res.status: eq 201
-  res.body.originalFilename: eq Bruno 붙여넣기 템플릿.html
+  res.body.originalFilename: contains Bruno 붙여넣기 템플릿
+  res.body.originalFilename: contains .html
 }

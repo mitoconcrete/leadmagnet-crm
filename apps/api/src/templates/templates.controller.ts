@@ -19,6 +19,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBody,
+  ApiConflictResponse,
   ApiConsumes,
   ApiCookieAuth,
   ApiCreatedResponse,
@@ -69,6 +70,9 @@ export class TemplatesController {
   @ApiCreatedResponse({
     type: TemplateCreatedDto,
     description: '등록 성공. warnings는 등록 시점 점검 경고(ADR 0018)로, 있어도 등록은 그대로 성공한다.',
+  })
+  @ApiConflictResponse({
+    description: '같은 이름의 살아 있는 템플릿이 이미 있다(ADR 0014). 소프트 삭제된 이름은 재사용할 수 있다.',
   })
   async create(
     @UploadedFile() file: Express.Multer.File,
