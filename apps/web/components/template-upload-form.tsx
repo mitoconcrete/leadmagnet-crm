@@ -2,7 +2,6 @@
 
 import { useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,24 +13,27 @@ import type { Template } from '@/lib/types';
 const FILE_FORM_ID = 'template-file-form';
 const PASTE_FORM_ID = 'template-paste-form';
 
+/** 여러 줄 이유 목록을 toast description에서 개행 그대로 보여준다(sonner 기본은 white-space: normal). */
+function multilineDescription(text: string) {
+  return <div className="whitespace-pre-line">{text}</div>;
+}
+
 /**
  * HTML 템플릿 등록 폼. "파일 업로드"와 "HTML 붙여넣기" 두 탭으로 같은
  * POST /api/admin/templates를 호출한다(ADR 0014). 성공하면 목록 재조회를 위해
- * onUploaded를 호출한다. 등록 직후 응답의 점검 경고(warnings, ADR 0018)를
- * 폼 아래에 보여준다.
+ * onUploaded를 호출한다.
  *
- * 등록 거부(ADR 0018 2026-09-10 개정 차단 규칙, 400 message: string[])는 별도
- * destructive Alert로 이유 목록을 보여준다. 그 외 문자열 메시지 오류는 기존처럼
- * toast로만 안내한다.
- *
- * 점검/거부 Alert는 다음 등록 시도 전까지만 유효하므로, 파일 선택 변경·붙여넣기
- * textarea·이름 입력·탭 전환 등 새 입력이 시작되는 순간 사라진다(이전 결과가 더
- * 이상 현재 입력을 설명하지 않기 때문).
+ * 등록 결과(성공, 점검 경고 ADR 0018, 차단 거부 ADR 0018 2026-09-10 개정)는 모두
+ * 화면 고정 위치의 toast로 안내한다(폼 섹션 안 Alert는 스크롤을 내려야 보였다):
+ * - 201 + warnings 없음: toast.success
+ * - 201 + warnings 있음: toast.warning('점검 경고 N건', {description: 이유들})
+ * - 400 + message 배열(차단 규칙): toast.error('등록이 거부되었습니다', {description: 이유들})
+ * - 그 외 오류(문자열 메시지): toast.error(message)
  *
  * 레이아웃(ADR 0021 2026-09-10): 탭 토글은 상단 고정, 등록 버튼은 하단 고정
- * 푸터에 두고, 그 사이(이름·파일·textarea·점검 경고)만 자체 스크롤한다. 등록
- * 버튼은 폼 밖 푸터에 있지만 `form` 속성으로 현재 탭의 <form>과 연결되어
- * submit 동작은 그대로 유지된다.
+ * 푸터에 두고, 그 사이(이름·파일·textarea)만 자체 스크롤한다. 등록 버튼은 폼
+ * 밖 푸터에 있지만 `form` 속성으로 현재 탭의 <form>과 연결되어 submit 동작은
+ * 그대로 유지된다.
  */
 export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
   const [activeTab, setActiveTab] = useState<'file' | 'paste'>('file');
@@ -40,24 +42,10 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
   const [pasteName, setPasteName] = useState('');
   const [pasteHtml, setPasteHtml] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [warnings, setWarnings] = useState<string[] | null>(null);
-  const [rejectReasons, setRejectReasons] = useState<string[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  /** 새 입력이 시작되면 이전 등록 시도의 점검/거부 결과는 더 이상 유효하지 않다. */
-  function clearResult() {
-    setWarnings(null);
-    setRejectReasons(null);
-  }
-
-  function handleTabChange(value: string) {
-    setActiveTab(value as 'file' | 'paste');
-    clearResult();
-  }
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
-    clearResult();
     if (selected && !selected.name.toLowerCase().endsWith('.html')) {
       toast.error('HTML 파일만 선택할 수 있습니다');
       setFile(null);
@@ -69,17 +57,21 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
 
   async function register(formData: FormData, resetFields: () => void) {
     setSubmitting(true);
-    setWarnings(null);
-    setRejectReasons(null);
     try {
       const created = await apiFetch<Template>('/api/admin/templates', { method: 'POST', body: formData });
-      toast.success('템플릿을 등록했습니다');
-      setWarnings(created.warnings ?? []);
+      const warnings = created.warnings ?? [];
+      if (warnings.length > 0) {
+        toast.warning(`점검 경고 ${warnings.length}건`, { description: multilineDescription(warnings.join('\n')) });
+      } else {
+        toast.success('템플릿을 등록했습니다');
+      }
       resetFields();
       onUploaded();
     } catch (error) {
       if (error instanceof ApiError && error.messages) {
-        setRejectReasons(error.messages);
+        toast.error('등록이 거부되었습니다', {
+          description: multilineDescription(error.messages.join('\n')),
+        });
       } else {
         const message = error instanceof ApiError ? error.message : '템플릿 등록에 실패했습니다';
         toast.error(message);
@@ -131,7 +123,11 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex min-h-0 flex-1 flex-col max-w-2xl">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as 'file' | 'paste')}
+        className="flex min-h-0 flex-1 flex-col max-w-2xl"
+      >
         <TabsList className="sticky top-0 z-10 shrink-0 bg-inherit pb-2">
           <TabsTrigger value="file">파일 업로드</TabsTrigger>
           <TabsTrigger value="paste">HTML 붙여넣기</TabsTrigger>
@@ -142,14 +138,7 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
             <form id={FILE_FORM_ID} className="flex flex-col gap-4" onSubmit={handleFileSubmit}>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="template-name">이름</Label>
-                <Input
-                  id="template-name"
-                  value={fileName}
-                  onChange={(e) => {
-                    setFileName(e.target.value);
-                    clearResult();
-                  }}
-                />
+                <Input id="template-name" value={fileName} onChange={(e) => setFileName(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-sm leading-none font-medium">HTML 파일</span>
@@ -176,78 +165,20 @@ export function TemplateUploadForm({ onUploaded }: { onUploaded: () => void }) {
             <form id={PASTE_FORM_ID} className="flex flex-col gap-4" onSubmit={handlePasteSubmit}>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="template-paste-name">이름</Label>
-                <Input
-                  id="template-paste-name"
-                  value={pasteName}
-                  onChange={(e) => {
-                    setPasteName(e.target.value);
-                    clearResult();
-                  }}
-                />
+                <Input id="template-paste-name" value={pasteName} onChange={(e) => setPasteName(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="template-paste-html">HTML</Label>
                 <Textarea
                   id="template-paste-html"
                   value={pasteHtml}
-                  onChange={(e) => {
-                    setPasteHtml(e.target.value);
-                    clearResult();
-                  }}
+                  onChange={(e) => setPasteHtml(e.target.value)}
                   placeholder="AI가 생성한 HTML 전체를 붙여넣으세요"
                   className="h-64 max-h-64 resize-none font-mono text-xs"
                 />
               </div>
             </form>
           </TabsContent>
-
-          {rejectReasons !== null && (
-            <Alert variant="destructive" className="relative mt-3 max-w-2xl">
-              <AlertTitle>등록이 거부되었습니다</AlertTitle>
-              <AlertDescription>
-                <ul className="list-disc pl-5">
-                  {rejectReasons.map((reason, index) => (
-                    <li key={index}>{reason}</li>
-                  ))}
-                </ul>
-              </AlertDescription>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute top-1.5 right-1.5"
-                onClick={() => setRejectReasons(null)}
-              >
-                닫기
-              </Button>
-            </Alert>
-          )}
-
-          {warnings !== null && (
-            <Alert className="relative mt-3 max-w-2xl">
-              <AlertTitle>{warnings.length > 0 ? `점검 결과 ${warnings.length}건` : '점검 이상 없음'}</AlertTitle>
-              <AlertDescription>
-                {warnings.length > 0 ? (
-                  <ul className="list-disc pl-5">
-                    {warnings.map((warning, index) => (
-                      <li key={index}>{warning}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  '등록 규칙을 벗어난 요소를 찾지 못했습니다.'
-                )}
-              </AlertDescription>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute top-1.5 right-1.5"
-                onClick={() => setWarnings(null)}
-              >
-                닫기
-              </Button>
-            </Alert>
-          )}
         </div>
       </Tabs>
 
