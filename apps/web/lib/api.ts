@@ -2,12 +2,19 @@ export class ApiError extends Error {
   status: number;
   /** 409 등 오류 응답의 details 필드(예: {forms, visits, submissions}). 없으면 undefined. */
   details?: unknown;
+  /**
+   * 서버 message가 배열이었을 때의 원본 배열(예: ADR 0018 등록 차단 규칙 이유 목록).
+   * message는 항상 string(join된 값)이어야 하므로, 화면이 이유를 목록으로 보여줘야
+   * 하면 이 필드를 쓴다. message가 문자열이면 undefined.
+   */
+  messages?: string[];
 
-  constructor(status: number, message: string, details?: unknown) {
+  constructor(status: number, message: string, details?: unknown, messages?: string[]) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.details = details;
+    this.messages = messages;
   }
 }
 
@@ -59,10 +66,12 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   if (!res.ok) {
     let message = res.statusText || '요청 처리 중 오류가 발생했습니다';
     let details: unknown;
+    let messages: string[] | undefined;
     try {
       const data = (await res.json()) as ErrorBody;
       if (Array.isArray(data.message)) {
         message = data.message.join(', ');
+        messages = data.message;
       } else if (typeof data.message === 'string') {
         message = data.message;
       }
@@ -70,7 +79,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     } catch {
       // 본문이 JSON이 아니면 기본 메시지를 유지한다.
     }
-    throw new ApiError(res.status, message, details);
+    throw new ApiError(res.status, message, details, messages);
   }
 
   if (res.status === 204) {
