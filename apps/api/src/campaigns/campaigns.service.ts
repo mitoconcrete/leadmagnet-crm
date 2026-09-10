@@ -104,10 +104,19 @@ export class CampaignsService {
     if (!campaign) throw new NotFoundException('캠페인을 찾을 수 없습니다');
   }
 
+  /**
+   * §4.4/ADR 0017: forms[].templateDeleted를 정확히 계산하려면 template 관계(deletedAt)가
+   * 필요하다. to-one 관계라 relations:['template']을 줘도 formRepo.find는 JOIN 1개로
+   * 끝나 쿼리 수가 늘지 않는다(캠페인 상세 상한 2 유지: campaignRepo.findOne 1 + 이 조회 1).
+   */
   async findOneWithForms(id: string): Promise<CampaignWithForms> {
     const campaign = await this.campaignRepo.findOne({ where: { id } });
     if (!campaign) throw new NotFoundException('캠페인을 찾을 수 없습니다');
-    const forms = await this.formRepo.find({ where: { campaignId: id }, order: { createdAt: 'DESC' } });
+    const forms = await this.formRepo.find({
+      where: { campaignId: id },
+      relations: ['template'],
+      order: { createdAt: 'DESC' },
+    });
     return { ...campaign, forms: forms.map((f) => toFormResponse(f, this.publicBaseUrl)) };
   }
 
