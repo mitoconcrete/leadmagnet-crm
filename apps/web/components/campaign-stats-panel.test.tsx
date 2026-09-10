@@ -13,15 +13,31 @@ const stats: CampaignStats = {
 };
 
 describe('CampaignStatsPanel', () => {
-  it('전달받은 stats로 통계 카드·채널 breakdown(5행)을 보여준다', () => {
+  it('전달받은 stats로 통계 카드·채널 breakdown을 보여준다(direct가 0이면 숨긴다, ADR 0005)', () => {
     render(<CampaignStatsPanel stats={stats} />);
 
     expect(screen.getByText('100')).toBeInTheDocument();
     expect(screen.getAllByText('25.0%').length).toBeGreaterThan(0);
 
     const rows = screen.getAllByRole('row').slice(1);
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(4); // direct(0) 숨김, 4채널만
     expect(screen.getByText('33.3%')).toBeInTheDocument();
+    expect(screen.queryByText('직접 유입(코드 없음)')).not.toBeInTheDocument();
+  });
+
+  it('direct 값이 하나라도 0이 아니면 breakdown에 "직접 유입(코드 없음)" 행을 보여준다(ADR 0005)', () => {
+    const statsWithDirect: CampaignStats = {
+      ...stats,
+      channels: [
+        { channel: 'direct', visits: 3, visitors: 2, submissions: 1, conversionRate: 0.5 },
+        ...stats.channels,
+      ],
+    };
+    render(<CampaignStatsPanel stats={statsWithDirect} />);
+
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(5);
+    expect(screen.getByText('직접 유입(코드 없음)')).toBeInTheDocument();
   });
 
   it('stats가 없으면(조회 실패) 안내 문구를 보여준다', () => {
