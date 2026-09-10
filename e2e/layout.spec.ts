@@ -89,6 +89,17 @@ async function visitAndSubmit(page: Page, slug: string, index: number): Promise<
   await frame.locator('[data-lead-success]').waitFor({ timeout: 10_000 });
 }
 
+/**
+ * 지정한 role=region 목록 영역의 tbody 행 수가 최소 minRows에 도달할 때까지 기다린다.
+ * 데이터(캠페인·템플릿·신청)가 화면에 실제로 렌더된 뒤에 스크롤 측정을 하도록 해
+ * "렌더 전에 측정하는" 타이밍 경쟁(flaky)을 없앤다. 목록은 시드가 누적되므로 정확히
+ * n건이 아니라 최소 n건 이상임을 확인한다.
+ */
+async function waitForMinRows(page: Page, regionName: string, minRows: number, timeoutMs = 20_000): Promise<void> {
+  const rows = page.getByRole('region', { name: regionName }).locator('tbody').getByRole('row');
+  await expect.poll(() => rows.count(), { timeout: timeoutMs }).toBeGreaterThanOrEqual(minRows);
+}
+
 /** 페이지가 바깥 문서를 스크롤하지 않는지(오차 1px), 목록 섹션에 내부 스크롤이 생겼는지 확인한다. */
 async function expectNoOuterScrollButInnerScroll(page: Page): Promise<void> {
   const { docHeight, innerHeight } = await page.evaluate(() => ({
@@ -97,17 +108,21 @@ async function expectNoOuterScrollButInnerScroll(page: Page): Promise<void> {
   }));
   expect(docHeight).toBeLessThanOrEqual(innerHeight + 1);
 
-  const regions = page.getByRole('region');
-  const regionCount = await regions.count();
-  expect(regionCount).toBeGreaterThan(0);
-
-  let hasOverflowingRegion = false;
-  for (let i = 0; i < regionCount; i += 1) {
-    const region = regions.nth(i);
-    const overflowing = await region.evaluate((el) => el.scrollHeight > el.clientHeight);
-    if (overflowing) hasOverflowingRegion = true;
-  }
-  expect(hasOverflowingRegion, '내용이 넘쳐 내부 스크롤이 생긴 [role=region] 섹션이 하나도 없습니다').toBe(true);
+  // 데이터 렌더 이후 레이아웃이 안정화될 때까지 기다린 뒤 내부 스크롤 여부를 확인한다(flaky 방지).
+  await expect
+    .poll(
+      async () => {
+        const regions = page.getByRole('region');
+        const regionCount = await regions.count();
+        for (let i = 0; i < regionCount; i += 1) {
+          const overflowing = await regions.nth(i).evaluate((el) => el.scrollHeight > el.clientHeight);
+          if (overflowing) return true;
+        }
+        return false;
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
 }
 
 test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스크롤 실측', () => {
@@ -144,6 +159,8 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
 
     await page.goto(`${WEB_BASE_URL}/`);
     await page.getByRole('heading', { name: '캠페인 성과' }).waitFor();
+    // 이번 실행에서 캠페인 30개를 만들었고, 목록은 전체 캠페인을 누적해서 보여준다.
+    await waitForMinRows(page, '캠페인 성과 목록', 30);
 
     await expectNoOuterScrollButInnerScroll(page);
   });
@@ -155,6 +172,8 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
 
     await page.goto(`${WEB_BASE_URL}/templates`);
     await page.getByRole('heading', { name: '템플릿 목록' }).waitFor();
+    // 이번 실행에서 템플릿 21개(폼용 1개 + 붙여넣기 20개)를 만들었고, 목록은 누적된다.
+    await waitForMinRows(page, '템플릿 목록', 21);
 
     await expectNoOuterScrollButInnerScroll(page);
   });
@@ -166,6 +185,8 @@ test.describe('데스크톱 우선 레이아웃(ADR 0021) — 1440×900 무스�
 
     await page.goto(`${WEB_BASE_URL}/campaigns/${seed.campaignId}`);
     await page.getByRole('heading', { name: '성과' }).waitFor();
+    // 신청 25건을 제출했고 명단은 page=1&limit=20이라 첫 페이지가 20행으로 꽉 찬다.
+    await waitForMinRows(page, '신청 명단', 20);
 
     await expectNoOuterScrollButInnerScroll(page);
   });
