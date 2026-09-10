@@ -195,6 +195,98 @@ describe('templates e2e (§4.2 /api/admin/templates)', () => {
     });
   });
 
+  describe('POST / 이름 고유(ADR 0014, §4.2 409)', () => {
+    it('같은 이름으로 두 번 업로드하면 두 번째는 409 "같은 이름의 템플릿이 있습니다"다', async () => {
+      const first = await agent
+        .post('/api/admin/templates')
+        .field('name', '고유 이름 테스트')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(first.status).toBe(201);
+
+      const second = await agent
+        .post('/api/admin/templates')
+        .field('name', '고유 이름 테스트')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(second.status).toBe(409);
+      expect(second.body.message).toBe('같은 이름의 템플릿이 있습니다');
+      expect(second.body.error).toBe('Conflict');
+    });
+
+    it('붙여넣기로 같은 이름을 두 번 등록하면 두 번째는 409다', async () => {
+      const html = '<form><input name="email"></form>';
+      const first = await agent.post('/api/admin/templates').field('html', html).field('name', '붙여넣기 고유 이름');
+      expect(first.status).toBe(201);
+
+      const second = await agent.post('/api/admin/templates').field('html', html).field('name', '붙여넣기 고유 이름');
+      expect(second.status).toBe(409);
+      expect(second.body.message).toBe('같은 이름의 템플릿이 있습니다');
+    });
+
+    it('업로드와 붙여넣기가 같은 이름이어도 409다(등록 방식과 무관하게 이름은 하나만 살아 있는다)', async () => {
+      const first = await agent
+        .post('/api/admin/templates')
+        .field('name', '방식 무관 중복')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(first.status).toBe(201);
+
+      const second = await agent
+        .post('/api/admin/templates')
+        .field('html', '<form></form>')
+        .field('name', '방식 무관 중복');
+      expect(second.status).toBe(409);
+    });
+
+    it('name 미지정 업로드는 파일명 기반 기본 이름도 중복 규칙을 적용한다', async () => {
+      const first = await agent.post('/api/admin/templates').attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(first.status).toBe(201);
+      expect(first.body.name).toBe('valid-form');
+
+      const second = await agent.post('/api/admin/templates').attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(second.status).toBe(409);
+      expect(second.body.message).toBe('같은 이름의 템플릿이 있습니다');
+    });
+
+    it('강제 삭제(소프트 삭제)된 템플릿과 같은 이름은 다시 등록할 수 있다(201)', async () => {
+      const created = await agent
+        .post('/api/admin/templates')
+        .field('name', '재사용 이름 테스트')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(created.status).toBe(201);
+
+      const campaign = await agent.post('/api/admin/campaigns').send({ name: '이름 재사용 캠페인' });
+      await agent
+        .post('/api/admin/forms')
+        .send({ campaignId: campaign.body.id, templateId: created.body.id, name: '이름 재사용 폼' });
+
+      const deleteRes = await agent.delete(`/api/admin/templates/${created.body.id}?force=true`);
+      expect(deleteRes.status).toBe(204);
+
+      const recreated = await agent
+        .post('/api/admin/templates')
+        .field('name', '재사용 이름 테스트')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(recreated.status).toBe(201);
+      expect(recreated.body.name).toBe('재사용 이름 테스트');
+    });
+
+    it('하드 삭제(참조 폼 없음)된 템플릿과 같은 이름도 다시 등록할 수 있다(201)', async () => {
+      const created = await agent
+        .post('/api/admin/templates')
+        .field('name', '하드삭제 재사용 이름')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(created.status).toBe(201);
+
+      const deleteRes = await agent.delete(`/api/admin/templates/${created.body.id}`);
+      expect(deleteRes.status).toBe(204);
+
+      const recreated = await agent
+        .post('/api/admin/templates')
+        .field('name', '하드삭제 재사용 이름')
+        .attach('file', VALID_FORM_FIXTURE_PATH);
+      expect(recreated.status).toBe(201);
+    });
+  });
+
   describe('DELETE /:id (ADR 0014 삭제 규칙)', () => {
     it('참조하는 폼이 없으면 204이고, 이후 GET은 404다', async () => {
       const created = await agent

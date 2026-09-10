@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import * as path from 'path';
+import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
@@ -126,9 +127,11 @@ export async function createFixtureFlow(
   form: { id: string; slug: string };
   links: Record<Channel, { code: string; url: string }>;
 }> {
+  // ADR 0014: 템플릿 이름은 살아 있는 템플릿 중 고유해야 하므로(409), 한 테스트 안에서
+  // createFixtureFlow를 여러 번 호출해도 충돌하지 않도록 매번 고유한 이름을 쓴다.
   const templateRes = await agent
     .post('/api/admin/templates')
-    .field('name', '테스트 템플릿')
+    .field('name', `테스트 템플릿 ${randomUUID()}`)
     .attach('file', VALID_FORM_FIXTURE_PATH);
   const templateId = templateRes.body.id;
 

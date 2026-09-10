@@ -158,6 +158,59 @@ describe('TemplatesService', () => {
   });
 });
 
+describe('TemplatesService.create 이름 고유(ADR 0014)', () => {
+  let repo: ReturnType<typeof repoMock>;
+  let dataSource: ReturnType<typeof dataSourceMock>;
+  let service: TemplatesService;
+
+  beforeEach(() => {
+    repo = repoMock();
+    dataSource = dataSourceMock();
+    service = new TemplatesService(repo as never, dataSource as never);
+  });
+
+  it('같은 이름의 살아 있는 템플릿이 있으면 409를 던지고 저장하지 않는다', async () => {
+    repo.findOne.mockResolvedValue({ id: 'existing', name: '중복 이름', deletedAt: null });
+
+    await expect(service.create(validFile, '중복 이름')).rejects.toThrow(ConflictException);
+    await expect(service.create(validFile, '중복 이름')).rejects.toThrow('같은 이름의 템플릿이 있습니다');
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('중복 검사는 살아 있는 템플릿만 대상으로 한다(deletedAt IS NULL 조건)', async () => {
+    repo.findOne.mockResolvedValue(null);
+
+    await service.create(validFile, '재사용 가능 이름');
+
+    const args = repo.findOne.mock.calls[0][0];
+    expect(args.where).toEqual({ name: '재사용 가능 이름', deletedAt: IsNull() });
+    expect(repo.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('name 미지정 시 파일명 기반 기본 이름도 같은 규칙으로 중복이면 409다', async () => {
+    repo.findOne.mockResolvedValue({ id: 'existing', name: 'landing', deletedAt: null });
+
+    await expect(service.create(validFile)).rejects.toThrow(ConflictException);
+    const args = repo.findOne.mock.calls[0][0];
+    expect(args.where.name).toBe('landing');
+  });
+
+  it('저장 시점에 UNIQUE 위반(23505)이 나면 409로 매핑한다(선조회 이후 경쟁 상태)', async () => {
+    repo.findOne.mockResolvedValue(null);
+    repo.save.mockRejectedValue(Object.assign(new Error('duplicate key value'), { code: '23505' }));
+
+    await expect(service.create(validFile, '경쟁 이름')).rejects.toThrow(ConflictException);
+    await expect(service.create(validFile, '경쟁 이름')).rejects.toThrow('같은 이름의 템플릿이 있습니다');
+  });
+
+  it('UNIQUE 위반이 아닌 다른 저장 오류는 그대로 던진다(409로 뭉개지 않는다)', async () => {
+    repo.findOne.mockResolvedValue(null);
+    repo.save.mockRejectedValue(new Error('커넥션 끊김'));
+
+    await expect(service.create(validFile, '정상 이름')).rejects.toThrow('커넥션 끊김');
+  });
+});
+
 describe('TemplatesService.remove (ADR 0014 삭제 규칙)', () => {
   let repo: ReturnType<typeof repoMock>;
   let dataSource: ReturnType<typeof dataSourceMock>;
