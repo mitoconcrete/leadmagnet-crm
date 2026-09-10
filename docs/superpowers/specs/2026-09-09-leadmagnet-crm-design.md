@@ -78,7 +78,7 @@
 ### 4.2 HTML 템플릿 `/api/admin/templates`
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
-| POST | / | multipart `file`(.html) + `name?` **또는** `html`(텍스트) + `name`(필수) | 201 `{id,name,originalFilename,sizeBytes,createdAt, warnings: string[]}`(ADR 0018 점검 경고, 차단 아님). 400: (file) 확장자≠.html / (공통) >512KB, `<form` 없음 / `file`·`html` 둘 다 없거나 둘 다 있음 / `html`인데 `name` 없음. `html`일 때 `originalFilename = {name}.html` |
+| POST | / | multipart `file`(.html) + `name?` **또는** `html`(텍스트) + `name`(필수) | 201 `{id,name,originalFilename,sizeBytes,createdAt, warnings: string[]}`(ADR 0018 점검 경고, 차단 아님). 409 `같은 이름의 템플릿이 있습니다`(살아 있는 템플릿 중 이름 중복, ADR 0014). 400: (file) 확장자≠.html / (공통) >512KB, `<form` 없음 / `file`·`html` 둘 다 없거나 둘 다 있음 / `html`인데 `name` 없음. `html`일 때 `originalFilename = {name}.html` |
 | GET | / | – | 200 `[{id,name,originalFilename,sizeBytes,createdAt}]` |
 | GET | /:id | – | 200 `{…, html}` / 404 |
 | DELETE | /:id?force= | – | 참조 폼 없음: 204(hard). 참조 폼 있음 + force 없음: 409 `사용 중인 템플릿입니다(폼 N개, 방문 X건, 신청 Y건)` + `details:{forms,visits,submissions}`. `force=true`: 204(소프트 삭제 + 참조 폼 비활성, 트랜잭션). 소프트 삭제된 템플릿은 목록 제외·상세/미리보기 404. 404 |
@@ -146,10 +146,10 @@
 |---|---|
 | /login | 이메일/비밀번호 → POST /api/admin/auth/login. 성공 시 `/` |
 | / | 대시보드: 캠페인별 성과 표(GET /api/admin/analytics/campaigns) + 채널별 성과 표(GET /api/admin/analytics/channels) + 캠페인 생성 다이얼로그. 30초 자동 갱신, 마지막 갱신 시각, 지금 갱신 버튼(ADR 0016). "종료 캠페인 숨기기" 토글, 폼(활성/전체) 열, 진행중인데 활성 폼 0개면 "활성 폼 없음" 배지(ADR 0019) |
-| /templates | AI 생성 안내 박스 + 등록 폼(탭: 파일 업로드 / HTML 붙여넣기, 이름. 파일 입력은 네이티브 버튼 대신 shadcn Button "파일 선택" + 숨긴 `<input type=file>` + 선택한 파일명 표시 — 호버·포커스 상태가 보이도록) + 목록(행마다 "미리보기" → Dialog 안 `<iframe sandbox="allow-scripts allow-forms" src="/api/admin/templates/{id}/preview">`, "코드" → Dialog 안 `<pre>` 텍스트 + 복사 버튼(렌더 금지), "삭제" → DELETE; 409(details)면 폼·방문·신청 수를 보여 주는 확인 대화상자 → `?force=true`로 재요청). 수정 UI 없음(ADR 0014) |
+| /templates | 좌 열: AI 생성 안내 박스(상단 고정) + 등록 폼 섹션(자체 스크롤; 탭: 파일 업로드 / HTML 붙여넣기(textarea 고정 높이·내부 스크롤), 이름. 파일 입력은 네이티브 버튼 대신 shadcn Button "파일 선택" + 숨긴 `<input type=file>` + 선택한 파일명 표시 — 호버·포커스 상태가 보이도록) + 목록(행마다 "미리보기" → Dialog 안 `<iframe sandbox="allow-scripts allow-forms" src="/api/admin/templates/{id}/preview">`, "코드" → Dialog(`max-w-5xl`, 85vh) 안 `<pre>` 텍스트 + 복사 버튼(렌더 금지), 미리보기 Dialog도 같은 크기, "삭제" → DELETE; 409(details)면 폼·방문·신청 수를 보여 주는 확인 대화상자 → `?force=true`로 재요청). 수정 UI 없음(ADR 0014) |
 | (공통) | **데스크톱 우선(ADR 0021)**: 앱 셸 `h-screen` + `main overflow-hidden`, 페이지는 그리드 열(대시보드 2열 2:1, 캠페인 상세 3열, 템플릿 2열)로 남은 높이를 나눠 갖고 바깥 문서는 스크롤하지 않는다(뷰포트 높이 < 640px 예외). 섹션 헤더·마지막 갱신·버튼은 스크롤 영역 밖 고정. 좁은 화면(<1024px)은 열을 세로로 쌓는다. 검증: RTL 레이아웃 클래스 + Playwright 1440×900 `scrollHeight <= innerHeight` |
-| (공통) | 목록 섹션은 자기 열 안에서 세로 스크롤한다(`min-h-0` + `overflow-y-auto`, 그리드가 준 높이를 채움): 캠페인 성과 표·신청 명단·폼 목록·템플릿 목록. 표 헤더는 `position: sticky`로 고정. 채널 성과 표는 5행 고정이라 스크롤 없음. 페이지 자체가 표 길이만큼 늘어나지 않게 한다 |
-| /campaigns/[id] | "캠페인 종료"/"다시 진행"·"삭제" 버튼(확인 대화상자, 삭제는 이벤트 있으면 409 안내와 종료 유도, ADR 0019), 30초 자동 갱신 + 마지막 갱신 시각 + 지금 갱신(ADR 0016), 캠페인 정보·stats 카드·채널 breakdown, 폼 목록 + 폼 생성 다이얼로그(템플릿 선택·이름·성공 메시지), 폼마다 배포 링크 4채널 생성/복사 버튼과 공개 URL(링크 패널은 항상 펼쳐진 세로 한 열, 접기 버튼 없음: "배포 링크" 라벨 아래 채널 4행, 채널 라벨 고정폭·줄바꿈 없음, URL은 `truncate`, 버튼 고정폭), 신청 명단 표(GET /api/admin/submissions?campaignId=) |
+| (공통) | 목록 섹션은 자기 열 안에서 세로 스크롤한다(`min-h-0` + `overflow-y-auto`, 그리드가 준 높이를 채움): 캠페인 성과 표·신청 명단·폼 목록·템플릿 목록. 표 헤더는 모든 표에서 `position: sticky`로 고정. 성과 숫자 헤더는 "조회수"·"방문자 수"(툴팁 정의, ADR 0005). 채널 표의 `direct` 행은 값이 모두 0이면 숨기고 라벨 "직접 유입(코드 없음)". 채널 성과 표는 5행 고정이라 스크롤 없음. 페이지 자체가 표 길이만큼 늘어나지 않게 한다 |
+| /campaigns/[id] | "캠페인 종료"/"다시 진행"·"삭제" 버튼(확인 대화상자, 삭제는 이벤트 있으면 409 안내와 종료 유도, ADR 0019), 30초 자동 갱신 + 마지막 갱신 시각 + 지금 갱신(ADR 0016), 캠페인 정보·stats 카드·채널 breakdown, 폼 목록 + 폼 생성 다이얼로그(템플릿은 검색 가능한 콤보박스로 선택 — 이름 표시·폭 고정, 이름·성공 메시지), 폼마다 배포 링크 4채널 생성/복사 버튼(링크 패널은 항상 펼쳐진 세로 한 열, 접기 버튼 없음: "배포 링크" 라벨 아래 채널 4행, 채널 라벨 고정폭·줄바꿈 없음, URL은 `truncate`, 버튼 고정폭. 코드 없는 공개 URL 복사 행은 두지 않는다 — ADR 0005), 신청 명단 표(GET /api/admin/submissions?campaignId=) |
 
 - 데이터 접근: 클라이언트 컴포넌트에서 `fetch('/api/admin/…', {credentials:'include'})`. `next.config.ts` rewrites `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`.
 - 401이면 `/login`으로 이동(`lib/api.ts`의 공통 fetch 래퍼).
