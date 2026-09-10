@@ -135,7 +135,12 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                   />
                 </div>
               </div>
-              <FormList campaignId={campaignId} refreshKey={formRefreshKey} linksDisabled={isArchived} />
+              <FormList
+                campaignId={campaignId}
+                refreshKey={formRefreshKey}
+                linksDisabled={isArchived}
+                campaignArchived={isArchived}
+              />
             </section>
 
             <section className="flex min-h-0 flex-col gap-3">

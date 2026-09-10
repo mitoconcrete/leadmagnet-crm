@@ -17,10 +17,12 @@ export function FormList({
   campaignId,
   refreshKey = 0,
   linksDisabled = false,
+  campaignArchived = false,
 }: {
   campaignId: string;
   refreshKey?: number;
   linksDisabled?: boolean;
+  campaignArchived?: boolean;
 }) {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,7 @@ export function FormList({
             key={form.id}
             form={form}
             linksDisabled={linksDisabled}
+            campaignArchived={campaignArchived}
             onToggle={(isActive) => handleToggle(form, isActive)}
             onCopy={() => handleCopy(form.publicUrl)}
           />
@@ -95,16 +98,19 @@ export function FormList({
 function FormRow({
   form,
   linksDisabled,
+  campaignArchived,
   onToggle,
   onCopy,
 }: {
   form: Form;
   linksDisabled: boolean;
+  campaignArchived: boolean;
   onToggle: (isActive: boolean) => void;
   onCopy: () => void;
 }) {
   const [linksOpen, setLinksOpen] = useState(false);
   const templateDeleted = form.templateDeleted ?? false;
+  const activationBlocked = templateDeleted || campaignArchived;
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border p-4">
@@ -120,8 +126,14 @@ function FormRow({
           <span className="text-sm text-muted-foreground">활성</span>
           <Switch
             checked={form.isActive}
-            disabled={templateDeleted}
-            aria-label={templateDeleted ? '템플릿이 삭제되어 활성화할 수 없습니다' : undefined}
+            disabled={activationBlocked}
+            aria-label={
+              templateDeleted
+                ? '템플릿이 삭제되어 활성화할 수 없습니다'
+                : campaignArchived
+                  ? '종료된 캠페인의 폼은 활성화할 수 없습니다'
+                  : undefined
+            }
             onCheckedChange={onToggle}
           />
         </div>
