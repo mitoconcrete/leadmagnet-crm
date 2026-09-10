@@ -27,7 +27,7 @@ export function CampaignStatsPanel({ stats }: { stats: CampaignStats | null }) {
       />
 
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow>
             <TableHead>채널</TableHead>
             <TableHead className="text-right tabular-nums">방문</TableHead>
