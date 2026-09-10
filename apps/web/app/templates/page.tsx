@@ -22,7 +22,7 @@ export default function TemplatesPage() {
               <div data-testid="templates-ai-box" className="shrink-0">
                 <AiPromptBox />
               </div>
-              <div data-testid="templates-upload-section" className="min-h-0 flex-1 overflow-y-auto">
+              <div data-testid="templates-upload-section" className="flex h-full min-h-0 flex-1 flex-col">
                 <TemplateUploadForm onUploaded={() => setRefreshKey((key) => key + 1)} />
               </div>
             </div>
