@@ -186,28 +186,20 @@ describe('TemplateUploadForm', () => {
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
-  it('붙여넣기 textarea는 모달의 남는 세로 공간을 채우고(flex-1) 고정 높이로 잘리지 않는다(ADR 0021 2026-09-10 개정)', () => {
+  it('붙여넣기 textarea는 뷰포트 기준 높이(h-48vh)를 직접 가져 flex 사슬에 의존하지 않고 고정 높이로 잘리지 않는다(ADR 0021 2026-09-10 개정)', () => {
     render(<TemplateUploadForm onUploaded={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'HTML 붙여넣기' }));
     const textarea = screen.getByPlaceholderText('AI가 생성한 HTML 전체를 붙여넣으세요');
 
-    expect(textarea.className).toContain('flex-1');
-    expect(textarea.className).toContain('min-h-[12rem]');
+    // flex-grow(flex-1)는 base-ui TabsContent에서 높이 사슬이 끊겨 실제로 늘어나지 않았다(실측
+    // Playwright 케이스로 확인, e2e/layout.spec.ts). 뷰포트 기준 h-[48vh]로 직접 높이를 준다.
+    expect(textarea.className).toContain('h-[48vh]');
+    expect(textarea.className).toContain('min-h-[16rem]');
     expect(textarea.className).not.toContain('h-64');
     expect(textarea.className).not.toContain('max-h-64');
     expect(textarea.className).toContain('resize-none');
     expect(textarea.className).toContain('font-mono');
-
-    // 높이 사슬(min-h-0)이 tabs-content·form까지 이어져야 textarea의 flex-1이 실제로 늘어난다.
-    const tabPanel = textarea.closest('[data-slot="tabs-content"]');
-    expect(tabPanel?.className).toContain('flex');
-    expect(tabPanel?.className).toContain('min-h-0');
-    expect(tabPanel?.className).toContain('h-full');
-
-    const form = textarea.closest('form');
-    expect(form?.className).toContain('flex-1');
-    expect(form?.className).toContain('min-h-0');
   });
 
   it('폼 래퍼는 모달 폭을 다 쓴다(고정 max-w-2xl 제거, ADR 0021 2026-09-10 개정)', () => {
